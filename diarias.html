@@ -53,6 +53,9 @@
             table.dataTable th, table.dataTable td { font-size: 9px !important; border: 1px solid #ddd !important; display: table-cell !important; padding: 6px 4px !important; white-space: normal !important; }
             table.dataTable tr.child { display: none !important; }
             table.dataTable td.dtr-control::before, table.dataTable th.dtr-control::before { display: none !important; }
+            
+            /* Esta linha impede que o total se repita em todas as páginas na impressão */
+            tfoot { display: table-row-group !important; }
         }
     </style>
 </head>
