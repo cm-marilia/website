@@ -39,14 +39,12 @@
         table.dataTable thead th { background: #003b75 !important; color: white !important; text-transform: uppercase; font-size: 12px; padding: 12px; }
         table.dataTable tfoot th { background: #f4f6f9 !important; color: #003b75 !important; font-size: 14px; font-weight: bold; padding: 12px; border-top: 2px solid #003b75; }
         
-        /* Ajuste de espaçamento para o campo de busca */
         .dataTables_wrapper .dataTables_filter, 
         .dataTables_wrapper .dataTables_length { margin-bottom: 30px; padding-top: 10px; }
         
         .dataTables_wrapper .dataTables_filter label { font-size: 0; }
         .dataTables_wrapper .dataTables_filter input { font-size: 14px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; }
         
-        /* Modo Impressão */
         @media print {
             .topo, .toolbar, .dataTables_filter, .dataTables_filter input, .dataTables_length, .dataTables_info, .dataTables_paginate { display: none !important; }
             .container { box-shadow: none; width: 100%; margin: 0; padding: 0; }
@@ -121,7 +119,6 @@
     <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 
     <script>
-        // IDs DAS PLANILHAS
         const SHEET_ID_DIARIAS = "1XP67Ojd_HK3S1IPvC_9eY32-lf0_qI3jfBfrLzasvQo";
         const SHEET_ID_GABINETES = "1GwDig1yn9YIX8FSsHFPHL2iLCtwsZkNnquNjp5D7Oaw"; 
 
@@ -255,6 +252,7 @@
             });
         }
 
+        // Função de filtro que aceita parâmetros manuais para a carga inicial
         function aplicarFiltros(mesManual = null, anoManual = null) {
             const serv = $('#filtroServidor').val();
             const mes = mesManual || $('#filtroMes').val();
@@ -303,10 +301,12 @@
 
                 preencherFiltros();
                 
+                // CARGA INICIAL: Filtra internamente sem "setar" os selects visualmente
                 const hoje = new Date();
                 const mesAtual = String(hoje.getMonth() + 1).padStart(2, "0");
                 const anoAtual = String(hoje.getFullYear());
                 
+                // Chamamos o filtro passando os valores, mas os selects continuam vazios
                 aplicarFiltros(mesAtual, anoAtual);
                 
                 $('#loader').hide(); $('#main-container').fadeIn();
@@ -335,32 +335,6 @@
             return dadosDaTabela;
         }
 
-        // --- NOVA FUNÇÃO PARA DEFINIR O NOME DO ARQUIVO COM BASE NOS FILTROS ---
-        function obterNomeArquivoBase() {
-            const serv = $('#filtroServidor').val();
-            const mes = $('#filtroMes').val();
-            const ano = $('#filtroAno').val();
-            const gab = $('#filtroGabinete').val();
-
-            // Se todos os filtros estiverem em branco, retorna apenas "diarias_completo"
-            if (!serv && !mes && !ano && !gab) {
-                return "diarias_completo";
-            }
-            
-            // Caso contrário, monta o nome do arquivo dinamicamente com os filtros escolhidos
-            let partes = ["diarias"];
-            if (gab) partes.push(gab);
-            if (serv) partes.push(serv);
-            if (mes) partes.push(mes);
-            if (ano) partes.push(ano);
-
-            return partes.join('_')
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
-                .replace(/\s+/g, '_') // Substitui espaços por _
-                .replace(/[^a-zA-Z0-9_]/g, ""); // Remove caracteres especiais
-        }
-
-        // --- EXPORTAÇÕES ATUALIZADAS ---
         function exportarCSV() {
             const dados = obterDadosFiltradosDoDOM();
             if (!dados.length) return;
@@ -369,9 +343,7 @@
             dados.forEach(row => {
                 csv += headers.map(h => `"${row[h].replace(/"/g, '""')}"`).join(",") + "\n";
             });
-            
-            const nomeArquivo = obterNomeArquivoBase() + ".csv";
-            baixarArquivo(csv, nomeArquivo, "text/csv");
+            baixarArquivo(csv, "diarias_filtradas.csv", "text/csv");
         }
 
         function exportarXLSX() {
@@ -379,18 +351,14 @@
             if (!dados.length) return;
             const worksheet = XLSX.utils.json_to_sheet(dados);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Diárias");
-            
-            const nomeArquivo = obterNomeArquivoBase() + ".xlsx";
-            XLSX.writeFile(workbook, nomeArquivo);
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Diárias Filtradas");
+            XLSX.writeFile(workbook, "relatorio_diarias.xlsx");
         }
 
         function exportarJSON() {
             const dados = obterDadosFiltradosDoDOM();
             if (!dados.length) return;
-            
-            const nomeArquivo = obterNomeArquivoBase() + ".json";
-            baixarArquivo(JSON.stringify(dados, null, 2), nomeArquivo, "application/json");
+            baixarArquivo(JSON.stringify(dados, null, 2), "diarias_filtradas.json", "application/json");
         }
 
         function baixarArquivo(content, name, type) {
@@ -401,6 +369,7 @@
             URL.revokeObjectURL(url);
         }
 
+        // Listener normal (chama sem argumentos, então pega dos selects)
         $('#filtroServidor, #filtroMes, #filtroAno, #filtroGabinete').on('change', function() {
             aplicarFiltros();
         });
