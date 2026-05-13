@@ -45,11 +45,27 @@
         .dataTables_wrapper .dataTables_filter label { font-size: 0; }
         .dataTables_wrapper .dataTables_filter input { font-size: 14px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; }
         
+        /* Modo Impressão Corrigido */
         @media print {
+            @page { size: landscape; margin: 10mm; } /* Força a folha na horizontal (Paisagem) */
+            
             .topo, .toolbar, .dataTables_filter, .dataTables_filter input, .dataTables_length, .dataTables_info, .dataTables_paginate { display: none !important; }
             .container { box-shadow: none; width: 100%; margin: 0; padding: 0; }
-            table.dataTable th, table.dataTable td { font-size: 10px !important; border: 1px solid #ddd !important; }
+            
             table.dataTable { border-collapse: collapse !important; width: 100% !important; }
+            
+            /* Força a exibição das colunas ocultas no papel */
+            table.dataTable th, table.dataTable td { 
+                font-size: 9px !important; 
+                border: 1px solid #ddd !important; 
+                display: table-cell !important; 
+                padding: 6px 4px !important;
+                white-space: normal !important;
+            }
+            
+            /* Remove a expansão (+ verde) para não duplicar dados na impressão */
+            table.dataTable tr.child { display: none !important; }
+            table.dataTable td.dtr-control::before, table.dataTable th.dtr-control::before { display: none !important; }
         }
     </style>
 </head>
@@ -267,7 +283,6 @@
             });
         }
 
-        // Função de filtro que aceita parâmetros manuais para a carga inicial
         function aplicarFiltros(mesManual = null, anoManual = null) {
             const serv = $('#filtroServidor').val();
             const mes = mesManual || $('#filtroMes').val();
@@ -316,12 +331,10 @@
 
                 preencherFiltros();
                 
-                // CARGA INICIAL: Filtra internamente sem "setar" os selects visualmente
                 const hoje = new Date();
                 const mesAtual = String(hoje.getMonth() + 1).padStart(2, "0");
                 const anoAtual = String(hoje.getFullYear());
                 
-                // Chamamos o filtro passando os valores, mas os selects continuam vazios
                 aplicarFiltros(mesAtual, anoAtual);
                 
                 $('#loader').hide(); $('#main-container').fadeIn();
@@ -350,7 +363,6 @@
             return dadosDaTabela;
         }
 
-        // --- FUNÇÃO PARA DEFINIR O NOME DO ARQUIVO ---
         function obterNomeArquivoBase() {
             const serv = $('#filtroServidor').val();
             const mes = $('#filtroMes').val();
@@ -390,7 +402,7 @@
             if (!dados.length) return;
             const worksheet = XLSX.utils.json_to_sheet(dados);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Diárias Filtradas");
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Diárias");
             
             XLSX.writeFile(workbook, obterNomeArquivoBase() + ".xlsx");
         }
