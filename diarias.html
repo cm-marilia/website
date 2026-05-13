@@ -99,16 +99,31 @@
         <table id="tabela" class="display" style="width:100%">
             <thead>
                 <tr>
-                    <th>Servidor</th><th>Cargo</th><th>Nº de Diárias</th><th>Valor das Diárias</th>
-                    <th>Valor do Adiantamento</th><th>Data da Partida</th><th>Data do Retorno</th>
-                    <th>Destino</th><th>Cidade</th><th>Finalidade</th>
+                    <th>Servidor</th>
+                    <th>Cargo</th>
+                    <th>Nº de Diárias</th>
+                    <th>Valor das Diárias</th>
+                    <th>Valor do Adiantamento</th>
+                    <th>Data da Partida</th>
+                    <th>Data do Retorno</th>
+                    <th class="none">Destino</th>
+                    <th class="none">Cidade</th>
+                    <th class="none">Finalidade</th>
                 </tr>
             </thead>
             <tbody></tbody>
             <tfoot>
                 <tr>
-                    <th colspan="3" style="text-align: right;">TOTAL FILTRADO:</th>
-                    <th>R$ 0,00</th><th>R$ 0,00</th><th colspan="5"></th>
+                    <th></th>
+                    <th></th>
+                    <th style="text-align: right;">TOTAL FILTRADO:</th>
+                    <th>R$ 0,00</th>
+                    <th>R$ 0,00</th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
                 </tr>
             </tfoot>
         </table>
@@ -335,15 +350,39 @@
             return dadosDaTabela;
         }
 
+        // --- FUNÇÃO PARA DEFINIR O NOME DO ARQUIVO ---
+        function obterNomeArquivoBase() {
+            const serv = $('#filtroServidor').val();
+            const mes = $('#filtroMes').val();
+            const ano = $('#filtroAno').val();
+            const gab = $('#filtroGabinete').val();
+
+            if (!serv && !mes && !ano && !gab) {
+                return "diarias_completo";
+            }
+            
+            let partes = ["diarias"];
+            if (gab) partes.push(gab);
+            if (serv) partes.push(serv);
+            if (mes) partes.push(mes);
+            if (ano) partes.push(ano);
+
+            return partes.join('_')
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/\s+/g, '_')
+                .replace(/[^a-zA-Z0-9_]/g, "");
+        }
+
         function exportarCSV() {
             const dados = obterDadosFiltradosDoDOM();
             if (!dados.length) return;
             const headers = Object.keys(dados[0]);
-            let csv = headers.join(",") + "\n";
+            let csv = "\ufeff" + headers.join(",") + "\n";
             dados.forEach(row => {
                 csv += headers.map(h => `"${row[h].replace(/"/g, '""')}"`).join(",") + "\n";
             });
-            baixarArquivo(csv, "diarias_filtradas.csv", "text/csv");
+            
+            baixarArquivo(csv, obterNomeArquivoBase() + ".csv", "text/csv;charset=utf-8;");
         }
 
         function exportarXLSX() {
@@ -352,13 +391,15 @@
             const worksheet = XLSX.utils.json_to_sheet(dados);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Diárias Filtradas");
-            XLSX.writeFile(workbook, "relatorio_diarias.xlsx");
+            
+            XLSX.writeFile(workbook, obterNomeArquivoBase() + ".xlsx");
         }
 
         function exportarJSON() {
             const dados = obterDadosFiltradosDoDOM();
             if (!dados.length) return;
-            baixarArquivo(JSON.stringify(dados, null, 2), "diarias_filtradas.json", "application/json");
+            
+            baixarArquivo(JSON.stringify(dados, null, 2), obterNomeArquivoBase() + ".json", "application/json");
         }
 
         function baixarArquivo(content, name, type) {
@@ -369,7 +410,6 @@
             URL.revokeObjectURL(url);
         }
 
-        // Listener normal (chama sem argumentos, então pega dos selects)
         $('#filtroServidor, #filtroMes, #filtroAno, #filtroGabinete').on('change', function() {
             aplicarFiltros();
         });
