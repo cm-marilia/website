@@ -11,7 +11,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
-        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f4f6f9; }
+        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f4f6f9; overflow-x: hidden; }
         
         /* Cabeçalho */
         .topo { background: #003b75; color: white; padding: 10px 30px; display: flex; justify-content: space-between; align-items: center; }
@@ -45,25 +45,12 @@
         .dataTables_wrapper .dataTables_filter label { font-size: 0; }
         .dataTables_wrapper .dataTables_filter input { font-size: 14px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; }
         
-        /* Modo Impressão Corrigido */
         @media print {
-            @page { size: landscape; margin: 10mm; } /* Força a folha na horizontal (Paisagem) */
-            
+            @page { size: landscape; margin: 10mm; } 
             .topo, .toolbar, .dataTables_filter, .dataTables_filter input, .dataTables_length, .dataTables_info, .dataTables_paginate { display: none !important; }
             .container { box-shadow: none; width: 100%; margin: 0; padding: 0; }
-            
             table.dataTable { border-collapse: collapse !important; width: 100% !important; }
-            
-            /* Força a exibição das colunas ocultas no papel */
-            table.dataTable th, table.dataTable td { 
-                font-size: 9px !important; 
-                border: 1px solid #ddd !important; 
-                display: table-cell !important; 
-                padding: 6px 4px !important;
-                white-space: normal !important;
-            }
-            
-            /* Remove a expansão (+ verde) para não duplicar dados na impressão */
+            table.dataTable th, table.dataTable td { font-size: 9px !important; border: 1px solid #ddd !important; display: table-cell !important; padding: 6px 4px !important; white-space: normal !important; }
             table.dataTable tr.child { display: none !important; }
             table.dataTable td.dtr-control::before, table.dataTable th.dtr-control::before { display: none !important; }
         }
@@ -156,6 +143,14 @@
         let tabela;
         let dadosGlobais = [];
         let listaGabinetes = [];
+
+        // Comunicação com o portal para esticar o iframe
+        function enviarAltura() {
+            setTimeout(function() {
+                const altura = document.body.scrollHeight + 30; // 30px de respiro
+                window.parent.postMessage({ tipo: 'ajustarAltura', valor: altura }, '*');
+            }, 300);
+        }
 
         function extrairData(dataStr) {
             if (!dataStr || typeof dataStr !== 'string') return { mes: "", ano: "" };
@@ -281,6 +276,12 @@
                     $(api.column(4).footer()).html(f.format(totalA));
                 }
             });
+
+            // Envia nova altura após desenhar a tabela (quando clica em "Próximo" ou pesquisa algo)
+            tabela.on('draw.dt', function() {
+                enviarAltura();
+            });
+            enviarAltura();
         }
 
         function aplicarFiltros(mesManual = null, anoManual = null) {
@@ -337,7 +338,10 @@
                 
                 aplicarFiltros(mesAtual, anoAtual);
                 
-                $('#loader').hide(); $('#main-container').fadeIn();
+                $('#loader').hide(); 
+                $('#main-container').fadeIn(400, function() {
+                    enviarAltura(); // Avisa o portal assim que carregar
+                });
             } catch (e) {
                 $('#loader').html(`
                     <div style="text-align: center; color: #c1272d; background: #ffebeb; padding: 20px; border-radius: 8px; border: 1px solid #c1272d;">
@@ -369,9 +373,7 @@
             const ano = $('#filtroAno').val();
             const gab = $('#filtroGabinete').val();
 
-            if (!serv && !mes && !ano && !gab) {
-                return "diarias_completo";
-            }
+            if (!serv && !mes && !ano && !gab) return "diarias_completo";
             
             let partes = ["diarias"];
             if (gab) partes.push(gab);
@@ -379,10 +381,7 @@
             if (mes) partes.push(mes);
             if (ano) partes.push(ano);
 
-            return partes.join('_')
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-                .replace(/\s+/g, '_')
-                .replace(/[^a-zA-Z0-9_]/g, "");
+            return partes.join('_').normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, "");
         }
 
         function exportarCSV() {
@@ -390,10 +389,7 @@
             if (!dados.length) return;
             const headers = Object.keys(dados[0]);
             let csv = "\ufeff" + headers.join(",") + "\n";
-            dados.forEach(row => {
-                csv += headers.map(h => `"${row[h].replace(/"/g, '""')}"`).join(",") + "\n";
-            });
-            
+            dados.forEach(row => { csv += headers.map(h => `"${row[h].replace(/"/g, '""')}"`).join(",") + "\n"; });
             baixarArquivo(csv, obterNomeArquivoBase() + ".csv", "text/csv;charset=utf-8;");
         }
 
@@ -402,15 +398,13 @@
             if (!dados.length) return;
             const worksheet = XLSX.utils.json_to_sheet(dados);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Diárias");
-            
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Diárias Filtradas");
             XLSX.writeFile(workbook, obterNomeArquivoBase() + ".xlsx");
         }
 
         function exportarJSON() {
             const dados = obterDadosFiltradosDoDOM();
             if (!dados.length) return;
-            
             baixarArquivo(JSON.stringify(dados, null, 2), obterNomeArquivoBase() + ".json", "application/json");
         }
 
@@ -422,9 +416,7 @@
             URL.revokeObjectURL(url);
         }
 
-        $('#filtroServidor, #filtroMes, #filtroAno, #filtroGabinete').on('change', function() {
-            aplicarFiltros();
-        });
+        $('#filtroServidor, #filtroMes, #filtroAno, #filtroGabinete').on('change', function() { aplicarFiltros(); });
         
         window.onload = iniciarCarregamento;
     </script>
