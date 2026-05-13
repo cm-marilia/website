@@ -62,7 +62,7 @@
         }
         .painel-filtros select {
             width: 100%;
-            text-overflow: ellipsis; /* Coloca '...' se o texto for muito grande */
+            text-overflow: ellipsis; 
             white-space: nowrap;
             overflow: hidden;
             box-sizing: border-box;
@@ -76,12 +76,11 @@
             align-items: center;
         }
         .painel-exportacao button {
-            flex: 1; /* Faz os botões dividirem o espaço igualmente */
-            justify-content: center; /* Centraliza o ícone e o texto dentro do botão */
+            flex: 1; 
+            justify-content: center; 
             white-space: nowrap;
         }
 
-        /* Comportamento responsivo para telas pequenas (Celulares) */
         @media (max-width: 768px) {
             .painel-filtros .toolbar-row { grid-template-columns: 1fr; }
             .painel-exportacao .toolbar-row { flex-direction: column; }
@@ -371,10 +370,10 @@
             enviarAltura();
         }
 
-        function aplicarFiltros(mesManual = null, anoManual = null) {
+        function aplicarFiltros() {
             const serv = $('#filtroServidor').val();
-            const mes = mesManual || $('#filtroMes').val();
-            const ano = anoManual || $('#filtroAno').val();
+            const mes = $('#filtroMes').val();
+            const ano = $('#filtroAno').val();
             const gab = $('#filtroGabinete').val();
 
             const resultado = dadosGlobais.filter(d => {
@@ -420,11 +419,35 @@
 
                 preencherFiltros();
                 
-                const hoje = new Date();
-                const mesAtual = String(hoje.getMonth() + 1).padStart(2, "0");
-                const anoAtual = String(hoje.getFullYear());
+                // --- ATUALIZAÇÃO: Busca o mês e ano mais recentes nos dados reais ---
+                let maxAno = "0000";
+                let maxMes = "00";
+
+                dadosGlobais.forEach(d => {
+                    const dt = extrairData(d["data da partida"]);
+                    if (dt.ano && dt.mes) {
+                        if (dt.ano > maxAno) {
+                            maxAno = dt.ano;
+                            maxMes = dt.mes;
+                        } else if (dt.ano === maxAno && dt.mes > maxMes) {
+                            maxMes = dt.mes;
+                        }
+                    }
+                });
+
+                // Se não encontrar nenhuma data válida, usa a data atual como segurança
+                if (maxAno === "0000") {
+                    const hoje = new Date();
+                    maxMes = String(hoje.getMonth() + 1).padStart(2, "0");
+                    maxAno = String(hoje.getFullYear());
+                }
+
+                // Ajusta visualmente as caixinhas de mês e ano para mostrar os mais recentes
+                $('#filtroMes').val(maxMes);
+                $('#filtroAno').val(maxAno);
                 
-                aplicarFiltros(mesAtual, anoAtual);
+                // Aplica o filtro
+                aplicarFiltros();
                 
                 $('#loader').hide(); 
                 $('#main-container').fadeIn(400, function() {
