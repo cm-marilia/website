@@ -37,6 +37,20 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
 
+        /* Títulos das Caixas */
+        .titulo-painel {
+            width: 100%;
+            font-size: 12px;
+            font-weight: bold;
+            color: #6b7280;
+            text-transform: uppercase;
+            margin-top: 0;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
+            letter-spacing: 0.5px;
+        }
+
         .toolbar-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
         
         select, button { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
@@ -87,6 +101,7 @@
     <main class="container" id="main-container">
         <div class="toolbar">
             <div class="painel-grupo toolbar-row">
+                <h3 class="titulo-painel">Filtros de Pesquisa</h3>
                 <select id="filtroGabinete" title="Escolha o Vereador Ativo"><option value="">Gabinete</option></select>
                 <select id="filtroServidor"><option value="">Servidor</option></select>
                 <select id="filtroMes">
@@ -103,6 +118,7 @@
             </div>
             
             <div class="painel-grupo toolbar-row">
+                <h3 class="titulo-painel">Exportação e Impressão</h3>
                 <button onclick="exportarCSV()">⬇️ CSV</button>
                 <button onclick="exportarXLSX()">⬇️ Excel</button>
                 <button onclick="exportarJSON()">⬇️ JSON</button>
@@ -279,10 +295,13 @@
             tabela = $('#tabela').DataTable({
                 pageLength: 10, 
                 responsive: true, 
-                /* DOM ajustado para criar a CAIXA 3 com a mesma formatação das outras */
                 dom: '<"painel-grupo dt-controles"lf>rtip',
                 language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
-                initComplete: function() { $('.dataTables_filter input').attr('placeholder', 'Buscar na tabela...'); },
+                initComplete: function() { 
+                    $('.dataTables_filter input').attr('placeholder', 'Buscar na tabela...'); 
+                    // Injeta o título dinamicamente na terceira caixa
+                    $('.dt-controles').prepend('<h3 class="titulo-painel">Visualização e Busca Rápida</h3>');
+                },
                 
                 footerCallback: function (row, data, start, end, display) {
                     let api = this.api();
