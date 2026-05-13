@@ -335,19 +335,29 @@
             return dadosDaTabela;
         }
 
-        // --- NOVA FUNÇÃO PARA DEFINIR O NOME DO ARQUIVO ---
+        // --- NOVA FUNÇÃO PARA DEFINIR O NOME DO ARQUIVO COM BASE NOS FILTROS ---
         function obterNomeArquivoBase() {
             const serv = $('#filtroServidor').val();
             const mes = $('#filtroMes').val();
             const ano = $('#filtroAno').val();
             const gab = $('#filtroGabinete').val();
 
-            // Se todos os filtros estiverem em branco, retorna "completo", senão "filtradas"
+            // Se todos os filtros estiverem em branco, retorna apenas "diarias_completo"
             if (!serv && !mes && !ano && !gab) {
                 return "diarias_completo";
-            } else {
-                return "diarias_filtradas";
             }
+            
+            // Caso contrário, monta o nome do arquivo dinamicamente com os filtros escolhidos
+            let partes = ["diarias"];
+            if (gab) partes.push(gab);
+            if (serv) partes.push(serv);
+            if (mes) partes.push(mes);
+            if (ano) partes.push(ano);
+
+            return partes.join('_')
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
+                .replace(/\s+/g, '_') // Substitui espaços por _
+                .replace(/[^a-zA-Z0-9_]/g, ""); // Remove caracteres especiais
         }
 
         // --- EXPORTAÇÕES ATUALIZADAS ---
