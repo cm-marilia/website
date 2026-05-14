@@ -40,7 +40,7 @@
             margin-top: 0; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; letter-spacing: 0.5px;
         }
 
-        /* CAMPO VERDE ATUALIZADO */
+        /* CAMPO VERDE */
         .badge-atualizacao {
             position: absolute; top: 10px; right: 16px; font-size: 11px; color: #065f46;
             background: #d1fae5; padding: 4px 10px; border-radius: 12px; font-weight: bold;
@@ -199,16 +199,15 @@
             let linhas = str.trim().split("\n");
             if(linhas.length === 0) return [];
             
-            // INTELIGÊNCIA CAÇADORA CORRIGIDA (AGORA LÊ A HORA MESMO COM VÍRGULA)
             if (isDiarias) {
                 for (let i = 0; i < linhas.length; i++) {
                     if (linhas[i].toUpperCase().includes("MODIF_REAL:")) {
                         // Regex captura data e hora: dd/mm/yyyy hh:mm:ss
                         let match = linhas[i].match(/MODIF_REAL:\s*(\d{1,2}\/\d{1,2}\/\d{4}[^\d]+\d{1,2}:\d{2}(?::\d{2})?)/i);
                         if (match && match[1]) {
-                            // Limpa vírgulas perdidas e insere o "às"
+                            // Limpa vírgulas, insere "às" e REMOVE os segundos finais
                             let dataCrua = match[1].replace(/,/g, '').trim();
-                            carimboCompleto = dataCrua.replace(/\s+/, ' às ');
+                            carimboCompleto = dataCrua.replace(/\s+/, ' às ').replace(/:\d{2}$/, '');
                         }
                         linhas.splice(i, 1);
                         break; 
@@ -390,11 +389,11 @@
                 $('#filtroMes').val(maxM); $('#filtroAno').val(maxA);
                 aplicarFiltros();
                 
-                // MENSAGEM FINAL EXATAMENTE COMO SOLICITADO E COM HORA
+                // MENSAGEM COM OS SEGUNDOS CORTADOS
                 if (carimboCompleto && carimboCompleto !== "") {
                     $('#badge-atualizacao').html(`🟢 Dados atualizados em ${carimboCompleto}`);
                 } else {
-                    $('#badge-atualizacao').html(`🟢 Dados sincronizados`);
+                    $('#badge-atualizacao').html(`🟢 Dados atualizados hoje`);
                 }
                 
                 $('#loader').hide(); $('#main-container').fadeIn(400, function() { enviarAltura(); });
