@@ -217,4 +217,315 @@
                         <th>Retorno</th>
                         <th class="none">Destino</th>
                         <th class="none">Cidade</th>
-                        <th
+                        <th class="none">Finalidade</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+                <tfoot>
+                    <tr>
+                        <th></th><th></th>
+                        <th style="text-align: right; white-space: nowrap;">TOTAL FILTRADO:</th>
+                        <th>R$ 0,00</th><th>R$ 0,00</th>
+                        <th></th><th></th><th></th><th></th><th></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </main>
+    
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+
+    <script>
+        const SHEET_ID_DIARIAS = "1XP67Ojd_HK3S1IPvC_9eY32-lf0_qI3jfBfrLzasvQo";
+        const SHEET_ID_GABINETES = "1GwDig1yn9YIX8FSsHFPHL2iLCtwsZkNnquNjp5D7Oaw"; 
+
+        let tabela;
+        let dadosGlobais = [];
+        let listaGabinetes = [];
+        let carimboCompleto = "";
+
+        function imprimirSeguro() {
+            const linhaRodape = $('#tabela tfoot tr');
+            $('#tabela tbody').append(linhaRodape);
+            window.print();
+            $('#tabela tfoot').append(linhaRodape);
+        }
+
+        function enviarAltura() {
+            setTimeout(function() {
+                const wrapper = document.getElementById('wrapper');
+                if (wrapper) {
+                    const altura = wrapper.offsetHeight + 40; 
+                    window.parent.postMessage({ tipo: 'ajustarAltura', valor: altura }, '*');
+                }
+            }, 150); 
+        }
+
+        const resizeObserver = new ResizeObserver(() => { enviarAltura(); });
+        window.addEventListener('load', () => {
+            const wrapper = document.getElementById('wrapper');
+            if (wrapper) resizeObserver.observe(wrapper);
+        });
+
+        function getCsvUrl(id) { return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&t=${Date.now()}`; }
+
+        function csvParaArray(str, isDiarias = false) {
+            if (str.startsWith('\ufeff')) str = str.substring(1);
+            let linhas = str.trim().split("\n");
+            if(linhas.length === 0) return [];
+            
+            if (isDiarias) {
+                for (let i = 0; i < linhas.length; i++) {
+                    if (linhas[i].toUpperCase().includes("MODIF_REAL:")) {
+                        let match = linhas[i].match(/MODIF_REAL:\s*(\d{1,2}\/\d{1,2}\/\d{4}[^\d]+\d{1,2}:\d{2}(?::\d{2})?)/i);
+                        if (match && match[1]) {
+                            let dataCrua = match[1].replace(/,/g, '').trim();
+                            carimboCompleto = dataCrua.replace(/\s+/, ' às ').replace(/:\d{2}$/, '');
+                        }
+                        linhas.splice(i, 1);
+                        break; 
+                    }
+                }
+            }
+
+            let cabecalhoLinha = "";
+            while (linhas.length > 0) {
+                cabecalhoLinha = linhas.shift();
+                if (cabecalhoLinha.trim().replace(/,/g, '') !== "") break; 
+            }
+            if(!cabecalhoLinha) return [];
+            
+            function extrairValores(linha) {
+                let valores = [], dentroDeAspas = false, valorAtual = "";
+                for (let i = 0; i < linha.length; i++) {
+                    let char = linha[i];
+                    if (char === '"') dentroDeAspas = !dentroDeAspas;
+                    else if (char === ',' && !dentroDeAspas) { valores.push(valorAtual); valorAtual = ""; }
+                    else valorAtual += char;
+                }
+                valores.push(valorAtual);
+                return valores.map(v => v.replace(/^"|"$/g, '').trim());
+            }
+
+            const cabecalhoLimpo = extrairValores(cabecalhoLinha).map(c => c.toLowerCase());
+            let dadosFiltrados = [];
+            const minimoColunasPreenchidas = isDiarias ? 2 : 1; 
+
+            linhas.forEach(linha => {
+                const valores = extrairValores(linha);
+                if (valores.filter(v => v !== "").length >= minimoColunasPreenchidas) {
+                    let obj = {};
+                    cabecalhoLimpo.forEach((coluna, i) => obj[coluna] = valores[i] || "");
+                    dadosFiltrados.push(obj);
+                }
+            });
+            return dadosFiltrados;
+        }
+
+        function formatarMoeda(valor) {
+            if (!valor) return "";
+            let v = valor.trim();
+            if (v === "0" || v === "0,00" || v === "-") return "-";
+            v = v.replace(/R\$\s?/g, "").trim();
+            if (!v.includes(",")) v += ",00";
+            return `R$ ${v}`;
+        }
+
+        function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
+
+        function formatarDataParaOrdenacao(dataStr) {
+            if (!dataStr) return "00000000";
+            const partes = dataStr.split("/");
+            return partes.length === 3 ? `${partes[2]}${partes[1]}${partes[0]}` : dataStr;
+        }
+
+        function preencherFiltros(apenasServidor = false) {
+            const valServidor = $('#filtroServidor').val(), valGabinete = $('#filtroGabinete').val(), valAno = $('#filtroAno').val();
+            let servFiltrados = [];
+            if (valGabinete) {
+                const g = removerAcentos(valGabinete).toLowerCase();
+                servFiltrados = [...new Set(dadosGlobais.filter(d => {
+                    const n = removerAcentos(d.servidor || "").toLowerCase();
+                    const c = removerAcentos(d["cargo ou função"] || "").toLowerCase();
+                    return n.includes(g) || c.includes(g);
+                }).map(d => d.servidor))].sort();
+            } else {
+                servFiltrados = [...new Set(dadosGlobais.map(d => d.servidor))].sort();
+            }
+            $('#filtroServidor').html('<option value="">Servidor</option>');
+            servFiltrados.forEach(s => { if(s) $('#filtroServidor').append(`<option value="${s}">${s}</option>`); });
+            $('#filtroServidor').val(valServidor);
+
+            if (!apenasServidor) {
+                const anos = [...new Set(dadosGlobais.map(d => {
+                    const p = (d["data da partida"] || "").split("/");
+                    return p[2] || "";
+                }))].filter(a => a).sort();
+                $('#filtroAno').html('<option value="">Ano</option>');
+                anos.forEach(a => $('#filtroAno').append(`<option value="${a}">${a}</option>`));
+                $('#filtroAno').val(valAno);
+                $('#filtroGabinete').html('<option value="">Gabinete</option>');
+                listaGabinetes.forEach(g => {
+                    const v = Object.values(g)[0];
+                    if(v) $('#filtroGabinete').append(`<option value="${v}">${v}</option>`);
+                });
+                $('#filtroGabinete').val(valGabinete);
+            }
+        }
+
+        function render(dados) {
+            let html = "";
+            dados.forEach(d => {
+                html += `<tr>
+                    <td>${d.servidor || ""}</td>
+                    <td>${d["cargo ou função"] || ""}</td>
+                    <td>${d["n de diárias"] || ""}</td>
+                    <td>${formatarMoeda(d["valor diarias"])}</td>
+                    <td>${formatarMoeda(d["valor adiantamento"])}</td>
+                    <td data-sort="${formatarDataParaOrdenacao(d["data da partida"])}">${d["data da partida"] || ""}</td>
+                    <td data-sort="${formatarDataParaOrdenacao(d["data do retorno"])}">${d["data do retorno"] || ""}</td>
+                    <td>${d["local de destino"] || ""}</td>
+                    <td>${d.cidade || ""}</td>
+                    <td>${d.finalidade || ""}</td>
+                </tr>`;
+            });
+            if (tabela) tabela.destroy();
+            $('#tabela tbody').html(html);
+            
+            tabela = $('#tabela').DataTable({
+                pageLength: 10, 
+                
+                // ORDEM EXPRESSA: A linha complementar nasce e fica SEMPRE ABERTA!
+                responsive: {
+                    details: {
+                        display: $.fn.dataTable.Responsive.display.childRowImmediate,
+                        type: 'inline'
+                    }
+                },
+
+                order: [[5, 'desc']],
+                dom: '<"painel-grupo dt-controles"lf>rtip',
+                language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
+                
+                // Trava das 7 Colunas Originais
+                columnDefs: [
+                    { className: 'all', targets: [0, 1, 2, 3, 4, 5, 6] }
+                ],
+
+                initComplete: function() { 
+                    $('.dataTables_filter input').attr('placeholder', 'Buscar...'); 
+                    $('.dt-controles').prepend('<h3 class="titulo-painel">Visualização e Busca Rápida</h3>');
+                },
+                footerCallback: function (row, data, start, end, display) {
+                    let api = this.api();
+                    let intVal = i => typeof i === 'string' ? parseFloat(i.replace(/R\$\s?|[.]/g, '').replace(',', '.')) || 0 : typeof i === 'number' ? i : 0;
+                    let tD = api.column(3, { search: 'applied' }).data().reduce((a, b) => intVal(a) + intVal(b), 0);
+                    let tA = api.column(4, { search: 'applied' }).data().reduce((a, b) => intVal(a) + intVal(b), 0);
+                    let f = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+                    $(api.column(3).footer()).html(f.format(tD));
+                    $(api.column(4).footer()).html(f.format(tA));
+                }
+            });
+            
+            // Bloqueio Total: Impede que o usuário consiga fechar a segunda linha se clicar sem querer na primeira coluna
+            $('#tabela tbody').on('click', 'td.dtr-control', function (e) {
+                e.stopPropagation();
+            });
+
+            tabela.on('draw.dt responsive-display.dt length.dt search.dt page.dt', function() { enviarAltura(); });
+            enviarAltura();
+        }
+
+        function aplicarFiltros() {
+            const serv = $('#filtroServidor').val(), mes = $('#filtroMes').val(), ano = $('#filtroAno').val(), gab = $('#filtroGabinete').val();
+            const res = dadosGlobais.filter(d => {
+                const p = (d["data da partida"] || "").split("/");
+                const mD = p[1], aD = p[2];
+                const mS = !serv || d.servidor === serv, mM = !mes || mD === mes, mA = !ano || aD === ano;
+                let mG = true;
+                if (gab) {
+                    const g = removerAcentos(gab).toLowerCase();
+                    mG = removerAcentos(d.servidor || "").toLowerCase().includes(g) || removerAcentos(d["cargo ou função"] || "").toLowerCase().includes(g);
+                }
+                return mS && mM && mA && mG;
+            });
+            render(res);
+        }
+
+        function limparFiltros() { $('#filtroServidor, #filtroMes, #filtroAno, #filtroGabinete').val(''); preencherFiltros(); aplicarFiltros(); }
+
+        async function iniciarCarregamento() {
+            $('#loader').show(); $('#main-container').hide();
+            try {
+                const [resD, resG] = await Promise.all([
+                    fetch(getCsvUrl(SHEET_ID_DIARIAS), { cache: "no-store" }),
+                    fetch(getCsvUrl(SHEET_ID_GABINETES), { cache: "no-store" })
+                ]);
+                dadosGlobais = csvParaArray(await resD.text(), true);
+                listaGabinetes = csvParaArray(await resG.text(), false);
+                preencherFiltros();
+                let maxA = "0000", maxM = "00";
+                dadosGlobais.forEach(d => {
+                    const p = (d["data da partida"] || "").split("/");
+                    if (p[2] > maxA) { maxA = p[2]; maxM = p[1]; }
+                    else if (p[2] === maxA && p[1] > maxM) { maxM = p[1]; }
+                });
+                $('#filtroMes').val(maxM); $('#filtroAno').val(maxA);
+                aplicarFiltros();
+                if (carimboCompleto) $('#badge-atualizacao').html(`🟢 Dados atualizados em ${carimboCompleto}`);
+                else $('#badge-atualizacao').html(`🟢 Dados atualizados hoje`);
+                $('#loader').hide(); $('#main-container').fadeIn(400, function() { enviarAltura(); });
+            } catch (e) { $('#loader').html(`<div style="padding:20px; color:red;">Erro ao carregar: ${e.message}</div>`); }
+        }
+
+        function obterDadosFiltradosDoDOM() {
+            const dados = [];
+            $('#tabela').DataTable().rows({ filter: 'applied' }).every(function() {
+                const c = $(this.node()).find('td').map(function() { return $(this).text(); }).get();
+                dados.push({ "Servidor": c[0], "Cargo": c[1], "Nº Diárias": c[2], "Valor Diárias": c[3], "Adiantamento": c[4], "Data Partida": c[5], "Data Retorno": c[6], "Destino": c[7], "Cidade": c[8], "Finalidade": c[9] });
+            });
+            return dados;
+        }
+
+        function obterNomeArquivoBase() {
+            const serv = $('#filtroServidor').val(), mes = $('#filtroMes').val(), ano = $('#filtroAno').val(), gab = $('#filtroGabinete').val();
+            if (!serv && !mes && !ano && !gab) return "diarias_completo";
+            let p = ["diarias"]; if (gab) p.push(gab); if (serv) p.push(serv); if (mes) p.push(mes); if (ano) p.push(ano);
+            return p.join('_').normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, "");
+        }
+
+        function exportarCSV() {
+            const d = obterDadosFiltradosDoDOM(); if (!d.length) return;
+            const h = Object.keys(d[0]);
+            let csv = "\ufeff" + h.join(",") + "\n";
+            d.forEach(r => { csv += h.map(key => `"${r[key].replace(/"/g, '""')}"`).join(",") + "\n"; });
+            baixarArquivo(csv, obterNomeArquivoBase() + ".csv", "text/csv;charset=utf-8;");
+        }
+
+        function exportarXLSX() {
+            const d = obterDadosFiltradosDoDOM(); if (!d.length) return;
+            const ws = XLSX.utils.json_to_sheet(d);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Diárias");
+            XLSX.writeFile(wb, obterNomeArquivoBase() + ".xlsx");
+        }
+
+        function exportarJSON() {
+            const d = obterDadosFiltradosDoDOM(); if (!d.length) return;
+            baixarArquivo(JSON.stringify(d, null, 2), obterNomeArquivoBase() + ".json", "application/json");
+        }
+
+        function baixarArquivo(c, n, t) {
+            const b = new Blob([c], { type: t }), u = URL.createObjectURL(b), a = document.createElement("a");
+            a.href = u; a.download = n; a.click(); URL.revokeObjectURL(u);
+        }
+
+        $('#filtroGabinete').on('change', function() { preencherFiltros(true); aplicarFiltros(); });
+        $('#filtroServidor, #filtroMes, #filtroAno').on('change', function() { aplicarFiltros(); });
+        window.onload = iniciarCarregamento;
+    </script>
+</body>
+</html>
