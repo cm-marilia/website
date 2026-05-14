@@ -58,6 +58,9 @@
         #cabecalho-impressao { display: none; }
         
         @media print {
+            /* ESTA REGRA REMOVE O LINK/DATA DO RODAPÉ E CABEÇALHO DO NAVEGADOR */
+            @page { margin: 10mm; } 
+
             .topo, fieldset, .dt-controles, .dt-bottom-controls { display: none !important; }
             #cabecalho-impressao { display: block !important; margin-bottom: 25px; }
             .cabecalho-print-flex { display: flex; align-items: center; gap: 15px; border-bottom: 2px solid #003b75; padding-bottom: 15px; margin-bottom: 15px; }
@@ -65,7 +68,6 @@
             .cabecalho-print-textos h2 { margin: 0 0 5px 0; color: #003b75; font-size: 22px; font-weight: 800; }
             .cabecalho-print-textos span { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }
             
-            /* REMOVIDO A BORDA AZUL E O FUNDO CINZA AQUI */
             #texto-filtros-impressao { font-size: 14px; color: #1e293b; padding: 5px 0; border: none; background: transparent; }
             
             body { background: white !important; padding: 0 !important; }
