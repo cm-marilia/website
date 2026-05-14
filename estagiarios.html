@@ -28,7 +28,7 @@
 
         .badge-atualizacao { position: absolute; top: -12px; right: 20px; font-size: 11px; color: #065f46; background: #d1fae5; padding: 5px 12px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
-        .input-pesquisa, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; transition: 0.2s; box-sizing: border-box; width: 100%; }
+        select, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; transition: 0.2s; box-sizing: border-box; width: 100%; white-space: nowrap; }
         
         button { background: #003b75; color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; flex: 1; }
         button:hover { background: #00274d; transform: translateY(-1px); }
@@ -104,33 +104,35 @@
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
             <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
             <div class="toolbar-row">
-                <input type="text" id="filtroNome" class="input-pesquisa" list="listaNomes" placeholder="Estagiário..." autocomplete="off" onfocus="this.value=''" onmousedown="if(this.value.length > 0) this.value='';">
-                <datalist id="listaNomes"></datalist>
+                <select id="filtroNome">
+                    <option value="">Nome do Estagiário</option>
+                </select>
 
-                <input type="text" id="filtroStatus" class="input-pesquisa" list="listaStatus" placeholder="Situação..." autocomplete="off" onfocus="this.value=''" onmousedown="if(this.value.length > 0) this.value='';">
-                <datalist id="listaStatus">
-                    <option value="Ativo">
-                    <option value="Desligado">
-                </datalist>
+                <select id="filtroStatus">
+                    <option value="">Situação</option>
+                    <option value="Ativo">Ativo</option>
+                    <option value="Desligado">Desligado</option>
+                </select>
 
-                <input type="text" id="filtroMes" class="input-pesquisa" list="listaMeses" placeholder="Mês..." autocomplete="off" onfocus="this.value=''" onmousedown="if(this.value.length > 0) this.value='';">
-                <datalist id="listaMeses">
-                    <option value="Janeiro">
-                    <option value="Fevereiro">
-                    <option value="Março">
-                    <option value="Abril">
-                    <option value="Maio">
-                    <option value="Junho">
-                    <option value="Julho">
-                    <option value="Agosto">
-                    <option value="Setembro">
-                    <option value="Outubro">
-                    <option value="Novembro">
-                    <option value="Dezembro">
-                </datalist>
+                <select id="filtroMes">
+                    <option value="">Mês</option>
+                    <option value="01">Janeiro</option>
+                    <option value="02">Fevereiro</option>
+                    <option value="03">Março</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Maio</option>
+                    <option value="06">Junho</option>
+                    <option value="07">Julho</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
 
-                <input type="text" id="filtroAno" class="input-pesquisa" list="listaAnos" placeholder="Ano..." autocomplete="off" onfocus="this.value=''" onmousedown="if(this.value.length > 0) this.value='';">
-                <datalist id="listaAnos"></datalist>
+                <select id="filtroAno">
+                    <option value="">Ano</option>
+                </select>
 
                 <button onclick="limparFiltros()">Limpar filtros</button>
             </div>
@@ -168,11 +170,6 @@
         let tabela;
         let carimboCompleto = "";
 
-        const mesesMapa = {
-            "janeiro": "01", "fevereiro": "02", "marco": "03", "abril": "04", "maio": "05", "junho": "06",
-            "julho": "07", "agosto": "08", "setembro": "09", "outubro": "10", "novembro": "11", "dezembro": "12"
-        };
-
         function enviarAltura() {
             setTimeout(function() {
                 const wrapper = document.getElementById('wrapper');
@@ -188,10 +185,6 @@
             const wrapper = document.getElementById('wrapper');
             if (wrapper) resizeObserver.observe(wrapper);
         });
-
-        function removerAcentos(str) {
-            return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : "";
-        }
 
         async function iniciarCarregamento() {
             $('#loader').show(); $('#main-container').hide();
@@ -284,8 +277,8 @@
 
         function preencherFiltros() {
             const nomes = [...new Set(dadosGlobais.map(d => d.nome_estagiario))].filter(n => n).sort();
-            $('#listaNomes').empty();
-            nomes.forEach(n => $('#listaNomes').append(`<option value="${n}">`));
+            $('#filtroNome').html('<option value="">Nome do Estagiário</option>');
+            nomes.forEach(n => $('#filtroNome').append(`<option value="${n}">${n}</option>`));
             
             const anos = new Set();
             dadosGlobais.forEach(d => {
@@ -293,8 +286,8 @@
                 if (d.data_desligamento && d.data_desligamento !== "-") anos.add(d.data_desligamento.split('/')[2]);
             });
             const anosOrdenados = Array.from(anos).filter(a => a && a.length === 4).sort((a, b) => b - a);
-            $('#listaAnos').empty();
-            anosOrdenados.forEach(a => $('#listaAnos').append(`<option value="${a}">`));
+            $('#filtroAno').html('<option value="">Ano</option>');
+            anosOrdenados.forEach(a => $('#filtroAno').append(`<option value="${a}">${a}</option>`));
         }
 
         function render(dados) {
@@ -335,35 +328,30 @@
         }
 
         function aplicarFiltros() {
-            const n = removerAcentos($('#filtroNome').val());
-            const s = removerAcentos($('#filtroStatus').val());
-            const mDigitado = removerAcentos($('#filtroMes').val());
+            const n = $('#filtroNome').val();
+            const s = $('#filtroStatus').val();
+            const m = $('#filtroMes').val();
             const a = $('#filtroAno').val();
-            
-            const mAlvo = mesesMapa[mDigitado] || "";
 
             let res = dadosGlobais.filter(d => {
-                const nomeMatch = !n || removerAcentos(d.nome_estagiario).includes(n);
-                const statusMatch = !s || removerAcentos(d.situacao).includes(s);
-                const anoMatch = !a || (d.data_admissao.includes(a) || (d.data_desligamento && d.data_desligamento.includes(a)));
-                
+                const matchN = !n || d.nome_estagiario === n;
+                const matchS = !s || d.situacao === s;
                 const dAdm = (d.data_admissao || "").split('/');
                 const dDes = (d.data_desligamento || "").split('/');
-                
-                const mesMatch = !mDigitado || (dAdm[1] === mAlvo || dDes[1] === mAlvo);
-
-                return nomeMatch && statusMatch && mesMatch && anoMatch;
+                const matchM = !m || (dAdm[1] === m || dDes[1] === m);
+                const matchA = !a || (dAdm[2] === a || dDes[2] === a);
+                return matchN && matchS && matchM && matchA;
             });
             res = ordenarDados(res);
             render(res);
         }
 
         function limparFiltros() { 
-            $('.input-pesquisa').val('');
+            $('select').val(''); 
             aplicarFiltros(); 
         }
         
-        $('.input-pesquisa').on('input', aplicarFiltros);
+        $('select').on('change', aplicarFiltros);
         window.onload = iniciarCarregamento;
 
         function imprimirSeguro() {
