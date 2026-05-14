@@ -9,46 +9,87 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
-        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; }
-        .topo { background: #003b75; color: white; padding: 20px 35px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin: 15px; gap: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .topo h1 { margin: 0; font-size: 1.8rem; font-weight: 800; }
-        .logo-container { display: flex; flex-direction: column; align-items: center; }
-        .brasao { height: 50px; width: auto; }
-        .texto-camara { font-size: 10px; color: #cbd5e1; letter-spacing: 2px; text-transform: uppercase; }
+        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden;}
+        
+        /* Topo */
+        .topo { background: #003b75; color: white; padding: 20px 35px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin: 15px; gap: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .topo h1 { margin: 0; font-size: 1.8rem; font-weight: 800; letter-spacing: 1px; }
+        .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .texto-camara { font-size: 10px; color: #cbd5e1; letter-spacing: 3px; font-weight: 500; text-transform: uppercase; white-space: nowrap; }
 
-        #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: #003b75; font-weight: bold; }
+        /* Loader */
+        #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: #003b75; font-size: 16px; font-weight: bold; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+        /* Container e Painéis */
         .container { margin: 0 15px 15px 15px; display: none; }
-        fieldset.painel-grupo { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        legend.titulo-painel { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
+        fieldset.painel-grupo { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        legend.titulo-painel { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; letter-spacing: 1px; }
 
-        .toolbar-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 12px; align-items: center; }
-        .painel-exportacao .toolbar-row { display: flex; flex-wrap: wrap; }
-        
-        select, button { padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; width: 100%; box-sizing: border-box;}
-        button { background: #003b75; color: white; border: none; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 5px; }
-        button:hover { background: #00274d; }
+        /* Botões e Inputs Padrão */
+        select, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; transition: 0.2s; box-sizing: border-box; width: 100%; white-space: nowrap; }
+        button { background: #003b75; color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; flex: 1; }
+        button:hover { background: #00274d; transform: translateY(-1px); }
         .btn-acao { background: #0284c7; }
+        .btn-acao:hover { background: #0369a1; }
 
-        /* Estilo dos Cards */
+        /* Disposição dos Paineis Superiores */
+        .painel-filtros .toolbar-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1.2fr; gap: 12px; align-items: center; }
+        .painel-exportacao .toolbar-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+        /* --- VISUALIZAÇÃO E BUSCA RÁPIDA (Estilo Idêntico à Imagem) --- */
+        .dt-controles { display: flex; justify-content: space-between; align-items: center; width: 100%; margin: 0; padding: 0; }
+        .dataTables_length label { font-size: 13px; color: #475569; font-weight: 600; display: flex; align-items: center; }
+        .dataTables_length select { width: auto !important; margin: 0 8px; padding: 8px 30px 8px 12px; } 
+        .dataTables_filter label { font-size: 0; } 
+        .dataTables_filter input { font-size: 14px; padding: 10px 15px; border: 1px solid #e2e8f0; border-radius: 8px; width: 300px; background: white; margin-left: 0 !important; box-sizing: border-box; }
+
+        /* Tabela e Cards */
         #tabela thead { display: none; }
-        table.dataTable { border: none !important; }
-        .card-estagiario { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        table.dataTable { border: none !important; background: transparent !important; }
+        .card-estagiario { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         .card-header { padding: 15px 20px; background: #fff; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
         .nome-estagiario { font-size: 16px; font-weight: 800; color: #003b75; }
-        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
-        .status-ativo { background: #d1fae5; color: #065f46; }
-        .status-desligado { background: #fee2e2; color: #991b1b; }
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; border: 1px solid transparent; }
+        .status-ativo { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+        .status-desligado { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
         
-        .card-body { display: grid; grid-template-columns: 1fr 1fr; padding: 15px 20px; gap: 15px; }
-        .info-label { font-size: 10px; color: #94a3b8; font-weight: 800; text-transform: uppercase; display: block; }
-        .info-valor { font-size: 14px; font-weight: 600; }
+        .card-body { display: grid; grid-template-columns: 1fr 1fr; padding: 15px 20px; gap: 15px; background: #fff; }
+        .info-label { font-size: 10px; color: #94a3b8; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 4px;}
+        .info-valor { font-size: 14px; font-weight: 700; color: #1e293b;}
 
-        @media (max-width: 768px) {
-            .toolbar-row { grid-template-columns: 1fr; }
-            .topo { flex-direction: column; text-align: center; }
+        /* Paginação DataTables (Rodapé) */
+        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-bottom: 15px; margin-top: -5px; }
+        .dataTables_wrapper .dataTables_info { padding-top: 0 !important; font-size: 13px; color: #475569; font-weight: 500; }
+        .dataTables_wrapper .dataTables_paginate { padding-top: 0 !important; margin-top: 0 !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button { border-radius: 8px !important; padding: 6px 12px !important; border: 1px solid transparent !important; font-size: 13px; font-weight: 600; color: #475569 !important; margin: 0 2px !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover { background: #f1f5f9 !important; color: #003b75 !important; border: 1px solid #cbd5e1 !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current, .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover { background: #003b75 !important; color: white !important; border: 1px solid #003b75 !important; }
+
+        /* Responsividade */
+        @media (max-width: 950px) {
+            .painel-filtros .toolbar-row { grid-template-columns: repeat(4, 1fr); }
+            #filtroNome { grid-column: span 4; }
+            #filtroStatus, #filtroMes, #filtroAno, .painel-filtros button { grid-column: span 2; }
+        }
+        @media (max-width: 650px) {
+            .painel-filtros .toolbar-row { grid-template-columns: 1fr; }
+            #filtroNome, #filtroStatus, #filtroMes, #filtroAno, .painel-filtros button { grid-column: span 1; }
+            .painel-exportacao .toolbar-row { flex-direction: column; }
+            .dt-controles { flex-direction: column-reverse; gap: 15px; align-items: stretch; }
+            .dt-bottom-controls { flex-direction: column; gap: 15px; text-align: center; }
+            .dataTables_filter input { width: 100%; }
+            .dataTables_length label { justify-content: center; }
+            .topo { flex-direction: column; gap: 15px; text-align: center; padding: 20px;}
+        }
+
+        /* Impressão */
+        @media print {
+            .topo, fieldset, .dt-controles, .dt-bottom-controls { display: none !important; }
+            .card-estagiario { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; page-break-inside: avoid;}
+            .container { display: block !important; margin: 0; width: 100%; }
+            body { background: white; }
         }
     </style>
 </head>
@@ -67,7 +108,8 @@
     </div>
 
     <main class="container" id="main-container">
-        <fieldset class="painel-grupo">
+        
+        <fieldset class="painel-grupo painel-filtros">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
             <div class="toolbar-row">
                 <select id="filtroNome"><option value="">Nome do Estagiário</option></select>
@@ -86,16 +128,17 @@
                     <option value="11">Novembro</option><option value="12">Dezembro</option>
                 </select>
                 <select id="filtroAno"><option value="">Ano</option></select>
-                <button onclick="limparFiltros()">Limpar Filtros</button>
+                <button onclick="limparFiltros()">Limpar filtros</button>
             </div>
         </fieldset>
 
         <fieldset class="painel-grupo painel-exportacao">
             <legend class="titulo-painel">Exportação e Impressão</legend>
-            <div class="toolbar-row" style="display: flex; gap: 10px;">
+            <div class="toolbar-row">
                 <button onclick="exportarCSV()">⬇️ CSV</button>
                 <button onclick="exportarXLSX()">⬇️ Excel</button>
                 <button onclick="exportarJSON()">⬇️ JSON</button>
+                <button onclick="exportarXML()">⬇️ XML</button>
                 <button class="btn-acao" onclick="window.print()">🖨️ Imprimir</button>
                 <button class="btn-acao" onclick="iniciarCarregamento()">🔄 Atualizar</button>
             </div>
@@ -103,8 +146,7 @@
 
         <fieldset class="painel-grupo" id="painel-busca">
             <legend class="titulo-painel">Visualização e Busca Rápida</legend>
-            <div id="controles-datatable"></div>
-        </fieldset>
+            </fieldset>
 
         <table id="tabela" style="width:100%">
             <thead><tr><th>Dados</th></tr></thead>
@@ -116,18 +158,14 @@
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
     <script>
-        // URL da planilha publicada na web (convertida para CSV)
         const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTK8EGvu2R21KpD3-E3SFDVC5qfWSihafXCpj_Y-ZnpM9DNBEb_Gimw0TboxkpiuMqJQ01WNNHm8-FA/pub?output=csv";
         let dadosGlobais = [];
         let tabela;
 
         async function iniciarCarregamento() {
             $('#loader').show(); $('#main-container').hide();
-            
             try {
-                // Adiciona um timestamp para evitar o cache do navegador
                 const response = await fetch(`${SHEET_URL}&t=${Date.now()}`);
-                
                 if (!response.ok) throw new Error("Erro na requisição");
                 
                 const csvText = await response.text();
@@ -140,7 +178,7 @@
                 $('#main-container').fadeIn();
             } catch (e) {
                 console.error(e);
-                $('#loader').html('<span style="color:red; font-size:16px;">Erro ao carregar dados da planilha. Verifique se a planilha está publicada na web e o link está correto.</span>');
+                $('#loader').html('<span style="color:red; font-size:16px;">Erro ao carregar dados da planilha. Verifique a URL ou sua conexão.</span>');
             }
         }
 
@@ -152,19 +190,16 @@
             const resultado = [];
 
             for (let i = 1; i < linhas.length; i++) {
-                const valores = linhas[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Regex para respeitar vírgulas em aspas
+                const valores = linhas[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 let obj = {};
                 cabecalho.forEach((col, idx) => {
                     let val = valores[idx] ? valores[idx].trim().replace(/"/g, '') : "";
-                    // Se o cabeçalho tiver algum erro de digitação oculto, forçamos as chaves esperadas
                     if(col.includes('nome_estagiario')) obj.nome_estagiario = val;
                     if(col.includes('data_admissao')) obj.data_admissao = val;
                     if(col.includes('data_desligamento')) obj.data_desligamento = val;
-                    
-                    obj[col] = val; // Mantém a chave original também por segurança
+                    obj[col] = val; 
                 });
                 
-                // Lógica de Situação: Ativo se a data de desligamento for vazia, hifen ou algo similar
                 obj.situacao = (!obj.data_desligamento || obj.data_desligamento.trim() === "" || obj.data_desligamento.trim() === "-") ? "Ativo" : "Desligado";
                 resultado.push(obj);
             }
@@ -187,12 +222,17 @@
         }
 
         function render(dados) {
-            if (tabela) tabela.destroy();
+            if (tabela) {
+                tabela.destroy();
+                $('#painel-busca .dt-controles').remove(); // Remove controles velhos
+            }
 
             tabela = $('#tabela').DataTable({
                 data: dados,
+                pageLength: 10,
                 language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
-                dom: '<"top"f>rt<"bottom"ip>',
+                // Configuração DOM idêntica à do relatório de diárias
+                dom: '<"dt-controles"lf>rt<"dt-bottom-controls"ip>',
                 columns: [{
                     data: null,
                     render: function(data) {
@@ -218,7 +258,10 @@
                     }
                 }],
                 initComplete: function() {
-                    $('.top').appendTo('#controles-datatable');
+                    // Texto do placeholder ajustado
+                    $('.dataTables_filter input').attr('placeholder', 'Pesquisar estagiário ou situação...');
+                    // Move os controles superiores para dentro do fieldset Visualização
+                    $('.dt-controles').appendTo('#painel-busca');
                 }
             });
         }
@@ -233,7 +276,6 @@
                 const matchNome = !nome || d.nome_estagiario === nome;
                 const matchSitu = !situacao || d.situacao === situacao;
                 
-                // Trata as datas caso venham vazias para não dar erro no split
                 const dataAdm = (d.data_admissao || "").split('/');
                 const dataDes = (d.data_desligamento || "").split('/');
 
@@ -251,37 +293,67 @@
             aplicarFiltros();
         }
 
-        // Eventos
         $('select').on('change', aplicarFiltros);
         window.onload = iniciarCarregamento;
 
-        // Exportação simplificada baseada no que está visível
-        function exportarJSON() {
-            const data = tabela.rows({filter:'applied'}).data().toArray();
-            const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+        // Funções de Exportação
+        function obterDadosFiltrados() {
+            return tabela.rows({filter:'applied'}).data().toArray();
+        }
+
+        function baixarArquivo(conteudo, nomeArquivo, tipo) {
+            const blob = new Blob([conteudo], { type: tipo });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
-            a.href = url; a.download = "relatorio_estagiarios.json"; a.click();
+            a.href = url; a.download = nomeArquivo; a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportarJSON() {
+            const data = obterDadosFiltrados();
+            baixarArquivo(JSON.stringify(data, null, 2), "relatorio_estagiarios.json", "application/json");
         }
         
         function exportarCSV() {
-            const data = tabela.rows({filter:'applied'}).data().toArray();
+            const data = obterDadosFiltrados();
             let csv = "\ufeffNome,Admissão,Desligamento,Situação\n";
             data.forEach(d => {
                 csv += `"${d.nome_estagiario || ''}","${d.data_admissao || ''}","${d.data_desligamento || ''}","${d.situacao || ''}"\n`;
             });
-            const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url; a.download = "relatorio_estagiarios.csv"; a.click();
+            baixarArquivo(csv, "relatorio_estagiarios.csv", "text/csv;charset=utf-8;");
         }
 
         function exportarXLSX() {
-            const data = tabela.rows({filter:'applied'}).data().toArray();
-            const ws = XLSX.utils.json_to_sheet(data);
+            const data = obterDadosFiltrados();
+            // Formata o json antes de gerar o excel para ficar bonito
+            const dadosExcel = data.map(d => ({
+                "Nome do Estagiário": d.nome_estagiario,
+                "Data de Admissão": d.data_admissao,
+                "Data de Desligamento": d.data_desligamento,
+                "Situação": d.situacao
+            }));
+            const ws = XLSX.utils.json_to_sheet(dadosExcel);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Estagiários");
             XLSX.writeFile(wb, "relatorio_estagiarios.xlsx");
+        }
+
+        function exportarXML() {
+            const data = obterDadosFiltrados();
+            if (!data.length) return;
+            
+            let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<estagiarios>\n';
+            data.forEach(d => {
+                xml += '  <estagiario>\n';
+                xml += `    <nome>${(d.nome_estagiario || "").replace(/&/g, '&amp;').replace(/</g, '&lt;')}</nome>\n`;
+                xml += `    <admissao>${d.data_admissao || ""}</admissao>\n`;
+                xml += `    <desligamento>${d.data_desligamento || ""}</desligamento>\n`;
+                xml += `    <situacao>${d.situacao || ""}</situacao>\n`;
+                xml += '  </estagiario>\n';
+            });
+            xml += '</estagiarios>';
+            
+            baixarArquivo(xml, "relatorio_estagiarios.xml", "application/xml");
         }
     </script>
 </body>
