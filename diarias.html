@@ -13,7 +13,7 @@
     <style>
         body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f4f6f9; overflow-x: hidden; }
         
-        /* Cabeçalho do Site */
+        /* Cabeçalho */
         .topo { background: #003b75; color: white; padding: 10px 30px; display: flex; justify-content: space-between; align-items: center; }
         .topo h1 { margin: 0; font-size: 1.5rem; letter-spacing: 1px; }
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -25,7 +25,7 @@
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Layout e Caixas de Agrupamento */
+        /* Layout em Caixas */
         .container { background: white; margin: 12px; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: none; }
         
         .painel-grupo {
@@ -38,7 +38,6 @@
             position: relative;
         }
 
-        /* Títulos das Caixas */
         .titulo-painel {
             width: 100%;
             font-size: 12px;
@@ -52,7 +51,7 @@
             letter-spacing: 0.5px;
         }
 
-        /* Selo de Atualização no Topo (Opção 2 - Real) */
+        /* SELO VERDE ATUALIZADO COM HORA */
         .badge-atualizacao {
             position: absolute;
             top: 10px;
@@ -65,7 +64,7 @@
             font-weight: bold;
         }
 
-        /* Grid dos Filtros */
+        /* Filtros Grid */
         .painel-filtros .toolbar-row { 
             display: grid; 
             grid-template-columns: 2fr 2fr 1fr 1fr auto; 
@@ -73,26 +72,11 @@
             width: 100%; 
             align-items: center;
         }
-        .painel-filtros select {
-            width: 100%;
-            text-overflow: ellipsis; 
-            white-space: nowrap;
-            overflow: hidden;
-            box-sizing: border-box;
-        }
+        .painel-filtros select { width: 100%; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
 
-        /* Botões de Exportação */
-        .painel-exportacao .toolbar-row { 
-            display: flex; 
-            gap: 10px; 
-            width: 100%; 
-            align-items: center;
-        }
-        .painel-exportacao button {
-            flex: 1; 
-            justify-content: center; 
-            white-space: nowrap;
-        }
+        /* Exportação Flex */
+        .painel-exportacao .toolbar-row { display: flex; gap: 10px; width: 100%; align-items: center; }
+        .painel-exportacao button { flex: 1; justify-content: center; white-space: nowrap; }
 
         @media (max-width: 768px) {
             .badge-atualizacao { position: static; display: inline-block; margin-bottom: 12px; }
@@ -101,33 +85,21 @@
         }
         
         select, button { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
-        button { background: #003b75; color: white; border: none; cursor: pointer; transition: background 0.3s; display: flex; align-items: center; gap: 5px; }
-        button:hover { background: #002a52; }
+        button { background: #003b75; color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 5px; }
         .btn-acao { background: #17a2b8; }
-        .btn-acao:hover { background: #138496; }
 
-        /* Controles do DataTables */
+        /* DataTables Custom */
         .dt-controles { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_length { margin-bottom: 0 !important; padding-top: 0 !important; float: none !important; }
         .dataTables_wrapper .dataTables_filter label { font-size: 0; }
-        .dataTables_wrapper .dataTables_filter input { font-size: 14px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; margin-left: 0; }
+        .dataTables_wrapper .dataTables_filter input { font-size: 14px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; }
 
-        /* Tabela DataTables com Cabeçalho Fixo (Sticky) */
         table.dataTable { border-collapse: separate !important; border-spacing: 0; }
         table.dataTable thead th { 
-            background: #003b75 !important; 
-            color: white !important; 
-            text-transform: uppercase; 
-            font-size: 12px; 
-            padding: 12px;
-            position: sticky; 
-            top: 0; 
-            z-index: 10;
-            box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
+            background: #003b75 !important; color: white !important; text-transform: uppercase; font-size: 12px; padding: 12px;
+            position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
         }
         table.dataTable tfoot th { background: #f4f6f9 !important; color: #003b75 !important; font-size: 14px; font-weight: bold; padding: 12px; border-top: 2px solid #003b75; }
         
-        /* Impressão */
         @media print {
             @page { size: landscape; margin: 10mm; } 
             .topo, .painel-grupo, .dt-controles, .dataTables_info, .dataTables_paginate { display: none !important; }
@@ -154,16 +126,16 @@
 
     <div id="loader">
         <div class="spinner"></div>
-        <span>Carregando informações...</span>
+        <span>Sincronizando com a base de dados...</span>
     </div>
 
     <main class="container" id="main-container">
         <div class="toolbar">
             <div class="painel-grupo painel-filtros">
-                <div id="badge-atualizacao" class="badge-atualizacao">⏳ Lendo última modificação...</div>
+                <div id="badge-atualizacao" class="badge-atualizacao">🟢 Dados online</div>
                 <h3 class="titulo-painel">Filtros de Pesquisa</h3>
                 <div class="toolbar-row">
-                    <select id="filtroGabinete" title="Escolha o Vereador Ativo"><option value="">Gabinete</option></select>
+                    <select id="filtroGabinete"><option value="">Gabinete</option></select>
                     <select id="filtroServidor"><option value="">Servidor</option></select>
                     <select id="filtroMes">
                         <option value="">Mês</option>
@@ -222,7 +194,8 @@
                 </tr>
             </tfoot>
         </table>
-    </main>
+        
+        </main>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -235,7 +208,7 @@
         let tabela;
         let dadosGlobais = [];
         let listaGabinetes = [];
-        let dataUltimaModificacao = "";
+        let carimboReal = "";
 
         function imprimirSeguro() {
             const linhaRodape = $('#tabela tfoot tr');
@@ -265,16 +238,14 @@
             if(linhas.length === 0) return [];
             
             if (isDiarias) {
-                // Lê o carimbo real da célula A1
-                const primeiraLinha = linhas.shift(); 
+                const primeiraLinha = linhas.shift(); // Pega a célula A1
                 if (primeiraLinha && primeiraLinha.toLowerCase().includes("modif_real:")) {
-                    let carimbo = primeiraLinha.split(',')[0].replace(/"/g, '').trim();
-                    // Formata para ficar bonito no badge (ex: 14/05/2026 às 08:30:00)
-                    dataUltimaModificacao = carimbo.replace(/modif_real:\s*/i, "").replace(/\s/, " às ");
+                    // Limpa o texto e preserva data e hora
+                    carimboReal = primeiraLinha.split(',')[0].replace(/"/g, '').replace(/modif_real:\s*/i, "").trim();
                 }
             }
 
-            const cabecalhoLinha = linhas.shift();
+            const cabecalhoLinha = linhas.shift(); // Pega a linha 2 (cabeçalhos)
             if(!cabecalhoLinha) return [];
             
             function extrairValores(linha) {
@@ -338,14 +309,11 @@
             }
 
             $('#filtroServidor').html('<option value="">Servidor</option>');
-            servidoresFiltrados.forEach(s => { 
-                if(s) $('#filtroServidor').append(`<option value="${s}">${s}</option>`); 
-            });
+            servidoresFiltrados.forEach(s => { if(s) $('#filtroServidor').append(`<option value="${s}">${s}</option>`); });
             $('#filtroServidor').val(valServidor);
 
             if (!apenasServidor) {
                 const anos = [...new Set(dadosGlobais.map(d => extrairData(d["data da partida"]).ano))].filter(a => a).sort();
-                
                 $('#filtroAno').html('<option value="">Ano</option>');
                 anos.forEach(a => { if(a) $('#filtroAno').append(`<option value="${a}">${a}</option>`); });
                 $('#filtroAno').val(valAno);
@@ -366,7 +334,6 @@
             dados.forEach(d => {
                 const sortP = formatarDataParaOrdenacao(d["data da partida"]);
                 const sortR = formatarDataParaOrdenacao(d["data do retorno"]);
-
                 html += `<tr>
                     <td>${d.servidor || ""}</td>
                     <td>${d["cargo ou função"] || ""}</td>
@@ -385,29 +352,23 @@
             $('#tabela tbody').html(html);
 
             tabela = $('#tabela').DataTable({
-                pageLength: 10, 
-                responsive: true, 
+                pageLength: 10, responsive: true, order: [[5, 'desc']],
                 dom: '<"painel-grupo dt-controles"lf>rtip',
-                order: [[5, 'desc']], 
                 language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
                 initComplete: function() { 
                     $('.dataTables_filter input').attr('placeholder', 'Buscar na tabela...'); 
                     $('.dt-controles').prepend('<h3 class="titulo-painel">Visualização e Busca Rápida</h3>');
                 },
-                
                 footerCallback: function (row, data, start, end, display) {
                     let api = this.api();
                     let intVal = i => typeof i === 'string' ? parseFloat(i.replace(/R\$\s?|[.]/g, '').replace(',', '.')) || 0 : typeof i === 'number' ? i : 0;
-                    
                     let totalD = api.column(3, { search: 'applied' }).data().reduce((a, b) => intVal(a) + intVal(b), 0);
                     let totalA = api.column(4, { search: 'applied' }).data().reduce((a, b) => intVal(a) + intVal(b), 0);
-                    
                     let f = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
                     $(api.column(3).footer()).html(f.format(totalD));
                     $(api.column(4).footer()).html(f.format(totalA));
                 }
             });
-
             tabela.on('draw.dt', function() { enviarAltura(); });
             enviarAltura();
         }
@@ -423,7 +384,6 @@
                 const matchServ = !serv || d.servidor === serv;
                 const matchMes = !mes || dt.mes === mes;
                 const matchAno = !ano || dt.ano === ano;
-                
                 let matchGab = true;
                 if (gab) {
                     const g = removerAcentos(gab).toLowerCase();
@@ -431,7 +391,6 @@
                     const c = removerAcentos(d["cargo ou função"]).toLowerCase();
                     matchGab = n.includes(g) || c.includes(g);
                 }
-                
                 return matchServ && matchMes && matchAno && matchGab;
             });
             render(resultado);
@@ -439,13 +398,11 @@
 
         function limparFiltros() { 
             $('#filtroServidor, #filtroMes, #filtroAno, #filtroGabinete').val(''); 
-            preencherFiltros(); 
-            aplicarFiltros(); 
+            preencherFiltros(); aplicarFiltros(); 
         }
 
         async function iniciarCarregamento() {
             $('#loader').show(); $('#main-container').hide();
-            
             try {
                 const [resD, resG] = await Promise.all([
                     fetch(getCsvUrl(SHEET_ID_DIARIAS), { cache: "no-store" }),
@@ -454,58 +411,31 @@
                 const txtD = await resD.text();
                 const txtG = await resG.text();
 
-                if(txtD.includes("<html") || txtG.includes("<html")) throw new Error("Acesso negado às planilhas.");
-
                 dadosGlobais = csvParaArray(txtD, true);
                 listaGabinetes = csvParaArray(txtG, false);
 
                 preencherFiltros();
                 
-                let maxAno = "0000";
-                let maxMes = "00";
-
+                let maxAno = "0000", maxMes = "00";
                 dadosGlobais.forEach(d => {
                     const dt = extrairData(d["data da partida"]);
-                    if (dt.ano && dt.mes) {
-                        if (dt.ano > maxAno) {
-                            maxAno = dt.ano;
-                            maxMes = dt.mes;
-                        } else if (dt.ano === maxAno && dt.mes > maxMes) {
-                            maxMes = dt.mes;
-                        }
-                    }
+                    if (dt.ano > maxAno) { maxAno = dt.ano; maxMes = dt.mes; }
+                    else if (dt.ano === maxAno && dt.mes > maxMes) { maxMes = dt.mes; }
                 });
 
-                if (maxAno === "0000") {
-                    const hoje = new Date();
-                    maxMes = String(hoje.getMonth() + 1).padStart(2, "0");
-                    maxAno = String(hoje.getFullYear());
-                }
-
-                $('#filtroMes').val(maxMes);
-                $('#filtroAno').val(maxAno);
-                
+                $('#filtroMes').val(maxMes); $('#filtroAno').val(maxAno);
                 aplicarFiltros();
                 
-                // Exibe a última modificação real com Data e Hora
-                if (dataUltimaModificacao) {
-                    $('#badge-atualizacao').html(`🟢 Última modificação real: ${dataUltimaModificacao}`);
+                // ATUALIZAÇÃO DO SELO VERDE (BADGE) COM HORA
+                if (carimboReal) {
+                    $('#badge-atualizacao').html(`🟢 Última modificação real: ${carimboReal}`);
                 } else {
                     $('#badge-atualizacao').html(`🟢 Dados sincronizados`);
                 }
                 
-                $('#loader').hide(); 
-                $('#main-container').fadeIn(400, function() {
-                    enviarAltura(); 
-                });
+                $('#loader').hide(); $('#main-container').fadeIn(400, function() { enviarAltura(); });
             } catch (e) {
-                $('#loader').html(`
-                    <div style="text-align: center; color: #c1272d; background: #ffebeb; padding: 20px; border-radius: 8px; border: 1px solid #c1272d;">
-                        <h3 style="margin: 0 0 10px 0;">⚠️ Erro de Comunicação</h3>
-                        <p style="margin: 0 0 15px 0; font-size: 14px;">${e.message}</p>
-                        <button onclick="location.reload()" style="padding: 10px 15px; background: #003b75; color: white; border: none; border-radius: 5px; cursor: pointer;">Tentar Novamente</button>
-                    </div>
-                `);
+                $('#loader').html(`<div style="padding:20px; color:red;">Erro: ${e.message}</div>`);
             }
         }
 
@@ -524,25 +454,15 @@
         }
 
         function obterNomeArquivoBase() {
-            const serv = $('#filtroServidor').val();
-            const mes = $('#filtroMes').val();
-            const ano = $('#filtroAno').val();
-            const gab = $('#filtroGabinete').val();
-
+            const serv = $('#filtroServidor').val(), mes = $('#filtroMes').val(), ano = $('#filtroAno').val(), gab = $('#filtroGabinete').val();
             if (!serv && !mes && !ano && !gab) return "diarias_completo";
-            
             let partes = ["diarias"];
-            if (gab) partes.push(gab);
-            if (serv) partes.push(serv);
-            if (mes) partes.push(mes);
-            if (ano) partes.push(ano);
-
+            if (gab) partes.push(gab); if (serv) partes.push(serv); if (mes) partes.push(mes); if (ano) partes.push(ano);
             return partes.join('_').normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, "");
         }
 
         function exportarCSV() {
-            const dados = obterDadosFiltradosDoDOM();
-            if (!dados.length) return;
+            const dados = obterDadosFiltradosDoDOM(); if (!dados.length) return;
             const headers = Object.keys(dados[0]);
             let csv = "\ufeff" + headers.join(",") + "\n";
             dados.forEach(row => { csv += headers.map(h => `"${row[h].replace(/"/g, '""')}"`).join(",") + "\n"; });
@@ -550,8 +470,7 @@
         }
 
         function exportarXLSX() {
-            const dados = obterDadosFiltradosDoDOM();
-            if (!dados.length) return;
+            const dados = obterDadosFiltradosDoDOM(); if (!dados.length) return;
             const worksheet = XLSX.utils.json_to_sheet(dados);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Diárias Filtradas");
@@ -559,8 +478,7 @@
         }
 
         function exportarJSON() {
-            const dados = obterDadosFiltradosDoDOM();
-            if (!dados.length) return;
+            const dados = obterDadosFiltradosDoDOM(); if (!dados.length) return;
             baixarArquivo(JSON.stringify(dados, null, 2), obterNomeArquivoBase() + ".json", "application/json");
         }
 
@@ -572,15 +490,8 @@
             URL.revokeObjectURL(url);
         }
 
-        $('#filtroGabinete').on('change', function() { 
-            preencherFiltros(true); 
-            aplicarFiltros(); 
-        });
-
-        $('#filtroServidor, #filtroMes, #filtroAno').on('change', function() { 
-            aplicarFiltros(); 
-        });
-        
+        $('#filtroGabinete').on('change', function() { preencherFiltros(true); aplicarFiltros(); });
+        $('#filtroServidor, #filtroMes, #filtroAno').on('change', function() { aplicarFiltros(); });
         window.onload = iniciarCarregamento;
     </script>
 </body>
