@@ -79,13 +79,17 @@
             .painel-filtros .toolbar-row { grid-template-columns: repeat(6, 1fr); }
             #filtroGabinete, #filtroServidor { grid-column: span 3; }
             #filtroMes, #filtroAno, .painel-filtros button { grid-column: span 2; }
+            .topo h1 { font-size: 1.4rem; }
+            .texto-camara { letter-spacing: 1px; }
         }
 
         @media (max-width: 600px) {
             .painel-filtros .toolbar-row { grid-template-columns: 1fr; }
             #filtroGabinete, #filtroServidor, #filtroMes, #filtroAno, .painel-filtros button { grid-column: span 1; }
             .painel-exportacao .toolbar-row { flex-direction: column; }
-            .topo { flex-direction: column; text-align: center; }
+            .topo { flex-direction: column; gap: 15px; text-align: center; padding: 20px;}
+            .topo h1 { white-space: normal; font-size: 1.3rem; line-height: 1.2;}
+            .texto-camara { white-space: normal; }
         }
         
         select, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; transition: 0.2s; box-sizing: border-box; width: 100%; }
@@ -94,33 +98,168 @@
         .btn-acao { background: #0284c7; }
         .btn-acao:hover { background: #0369a1; }
 
-        .dt-controles { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .dataTables_filter input { font-size: 14px; padding: 10px 15px; border: 1px solid #e2e8f0; border-radius: 8px; width: 300px; }
+        /* AJUSTE ESPECÍFICO PARA O SELETOR DE QUANTIDADE (O que quebrou na sua imagem) */
+        .dataTables_length select { width: auto !important; display: inline-block !important; margin: 0 5px !important; padding-right: 30px !important; }
+        .dataTables_length label { display: flex !important; align-items: center; font-size: 13px; font-weight: 600; color: #475569; }
 
-        .painel-totais { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .total-bloco { background: white; border: 1px solid #e2e8f0; border-left: 5px solid #003b75; border-radius: 12px; padding: 16px 20px; }
+        .dt-controles { display: flex; justify-content: space-between; align-items: center; width: 100%; margin: 0; padding: 0; }
+        .dataTables_filter label { font-size: 0; } 
+        .dataTables_filter input { font-size: 14px; padding: 10px 15px; border: 1px solid #e2e8f0; border-radius: 8px; width: 300px; background: white; margin-left: 0 !important; box-sizing: border-box; }
+
+        @media (max-width: 650px) {
+            .dt-controles { flex-direction: column-reverse; gap: 15px; align-items: stretch; }
+            .dataTables_filter input { width: 100%; }
+            .dataTables_length label { justify-content: center; }
+        }
+
+        .painel-totais {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .total-bloco {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-left: 5px solid #003b75;
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .total-bloco.destaque { border-left: 5px solid #0284c7; }
+        .total-label { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
         .total-valor { font-size: 24px; font-weight: 800; color: #1e293b; }
         
-        #tabela thead { display: none; }
-        
-        .card-diaria { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .card-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; }
-        .card-servidor { font-size: 18px; font-weight: 800; color: #003b75; display: block; text-transform: uppercase; }
-        .card-cargo { font-size: 13px; color: #64748b; font-weight: 500; text-transform: uppercase; }
+        @media (max-width: 600px) {
+            .painel-totais { grid-template-columns: 1fr; gap: 10px; }
+            .total-valor { font-size: 20px; }
+        }
 
-        .card-body-row { display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 12px 20px; gap: 15px; }
-        .card-body-row.border-top { border-top: 1px dashed #f1f5f9; }
+        #tabela thead { display: none; }
+        table.dataTable { border: none !important; background: transparent !important; }
+        
+        .card-diaria {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 0;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; background: #fff; }
+        .card-servidor { font-size: 18px; font-weight: 800; color: #003b75; margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .card-cargo { font-size: 13px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .card-body-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 12px 20px;
+            gap: 15px;
+            background: #fff;
+        }
+        .card-body-row.border-top { border-top: 1px dashed #f1f5f9; padding-top: 12px; margin-top: 0; }
+        .info-bloco { display: flex; flex-direction: column; }
         .info-label { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
         .info-valor { font-size: 14px; font-weight: 700; color: #1e293b; }
 
-        .card-footer-quadro { background: #f8fafc; margin: 0 15px 15px 15px; padding: 15px 20px; border-radius: 10px; border: 1px solid #edf2f7; display: grid; grid-template-columns: 1fr 1fr; gap: 15px 20px; }
-        .quadro-col-full { grid-column: 1 / -1; border-top: 1px dashed #e2e8f0; padding-top: 10px; }
+        .card-footer-quadro {
+            background: #f8fafc;
+            margin: 0 15px 15px 15px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: 1px solid #edf2f7;
+            display: grid;
+            grid-template-columns: 1fr 1fr; 
+            gap: 15px 20px;
+        }
+        .quadro-col-full {
+            grid-column: 1 / -1; 
+            border-top: 1px dashed #e2e8f0;
+            padding-top: 10px;
+        }
         .quadro-label { font-size: 10px; font-weight: 800; color: #003b75; text-transform: uppercase; margin-bottom: 5px; display: block; }
-        .quadro-texto { font-size: 13px; color: #334155; font-weight: 500; }
+        .quadro-texto { font-size: 13px; color: #334155; line-height: 1.5; font-weight: 500; }
+
+        @media (max-width: 600px) {
+            .card-body-row { grid-template-columns: 1fr; gap: 10px; }
+            .card-footer-quadro { grid-template-columns: 1fr; gap: 12px; }
+        }
+
+        .dt-bottom-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+            margin-top: -5px; 
+        }
+        
+        .dataTables_wrapper .dataTables_info {
+            padding-top: 0 !important;
+            font-size: 13px;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        .dataTables_wrapper .dataTables_paginate {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            border-radius: 8px !important;
+            padding: 6px 12px !important;
+            border: 1px solid transparent !important;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569 !important;
+            margin: 0 2px !important;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+            background: #f1f5f9 !important;
+            color: #003b75 !important;
+            border: 1px solid #cbd5e1 !important;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current, 
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+            background: #003b75 !important;
+            color: white !important;
+            border: 1px solid #003b75 !important;
+        }
+
+        @media (max-width: 650px) {
+            .dt-bottom-controls { flex-direction: column; gap: 15px; text-align: center; }
+        }
+
+        @media print {
+            @page { size: portrait; margin: 15mm; }
+            .topo, fieldset, .dt-controles, .dt-bottom-controls { display: none !important; }
+            .painel-totais { display: grid !important; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px !important; page-break-inside: avoid; }
+            .total-bloco { border: 2px solid #003b75 !important; background: #f8fafc !important; box-shadow: none !important; padding: 12px; }
+            .total-valor { font-size: 18px !important; color: #000 !important; }
+            .card-diaria { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; page-break-inside: avoid;}
+            .card-footer-quadro { background: #f1f5f9 !important; border: 1px solid #ccc !important; }
+            .container { margin: 0; width: 100%; }
+            body { background: white; }
+        }
     </style>
 </head>
 
 <body>
+    
     <div id="wrapper">
         <header class="topo">
             <h1>Relatório de Diárias e Adiantamentos</h1>
@@ -176,17 +315,19 @@
 
             <div id="painel-totais" class="painel-totais">
                 <div class="total-bloco">
-                    <span class="info-label">Soma das Diárias Filtradas</span>
+                    <span class="total-label">Soma das Diárias Filtradas</span>
                     <span class="total-valor" id="total-diarias">R$ 0,00</span>
                 </div>
-                <div class="total-bloco" style="border-left-color: #0284c7;">
-                    <span class="info-label">Soma dos Adiantamentos Filtrados</span>
+                <div class="total-bloco destaque">
+                    <span class="total-label">Soma dos Adiantamentos Filtrados</span>
                     <span class="total-valor" id="total-adiantamentos">R$ 0,00</span>
                 </div>
             </div>
 
             <table id="tabela" style="width:100%">
-                <thead><tr><th>Card</th></tr></thead>
+                <thead>
+                    <tr><th>Card</th></tr>
+                </thead>
                 <tbody></tbody>
             </table>
         </main>
@@ -204,82 +345,68 @@
         let listaGabinetes = [];
         let carimboCompleto = "";
 
+        function imprimirSeguro() {
+            if (!tabela) { window.print(); return; }
+            const originalLen = tabela.page.len();
+            tabela.page.len(-1).draw();
+            setTimeout(() => { window.print(); tabela.page.len(originalLen).draw(); }, 500);
+        }
+
         function getCsvUrl(id) { return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&t=${Date.now()}`; }
 
         function csvParaArray(str, isDiarias = false) {
             if (str.startsWith('\ufeff')) str = str.substring(1);
             let linhas = str.trim().split("\n");
-            
             if (isDiarias) {
                 for (let i = 0; i < linhas.length; i++) {
                     if (linhas[i].toUpperCase().includes("MODIF_REAL:")) {
                         let match = linhas[i].match(/MODIF_REAL:\s*(\d{1,2}\/\d{1,2}\/\d{4}[^\d]+\d{1,2}:\d{2})/i);
                         if (match) carimboCompleto = match[1].replace(/\s+/, ' às ');
-                        linhas.splice(i, 1);
-                        break; 
+                        linhas.splice(i, 1); break;
                     }
                 }
             }
-
             let cabecalhoLinha = linhas.shift();
-            const extrairValores = (linha) => {
-                let valores = [], dentroDeAspas = false, valorAtual = "";
-                for (let char of linha) {
-                    if (char === '"') dentroDeAspas = !dentroDeAspas;
-                    else if (char === ',' && !dentroDeAspas) { valores.push(valorAtual); valorAtual = ""; }
-                    else valorAtual += char;
-                }
-                valores.push(valorAtual);
-                return valores.map(v => v.replace(/^"|"$/g, '').trim());
+            const extrair = (l) => {
+                let res = [], d = false, v = "";
+                for (let c of l) { if (c === '"') d = !d; else if (c === ',' && !d) { res.push(v); v = ""; } else v += c; }
+                res.push(v); return res.map(x => x.replace(/^"|"$/g, '').trim());
             };
-
-            const cabecalho = extrairValores(cabecalhoLinha).map(c => c.toLowerCase());
-            return linhas.map(linha => {
-                const valores = extrairValores(linha);
-                let obj = {};
-                cabecalho.forEach((col, i) => obj[col] = valores[i] || "");
-                // Forçar nomes de servidores para MAIÚSCULO para busca precisa
-                if(obj.servidor) obj.servidor = obj.servidor.toUpperCase();
-                return obj;
+            const cab = extrair(cabecalhoLinha).map(c => c.toLowerCase());
+            return linhas.map(l => {
+                let val = extrair(l), o = {};
+                cab.forEach((c, i) => o[c] = val[i] || "");
+                if(o.servidor) o.servidor = o.servidor.toUpperCase();
+                return o;
             }).filter(d => Object.values(d).some(v => v !== ""));
         }
 
-        function formatarMoeda(valor) {
-            if (!valor) return "R$ 0,00";
-            let v = valor.replace(/R\$\s?/g, "").trim();
-            return v.includes(",") ? `R$ ${v}` : `R$ ${v},00`;
+        function formatarMoeda(v) {
+            if (!v) return "R$ 0,00";
+            let n = v.replace(/R\$\s?/g, "").trim();
+            return n.includes(",") ? `R$ ${n}` : `R$ ${n},00`;
         }
 
-        function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
+        function removerAcentos(s) { return s ? s.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
 
         function preencherFiltros(mudouGabinete = false) {
-            const valServidor = $('#filtroServidor').val(), valGabinete = $('#filtroGabinete').val();
-            
-            // 1. Preencher Gabinetes (Sempre em MAIÚSCULO)
+            const valServ = $('#filtroServidor').val(), valGab = $('#filtroGabinete').val();
             if (!mudouGabinete) {
-                const gabinetesUnicos = [...new Set(listaGabinetes.map(g => Object.values(g)[0].toUpperCase()))].sort();
+                const gabs = [...new Set(listaGabinetes.map(g => Object.values(g)[0].toUpperCase()))].sort();
                 $('#filtroGabinete').html('<option value="">Gabinete</option>');
-                gabinetesUnicos.forEach(g => $('#filtroGabinete').append(`<option value="${g}">${g}</option>`));
-                $('#filtroGabinete').val(valGabinete);
+                gabs.forEach(g => $('#filtroGabinete').append(`<option value="${g}">${g}</option>`));
+                $('#filtroGabinete').val(valGab);
             }
-
-            // 2. Preencher Servidores (Filtrados por gabinete se houver)
-            let servidoresParaListar = [];
-            if (valGabinete) {
-                const gNorm = removerAcentos(valGabinete).toLowerCase();
-                servidoresParaListar = [...new Set(dadosGlobais.filter(d => {
-                    return removerAcentos(d.servidor).toLowerCase().includes(gNorm) || 
-                           removerAcentos(d.cargo).toLowerCase().includes(gNorm);
-                }).map(d => d.servidor))].sort();
+            let servs = [];
+            if (valGab) {
+                const gNorm = removerAcentos(valGab).toLowerCase();
+                servs = [...new Set(dadosGlobais.filter(d => removerAcentos(d.servidor).toLowerCase().includes(gNorm) || removerAcentos(d.cargo).toLowerCase().includes(gNorm)).map(d => d.servidor))].sort();
             } else {
-                servidoresParaListar = [...new Set(dadosGlobais.map(d => d.servidor))].sort();
+                servs = [...new Set(dadosGlobais.map(d => d.servidor))].sort();
             }
-
             $('#filtroServidor').html('<option value="">Servidor</option>');
-            servidoresParaListar.forEach(s => $('#filtroServidor').append(`<option value="${s}">${s}</option>`));
-            $('#filtroServidor').val(valServidor);
-
-            // 3. Preencher Anos
+            servs.forEach(s => $('#filtroServidor').append(`<option value="${s}">${s}</option>`));
+            $('#filtroServidor').val(valServ);
             if (!mudouGabinete) {
                 const anos = [...new Set(dadosGlobais.map(d => (d.data_partida || "").split("/")[2]))].filter(a => a).sort();
                 $('#filtroAno').html('<option value="">Ano</option>');
@@ -289,49 +416,44 @@
 
         function render(dados) {
             if (tabela) { tabela.destroy(); $('#painel-busca .dt-controles').remove(); }
-            
             tabela = $('#tabela').DataTable({
-                data: dados,
-                pageLength: 10,
+                data: dados, pageLength: 10,
                 dom: '<"dt-controles"lf>rt<"dt-bottom-controls"ip>',
                 language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
                 columns: [{ 
                     data: null,
-                    render: (data) => `
+                    render: (d) => `
                         <div class="card-diaria">
-                            <div class="card-header">
-                                <span class="card-servidor">${data.servidor}</span>
-                                <span class="card-cargo">${data.cargo || "-"}</span>
-                            </div>
+                            <div class="card-header"><span class="card-servidor">${d.servidor}</span><span class="card-cargo">${d.cargo || "-"}</span></div>
                             <div class="card-body-row">
-                                <div class="info-bloco"><span class="info-label">Qtd Diárias</span><span class="info-valor">${data.qtde_diarias || "0"}</span></div>
-                                <div class="info-bloco"><span class="info-label">Partida</span><span class="info-valor">${data.data_partida || "-"}</span></div>
-                                <div class="info-bloco"><span class="info-label">Retorno</span><span class="info-valor">${data.data_retorno || "-"}</span></div>
+                                <div class="info-bloco"><span class="info-label">Qtd Diárias</span><span class="info-valor">${d.qtde_diarias || "0"}</span></div>
+                                <div class="info-bloco"><span class="info-label">Partida</span><span class="info-valor">${d.data_partida || "-"}</span></div>
+                                <div class="info-bloco"><span class="info-label">Retorno</span><span class="info-valor">${d.data_retorno || "-"}</span></div>
                             </div>
                             <div class="card-body-row border-top">
-                                <div class="info-bloco"><span class="info-label">Valor Diárias</span><span class="info-valor">${formatarMoeda(data.valor_diarias)}</span></div>
-                                <div class="info-bloco"><span class="info-label">Adiantamento</span><span class="info-valor">${formatarMoeda(data.valor_adiantamento)}</span></div>
-                                <div class="info-bloco"><span class="info-label">Dotação</span><span class="info-valor">${data.dotacao || data["dotação"] || "-"}</span></div>
+                                <div class="info-bloco"><span class="info-label">Valor Diárias</span><span class="info-valor">${formatarMoeda(d.valor_diarias)}</span></div>
+                                <div class="info-bloco"><span class="info-label">Adiantamento</span><span class="info-valor">${formatarMoeda(d.valor_adiantamento)}</span></div>
+                                <div class="info-bloco"><span class="info-label">Dotação</span><span class="info-valor">${d.dotacao || d["dotação"] || "-"}</span></div>
                             </div>
                             <div class="card-footer-quadro">
-                                <div class="quadro-col"><span class="quadro-label">Cidade</span><span class="quadro-texto">${data.cidade_destino}</span></div>
-                                <div class="quadro-col"><span class="quadro-label">Local</span><span class="quadro-texto">${data.local_destino}</span></div>
-                                <div class="quadro-col quadro-col-full"><span class="quadro-label">Motivação</span><span class="quadro-texto">${data.motivacao_viagem}</span></div>
+                                <div class="quadro-col"><span class="quadro-label">Cidade</span><span class="quadro-texto">${d.cidade_destino || "-"}</span></div>
+                                <div class="quadro-col"><span class="quadro-label">Local</span><span class="quadro-texto">${d.local_destino || "-"}</span></div>
+                                <div class="quadro-col quadro-col-full"><span class="quadro-label">Motivação</span><span class="quadro-texto">${d.motivacao_viagem || "-"}</span></div>
                             </div>
                         </div>`
                 }],
-                initComplete: function() { $('.dt-controles').appendTo('#painel-busca'); },
+                initComplete: function() { 
+                    $('.dataTables_filter input').attr('placeholder', 'Pesquisar servidor, cargo ou destino...');
+                    $('.dt-controles').appendTo('#painel-busca'); 
+                },
                 drawCallback: function() {
-                    let api = this.api(), totalD = 0, totalA = 0;
+                    let api = this.api(), tD = 0, tA = 0;
                     const parse = (v) => parseFloat(v.replace(/R\$\s?|[.]/g, '').replace(',', '.')) || 0;
-                    api.rows({ filter: 'applied' }).data().each(d => {
-                        totalD += parse(d.valor_diarias);
-                        totalA += parse(d.valor_adiantamento);
-                    });
+                    api.rows({ filter: 'applied' }).data().each(d => { tD += parse(d.valor_diarias); tA += parse(d.valor_adiantamento); });
                     const fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-                    $('#total-diarias').text(fmt.format(totalD));
-                    $('#total-adiantamentos').text(fmt.format(totalA));
-                    enviarAltura();
+                    $('#total-diarias').text(fmt.format(tD)); $('#total-adiantamentos').text(fmt.format(tA));
+                    const h = document.getElementById('wrapper').offsetHeight + 50;
+                    window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
                 }
             });
         }
@@ -339,12 +461,12 @@
         function aplicarFiltros() {
             const serv = $('#filtroServidor').val(), mes = $('#filtroMes').val(), ano = $('#filtroAno').val(), gab = $('#filtroGabinete').val();
             const res = dadosGlobais.filter(d => {
-                const [,,aD] = (d.data_partida || "").split("/"), mD = (d.data_partida || "").split("/")[1];
+                const p = (d.data_partida || "").split("/"), mD = p[1], aD = p[2];
                 const mS = !serv || d.servidor === serv, mM = !mes || mD === mes, mA = !ano || aD === ano;
                 let mG = true;
                 if (gab) {
-                    const gNorm = removerAcentos(gab).toLowerCase();
-                    mG = removerAcentos(d.servidor).toLowerCase().includes(gNorm) || removerAcentos(d.cargo).toLowerCase().includes(gNorm);
+                    const gN = removerAcentos(gab).toLowerCase();
+                    mG = removerAcentos(d.servidor).toLowerCase().includes(gN) || removerAcentos(d.cargo).toLowerCase().includes(gN);
                 }
                 return mS && mM && mA && mG;
             });
@@ -356,28 +478,46 @@
         async function iniciarCarregamento() {
             $('#loader').show(); $('#main-container').hide();
             try {
-                const [resD, resG] = await Promise.all([fetch(getCsvUrl(SHEET_ID_DIARIAS)), fetch(getCsvUrl(SHEET_ID_GABINETES))]);
-                dadosGlobais = csvParaArray(await resD.text(), true);
-                listaGabinetes = csvParaArray(await resG.text(), false);
-                preencherFiltros();
-                aplicarFiltros();
+                const [rD, rG] = await Promise.all([fetch(getCsvUrl(SHEET_ID_DIARIAS)), fetch(getCsvUrl(SHEET_ID_GABINETES))]);
+                dadosGlobais = csvParaArray(await rD.text(), true);
+                listaGabinetes = csvParaArray(await rG.text(), false);
+                preencherFiltros(); aplicarFiltros();
                 $('#badge-atualizacao').html(carimboCompleto ? `🟢 Atualizado em ${carimboCompleto}` : `🟢 Atualizado hoje`);
                 $('#loader').hide(); $('#main-container').fadeIn();
-            } catch (e) { $('#loader').html('<div style="color:red">Erro na conexão.</div>'); }
+            } catch (e) { $('#loader').html('<div style="color:red">Erro ao carregar dados.</div>'); }
         }
 
-        function enviarAltura() {
-            const h = document.getElementById('wrapper').offsetHeight + 50;
-            window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
+        function exportarCSV() {
+            const d = tabela.rows({ filter: 'applied' }).data().toArray(); if(!d.length) return;
+            let csv = "\ufeff" + Object.keys(d[0]).join(",") + "\n";
+            d.forEach(r => csv += Object.values(r).map(v => `"${v}"`).join(",") + "\n");
+            baixar(csv, "relatorio.csv", "text/csv");
         }
 
-        // Exportações mantidas conforme anterior...
-        function exportarXML() { /* Lógica XML idêntica à anterior utilizando dadosGlobais filtrados */ }
-        function exportarCSV() { /* Lógica CSV idêntica à anterior */ }
-        function exportarXLSX() { /* Lógica XLSX idêntica à anterior */ }
-        function imprimirSeguro() { window.print(); }
+        function exportarXLSX() {
+            const d = tabela.rows({ filter: 'applied' }).data().toArray(); if(!d.length) return;
+            const ws = XLSX.utils.json_to_sheet(d), wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Diarias"); XLSX.writeFile(wb, "relatorio.xlsx");
+        }
 
-        $('#filtroGabinete').on('change', function() { preencherFiltros(true); aplicarFiltros(); });
+        function exportarJSON() {
+            const d = tabela.rows({ filter: 'applied' }).data().toArray(); if(!d.length) return;
+            baixar(JSON.stringify(d, null, 2), "relatorio.json", "application/json");
+        }
+
+        function exportarXML() {
+            const d = tabela.rows({ filter: 'applied' }).data().toArray(); if(!d.length) return;
+            let xml = '<?xml version="1.0" encoding="UTF-8"?><relatorio>';
+            d.forEach(r => { xml += '<registro>'; for(let k in r) xml += `<${k}>${r[k]}</${k}>`; xml += '</registro>'; });
+            xml += '</relatorio>'; baixar(xml, "relatorio.xml", "application/xml");
+        }
+
+        function baixar(c, n, t) {
+            const b = new Blob([c], { type: t }), u = URL.createObjectURL(b), a = document.createElement("a");
+            a.href = u; a.download = n; a.click(); URL.revokeObjectURL(u);
+        }
+
+        $('#filtroGabinete').on('change', () => { preencherFiltros(true); aplicarFiltros(); });
         $('#filtroServidor, #filtroMes, #filtroAno').on('change', aplicarFiltros);
         window.onload = iniciarCarregamento;
     </script>
