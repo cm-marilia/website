@@ -25,11 +25,7 @@
         fieldset.painel-grupo { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: relative; }
         legend.titulo-painel { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; letter-spacing: 1px; }
 
-        .badge-atualizacao {
-            position: absolute; top: -12px; right: 20px; font-size: 11px; color: #065f46;
-            background: #d1fae5; padding: 5px 12px; border-radius: 20px; font-weight: 700;
-            border: 1px solid #a7f3d0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
+        .badge-atualizacao { position: absolute; top: -12px; right: 20px; font-size: 11px; color: #065f46; background: #d1fae5; padding: 5px 12px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
         #filtroNome, select, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; transition: 0.2s; box-sizing: border-box; width: 100%; white-space: nowrap; }
         #filtroNome { white-space: normal; } 
@@ -61,6 +57,27 @@
         .dataTables_wrapper .dataTables_paginate .paginate_button { border-radius: 8px !important; padding: 6px 12px !important; border: 1px solid transparent !important; font-size: 13px; font-weight: 600; color: #475569 !important; margin: 0 2px !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button:hover { background: #f1f5f9 !important; color: #003b75 !important; border: 1px solid #cbd5e1 !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button.current, .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover { background: #003b75 !important; color: white !important; border: 1px solid #003b75 !important; }
+
+        /* --- Estilos Específicos para Impressão --- */
+        #cabecalho-impressao { display: none; }
+        
+        @media print {
+            /* Esconde as barras superiores, filtros, botões e controles de paginação */
+            .topo, fieldset, .dt-controles, .dt-bottom-controls { display: none !important; }
+            
+            /* Exibe o cabeçalho formatado para papel */
+            #cabecalho-impressao { display: block !important; margin-bottom: 25px; }
+            .cabecalho-print-flex { display: flex; align-items: center; gap: 15px; border-bottom: 2px solid #003b75; padding-bottom: 15px; margin-bottom: 15px; }
+            .cabecalho-print-flex img { height: 60px; }
+            .cabecalho-print-textos h2 { margin: 0 0 5px 0; color: #003b75; font-size: 22px; font-weight: 800; }
+            .cabecalho-print-textos span { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }
+            #texto-filtros-impressao { font-size: 14px; color: #1e293b; background: #f8fafc; padding: 10px 15px; border-left: 4px solid #0284c7; border-radius: 4px; }
+            
+            /* Ajustes gerais de layout para a folha A4 */
+            body { background: white !important; padding: 0 !important; }
+            .container { margin: 0 !important; width: 100% !important; display: block !important; }
+            .card-estagiario { break-inside: avoid; border: 1px solid #cbd5e1 !important; box-shadow: none !important; margin-bottom: 15px; }
+        }
     </style>
 </head>
 <body>
@@ -79,6 +96,17 @@
     </div>
 
     <main class="container" id="main-container">
+
+        <div id="cabecalho-impressao">
+            <div class="cabecalho-print-flex">
+                <img src="Brasão_de_Marília.png" alt="Brasão de Marília">
+                <div class="cabecalho-print-textos">
+                    <h2>Relatório de Estagiários</h2>
+                    <span>Câmara Municipal de Marília</span>
+                </div>
+            </div>
+            <div id="texto-filtros-impressao"></div>
+        </div>
         <fieldset class="painel-grupo painel-filtros">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
             <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
@@ -112,7 +140,7 @@
                 <button onclick="exportarXLSX()">⬇️ Excel</button>
                 <button onclick="exportarJSON()">⬇️ JSON</button>
                 <button onclick="exportarXML()">⬇️ XML</button>
-                <button class="btn-acao" onclick="window.print()">🖨️ Imprimir</button>
+                <button class="btn-acao" onclick="imprimirSeguro()">🖨️ Imprimir</button>
                 <button class="btn-acao" onclick="iniciarCarregamento()">🔄 Atualizar</button>
             </div>
         </fieldset>
@@ -136,7 +164,6 @@
         let tabela;
         let carimboCompleto = "";
 
-        // Função auxiliar para ignorar acentos durante a pesquisa
         function removerAcentos(str) {
             return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
         }
@@ -269,7 +296,6 @@
                 pageLength: 10,
                 ordering: false,
                 language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
-                // Configuração DOM alterada: O 'f' (filtro do datatables) foi removido daqui
                 dom: '<"dt-controles"l>rt<"dt-bottom-controls"ip>',
                 columns: [{
                     data: null,
@@ -296,22 +322,17 @@
         }
 
         function aplicarFiltros() {
-            // Pega o valor digitado e remove acentos e maiúsculas para facilitar a busca parcial
             const n = removerAcentos($('#filtroNome').val().toLowerCase());
             const s = $('#filtroStatus').val();
             const m = $('#filtroMes').val();
             const a = $('#filtroAno').val();
 
             let res = dadosGlobais.filter(d => {
-                // A lógica matchN agora verifica se o nome do estagiário CONTÉM o que foi digitado
                 const nomeDoEstagiarioLpo = removerAcentos(d.nome_estagiario.toLowerCase());
                 const matchN = !n || nomeDoEstagiarioLpo.includes(n);
-                
                 const matchS = !s || d.situacao === s;
-                
                 const dAdm = (d.data_admissao || "").split('/');
                 const dDes = (d.data_desligamento || "").split('/');
-                
                 const matchM = !m || (dAdm[1] === m || dDes[1] === m);
                 const matchA = !a || (dAdm[2] === a || dDes[2] === a);
                 
@@ -332,6 +353,35 @@
         $('select').on('change', aplicarFiltros);
         
         window.onload = iniciarCarregamento;
+
+        // --- FUNÇÃO DE IMPRESSÃO SEGURA ---
+        function imprimirSeguro() {
+            if (!tabela) return;
+
+            // Coleta os filtros atuais para exibir no cabeçalho
+            const nomeFiltro = $('#filtroNome').val() || 'Todos';
+            const statusFiltro = $('#filtroStatus').val() || 'Todas';
+            const mesFiltro = $('#filtroMes option:selected').text() || 'Todos';
+            const anoFiltro = $('#filtroAno').val() || 'Todos';
+
+            let descFiltros = `<strong>Filtros Aplicados:</strong> Estagiário: ${nomeFiltro} | Situação: ${statusFiltro}`;
+            if ($('#filtroMes').val()) descFiltros += ` | Mês: ${mesFiltro}`;
+            if ($('#filtroAno').val()) descFiltros += ` | Ano: ${anoFiltro}`;
+
+            $('#texto-filtros-impressao').html(descFiltros);
+
+            // Armazena a quantidade de itens por página atual e expande para mostrar todos
+            const tamanhoOriginal = tabela.page.len();
+            tabela.page.len(-1).draw('page'); // -1 faz o DataTable renderizar todos os itens filtrados na mesma tela
+
+            // Dá um pequeno tempo para o navegador renderizar a tela completa e chama a impressão
+            setTimeout(function() {
+                window.print();
+                // Depois que a tela de impressão fecha, volta a tabela ao normal (ex: 10 itens por tela)
+                tabela.page.len(tamanhoOriginal).draw('page');
+            }, 500);
+        }
+        // ----------------------------------
 
         function exportarCSV() {
             const d = tabela.rows({filter:'applied'}).data().toArray();
