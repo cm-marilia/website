@@ -13,7 +13,7 @@
     <style>
         body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f4f6f9; overflow-x: hidden; }
         
-        /* Cabeçalho */
+        /* Cabeçalho do Site */
         .topo { background: #003b75; color: white; padding: 10px 30px; display: flex; justify-content: space-between; align-items: center; }
         .topo h1 { margin: 0; font-size: 1.5rem; letter-spacing: 1px; }
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -51,10 +51,9 @@
             letter-spacing: 0.5px;
         }
 
-        /* --- TRAVA DE TAMANHO PARA OS FILTROS --- */
+        /* Trava de tamanho para os filtros */
         .painel-filtros .toolbar-row { 
             display: grid; 
-            /* Gabinete (2) | Servidor (2) | Mês (1) | Ano (1) | Botão (Auto) */
             grid-template-columns: 2fr 2fr 1fr 1fr auto; 
             gap: 10px; 
             width: 100%; 
@@ -68,7 +67,7 @@
             box-sizing: border-box;
         }
 
-        /* --- BOTÕES DE EXPORTAÇÃO OCUPANDO O QUADRO TODO --- */
+        /* Botões de exportação ocupando o quadro todo */
         .painel-exportacao .toolbar-row { 
             display: flex; 
             gap: 10px; 
@@ -98,8 +97,19 @@
         .dataTables_wrapper .dataTables_filter label { font-size: 0; }
         .dataTables_wrapper .dataTables_filter input { font-size: 14px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; margin-left: 0; }
 
-        /* Tabela DataTables */
-        table.dataTable thead th { background: #003b75 !important; color: white !important; text-transform: uppercase; font-size: 12px; padding: 12px; }
+        /* Tabela DataTables com OPÇÃO 4: Cabeçalho Fixo (Sticky) */
+        table.dataTable { border-collapse: separate !important; border-spacing: 0; }
+        table.dataTable thead th { 
+            background: #003b75 !important; 
+            color: white !important; 
+            text-transform: uppercase; 
+            font-size: 12px; 
+            padding: 12px;
+            position: sticky; /* Torna o cabeçalho fixo ao rolar */
+            top: 0; 
+            z-index: 10;
+            box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
+        }
         table.dataTable tfoot th { background: #f4f6f9 !important; color: #003b75 !important; font-size: 14px; font-weight: bold; padding: 12px; border-top: 2px solid #003b75; }
         
         /* Impressão */
@@ -107,6 +117,7 @@
             @page { size: landscape; margin: 10mm; } 
             .topo, .painel-grupo, .dt-controles, .dataTables_info, .dataTables_paginate { display: none !important; }
             .container { box-shadow: none; width: 100%; margin: 0; padding: 0; border: none; }
+            table.dataTable thead th { position: static !important; } /* Desativa sticky na impressão */
             table.dataTable { border-collapse: collapse !important; width: 100% !important; margin-top: 0 !important;}
             table.dataTable th, table.dataTable td { font-size: 9px !important; border: 1px solid #ddd !important; display: table-cell !important; padding: 6px 4px !important; white-space: normal !important; }
             table.dataTable tr.child { display: none !important; }
@@ -347,6 +358,8 @@
                 pageLength: 10, 
                 responsive: true, 
                 dom: '<"painel-grupo dt-controles"lf>rtip',
+                /* OPÇÃO 2: Ordenação padrão por Data de Partida (Coluna 5) Descendente */
+                order: [[5, 'desc']], 
                 language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
                 initComplete: function() { 
                     $('.dataTables_filter input').attr('placeholder', 'Buscar na tabela...'); 
@@ -419,7 +432,6 @@
 
                 preencherFiltros();
                 
-                // --- ATUALIZAÇÃO: Busca o mês e ano mais recentes nos dados reais ---
                 let maxAno = "0000";
                 let maxMes = "00";
 
@@ -435,18 +447,15 @@
                     }
                 });
 
-                // Se não encontrar nenhuma data válida, usa a data atual como segurança
                 if (maxAno === "0000") {
                     const hoje = new Date();
                     maxMes = String(hoje.getMonth() + 1).padStart(2, "0");
                     maxAno = String(hoje.getFullYear());
                 }
 
-                // Ajusta visualmente as caixinhas de mês e ano para mostrar os mais recentes
                 $('#filtroMes').val(maxMes);
                 $('#filtroAno').val(maxAno);
                 
-                // Aplica o filtro
                 aplicarFiltros();
                 
                 $('#loader').hide(); 
