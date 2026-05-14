@@ -63,6 +63,48 @@
         button:hover { background: #00274d; transform: translateY(-1px); }
         .btn-acao { background: #64748b; }
 
+        /* --------------------------------------------------- */
+        /* NOVO DESIGN DO PAINEL DE TOTAIS                     */
+        /* --------------------------------------------------- */
+        .painel-totais {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .total-bloco {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-left: 5px solid #003b75;
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .total-bloco.destaque {
+            border-left: 5px solid #17a2b8; /* Cor secundária (Azul claro/Teal) para adiantamentos */
+        }
+        .total-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .total-valor {
+            font-size: 24px;
+            font-weight: 800;
+            color: #1e293b;
+        }
+        @media (max-width: 600px) {
+            .painel-totais { grid-template-columns: 1fr; gap: 10px; }
+            .total-valor { font-size: 20px; }
+        }
+
+        /* CONTROLES DATATABLES */
         .dt-controles { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 5px; }
         .dataTables_filter input { padding: 10px 15px; border: 1px solid #e2e8f0; border-radius: 8px; width: 280px; background: white; }
 
@@ -130,7 +172,7 @@
         .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border: none !important; border-radius: 6px; }
         
         @media print {
-            .topo, fieldset, .dt-controles, .dataTables_paginate { display: none !important; }
+            .topo, fieldset, .dt-controles, .dataTables_paginate, .painel-totais { display: none !important; }
             .card-diaria { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; }
             .card-footer-quadro { background: #eee !important; border: 1px solid #ccc !important; }
         }
@@ -187,6 +229,17 @@
                 </fieldset>
             </div>
 
+            <div id="painel-totais" class="painel-totais">
+                <div class="total-bloco">
+                    <span class="total-label">Soma Filtrada das Diárias</span>
+                    <span class="total-valor" id="total-diarias">R$ 0,00</span>
+                </div>
+                <div class="total-bloco destaque">
+                    <span class="total-label">Soma Filtrada dos Adiantamentos</span>
+                    <span class="total-valor" id="total-adiantamentos">R$ 0,00</span>
+                </div>
+            </div>
+
             <div class="dt-controles"></div>
 
             <table id="tabela" style="width:100%">
@@ -210,28 +263,18 @@
         let listaGabinetes = [];
         let carimboCompleto = "";
 
-        // --- NOVA FUNÇÃO DE IMPRESSÃO INTELIGENTE ---
         function imprimirSeguro() {
             if (!tabela) {
                 window.print();
                 return;
             }
-            
-            // 1. Guarda qual era a configuração de paginação atual (ex: 10 itens)
             const tamanhoPaginaOriginal = tabela.page.len();
-            
-            // 2. Muda para mostrar TUDO (-1)
             tabela.page.len(-1).draw();
-            
-            // 3. Aguarda 500ms para o navegador desenhar todos os cards na tela e abre a tela de impressão
             setTimeout(function() {
                 window.print();
-                
-                // 4. Assim que a tela de impressão fechar, devolve a tabela para os 10 itens originais
                 tabela.page.len(tamanhoPaginaOriginal).draw();
             }, 500);
         }
-        // ---------------------------------------------
 
         function enviarAltura() {
             setTimeout(function() {
@@ -367,7 +410,6 @@
                                         <span class="card-servidor">${data.servidor || "NÃO INFORMADO"}</span>
                                         <span class="card-cargo">${data["cargo ou função"] || "-"}</span>
                                     </div>
-                                    
                                     <div class="card-body-row">
                                         <div class="info-bloco">
                                             <span class="info-label">Quantidade de Diárias</span>
@@ -382,7 +424,6 @@
                                             <span class="info-valor">${formatarMoeda(data["valor adiantamento"])}</span>
                                         </div>
                                     </div>
-                                    
                                     <div class="card-body-row border-top">
                                         <div class="info-bloco">
                                             <span class="info-label">Data da Partida</span>
@@ -397,7 +438,6 @@
                                             <span class="info-valor">${data["cidade"] || "-"}</span>
                                         </div>
                                     </div>
-
                                     <div class="card-footer-quadro">
                                         <div class="quadro-col">
                                             <span class="quadro-label">Local do Destino</span>
@@ -415,6 +455,32 @@
                 ],
                 initComplete: function() { 
                     $('.dataTables_filter input').attr('placeholder', 'Pesquisar servidor, cargo ou destino...'); 
+                },
+                
+                // NOVO CÁLCULO DE TOTAIS QUE ALIMENTA OS CARDS DE TOTAL
+                drawCallback: function (settings) {
+                    let api = this.api();
+                    
+                    // Pega apenas as linhas que passaram pelo filtro/pesquisa
+                    let linhasFiltradas = api.rows({ filter: 'applied' }).data().toArray();
+                    
+                    let totalDiarias = 0;
+                    let totalAdiantamento = 0;
+
+                    let intVal = function (i) {
+                        return typeof i === 'string' ? parseFloat(i.replace(/R\$\s?|[.]/g, '').replace(',', '.')) || 0 : typeof i === 'number' ? i : 0;
+                    };
+
+                    linhasFiltradas.forEach(d => {
+                        totalDiarias += intVal(d["valor diarias"]);
+                        totalAdiantamento += intVal(d["valor adiantamento"]);
+                    });
+
+                    let formatador = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+                    
+                    // Atualiza o texto na tela
+                    $('#total-diarias').html(formatador.format(totalDiarias));
+                    $('#total-adiantamentos').html(formatador.format(totalAdiantamento));
                 }
             });
             
