@@ -58,16 +58,11 @@
         }
         
         select, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; transition: 0.2s; }
-        
-        /* BOTÕES ATUALIZADOS - Agora com justify-content: center para centralizar o texto perfeitamente */
         button { background: #003b75; color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; flex: 1; }
         button:hover { background: #00274d; transform: translateY(-1px); }
-        
-        /* CORES MAIS VIVAS PARA OS BOTÕES DE AÇÃO */
         .btn-acao { background: #0284c7; }
         .btn-acao:hover { background: #0369a1; }
 
-        /* PAINEL DE TOTAIS EM TEMPO REAL */
         .painel-totais {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -86,7 +81,7 @@
             justify-content: center;
         }
         .total-bloco.destaque {
-            border-left: 5px solid #0284c7; /* Combinando com o novo azul vivo */
+            border-left: 5px solid #0284c7; 
         }
         .total-label {
             font-size: 11px;
@@ -106,11 +101,9 @@
             .total-valor { font-size: 20px; }
         }
 
-        /* CONTROLES DATATABLES */
         .dt-controles { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 5px; }
         .dataTables_filter input { padding: 10px 15px; border: 1px solid #e2e8f0; border-radius: 8px; width: 280px; background: white; }
 
-        /* DESIGN DOS CARTÕES (CARDS) */
         #tabela thead { display: none; }
         table.dataTable { border: none !important; background: transparent !important; }
         
@@ -134,7 +127,6 @@
         .card-servidor { font-size: 18px; font-weight: 800; color: #003b75; margin-bottom: 4px; display: block; }
         .card-cargo { font-size: 13px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        /* Estilo das linhas de dados do corpo */
         .card-body-row {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -152,7 +144,6 @@
         .info-label { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
         .info-valor { font-size: 14px; font-weight: 700; color: #1e293b; }
 
-        /* Quadro de Detalhes (Cinza) */
         .card-footer-quadro {
             background: #f8fafc;
             margin: 0 15px 15px 15px;
@@ -367,7 +358,7 @@
                 const g = removerAcentos(valGabinete).toLowerCase();
                 servFiltrados = [...new Set(dadosGlobais.filter(d => {
                     const n = removerAcentos(d.servidor || "").toLowerCase();
-                    const c = removerAcentos(d["cargo ou função"] || "").toLowerCase();
+                    const c = removerAcentos(d.cargo || "").toLowerCase();
                     return n.includes(g) || c.includes(g);
                 }).map(d => d.servidor))].sort();
             } else {
@@ -379,7 +370,7 @@
 
             if (!apenasServidor) {
                 const anos = [...new Set(dadosGlobais.map(d => {
-                    const p = (d["data da partida"] || "").split("/");
+                    const p = (d.data_partida || "").split("/");
                     return p[2] || "";
                 }))].filter(a => a).sort();
                 $('#filtroAno').html('<option value="">Ano</option>');
@@ -410,44 +401,44 @@
                                 <div class="card-diaria">
                                     <div class="card-header">
                                         <span class="card-servidor">${data.servidor || "NÃO INFORMADO"}</span>
-                                        <span class="card-cargo">${data["cargo ou função"] || "-"}</span>
+                                        <span class="card-cargo">${data.cargo || "-"}</span>
                                     </div>
                                     <div class="card-body-row">
                                         <div class="info-bloco">
                                             <span class="info-label">Quantidade de Diárias</span>
-                                            <span class="info-valor">${data["n de diárias"] || "0"}</span>
+                                            <span class="info-valor">${data.qtde_diarias || "0"}</span>
                                         </div>
                                         <div class="info-bloco">
                                             <span class="info-label">Valor das Diárias</span>
-                                            <span class="info-valor">${formatarMoeda(data["valor diarias"])}</span>
+                                            <span class="info-valor">${formatarMoeda(data.valor_diarias)}</span>
                                         </div>
                                         <div class="info-bloco">
                                             <span class="info-label">Valor do Adiantamento</span>
-                                            <span class="info-valor">${formatarMoeda(data["valor adiantamento"])}</span>
+                                            <span class="info-valor">${formatarMoeda(data.valor_adiantamento)}</span>
                                         </div>
                                     </div>
                                     <div class="card-body-row border-top">
                                         <div class="info-bloco">
                                             <span class="info-label">Data da Partida</span>
-                                            <span class="info-valor">${data["data da partida"] || "-"}</span>
+                                            <span class="info-valor">${data.data_partida || "-"}</span>
                                         </div>
                                         <div class="info-bloco">
                                             <span class="info-label">Data do Retorno</span>
-                                            <span class="info-valor">${data["data do retorno"] || "-"}</span>
+                                            <span class="info-valor">${data.data_retorno || "-"}</span>
                                         </div>
                                         <div class="info-bloco">
-                                            <span class="info-label">Cidade</span>
-                                            <span class="info-valor">${data["cidade"] || "-"}</span>
+                                            <span class="info-label">Cidade de Destino</span>
+                                            <span class="info-valor">${data.cidade_destino || "-"}</span>
                                         </div>
                                     </div>
                                     <div class="card-footer-quadro">
                                         <div class="quadro-col">
                                             <span class="quadro-label">Local do Destino</span>
-                                            <span class="quadro-texto">${data["local de destino"] || "-"}</span>
+                                            <span class="quadro-texto">${data.local_destino || "-"}</span>
                                         </div>
                                         <div class="quadro-col">
                                             <span class="quadro-label">Motivação da Viagem</span>
-                                            <span class="quadro-texto">${data["finalidade"] || "-"}</span>
+                                            <span class="quadro-texto">${data.motivacao_viagem || "-"}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -470,8 +461,8 @@
                     };
 
                     linhasFiltradas.forEach(d => {
-                        totalDiarias += intVal(d["valor diarias"]);
-                        totalAdiantamento += intVal(d["valor adiantamento"]);
+                        totalDiarias += intVal(d.valor_diarias);
+                        totalAdiantamento += intVal(d.valor_adiantamento);
                     });
 
                     let formatador = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -487,13 +478,13 @@
         function aplicarFiltros() {
             const serv = $('#filtroServidor').val(), mes = $('#filtroMes').val(), ano = $('#filtroAno').val(), gab = $('#filtroGabinete').val();
             const res = dadosGlobais.filter(d => {
-                const p = (d["data da partida"] || "").split("/");
+                const p = (d.data_partida || "").split("/");
                 const mD = p[1], aD = p[2];
                 const mS = !serv || d.servidor === serv, mM = !mes || mD === mes, mA = !ano || aD === ano;
                 let mG = true;
                 if (gab) {
                     const g = removerAcentos(gab).toLowerCase();
-                    mG = removerAcentos(d.servidor).toLowerCase().includes(g) || removerAcentos(d["cargo ou função"]).toLowerCase().includes(g);
+                    mG = removerAcentos(d.servidor).toLowerCase().includes(g) || removerAcentos(d.cargo).toLowerCase().includes(g);
                 }
                 return mS && mM && mA && mG;
             });
@@ -514,7 +505,7 @@
                 preencherFiltros();
                 let maxA = "0000", maxM = "00";
                 dadosGlobais.forEach(d => {
-                    const p = (d["data da partida"] || "").split("/");
+                    const p = (d.data_partida || "").split("/");
                     if (p[2] > maxA) { maxA = p[2]; maxM = p[1]; }
                     else if (p[2] === maxA && p[1] > maxM) { maxM = p[1]; }
                 });
@@ -533,15 +524,15 @@
             dadosAtuais.forEach(d => {
                 dados.push({ 
                     "Servidor": d.servidor || "", 
-                    "Cargo": d["cargo ou função"] || "", 
-                    "Quantidade de Diárias": d["n de diárias"] || "", 
-                    "Valor das Diárias": formatarMoeda(d["valor diarias"]), 
-                    "Valor do Adiantamento": formatarMoeda(d["valor adiantamento"]), 
-                    "Data da Partida": d["data da partida"] || "", 
-                    "Data do Retorno": d["data do retorno"] || "", 
-                    "Local do Destino": d["local de destino"] || "", 
-                    "Cidade": d.cidade || "", 
-                    "Motivação da Viagem": d.finalidade || "" 
+                    "Cargo": d.cargo || "", 
+                    "Quantidade de Diárias": d.qtde_diarias || "", 
+                    "Valor das Diárias": formatarMoeda(d.valor_diarias), 
+                    "Valor do Adiantamento": formatarMoeda(d.valor_adiantamento), 
+                    "Data da Partida": d.data_partida || "", 
+                    "Data do Retorno": d.data_retorno || "", 
+                    "Local do Destino": d.local_destino || "", 
+                    "Cidade de Destino": d.cidade_destino || "", 
+                    "Motivação da Viagem": d.motivacao_viagem || "" 
                 });
             });
             return dados;
