@@ -11,7 +11,6 @@
     <style>
         body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; overflow-x: hidden; color: #1e293b; }
         
-        /* CABEÇALHO FLUTUANTE ARREDONDADO (Novo Design) */
         .topo { 
             background: #003b75; 
             color: white; 
@@ -21,7 +20,7 @@
             align-items: center; 
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
             border-radius: 12px;
-            margin: 15px 15px 20px 15px; /* Descola das bordas da tela */
+            margin: 15px 15px 20px 15px; 
         }
         .topo h1 { margin: 0; font-size: 1.4rem; letter-spacing: 0.5px; font-weight: 700; }
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -164,7 +163,6 @@
             .card-footer-quadro { grid-template-columns: 1fr; gap: 12px; }
         }
 
-        /* ----- NOVO DESIGN DO RODAPÉ (PAGINAÇÃO EM CARTÃO) ----- */
         .dt-bottom-controls {
             display: flex;
             justify-content: space-between;
@@ -175,7 +173,7 @@
             border: 1px solid #e2e8f0;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             margin-bottom: 15px;
-            margin-top: -5px; /* Aproxima um pouco do último card de diária */
+            margin-top: -5px; 
         }
         
         .dataTables_wrapper .dataTables_info {
@@ -190,7 +188,6 @@
             margin-top: 0 !important;
         }
 
-        /* Estilo dos Botões de Paginação */
         .dataTables_wrapper .dataTables_paginate .paginate_button {
             border-radius: 8px !important;
             padding: 6px 12px !important;
@@ -215,13 +212,8 @@
         }
 
         @media (max-width: 650px) {
-            .dt-bottom-controls {
-                flex-direction: column;
-                gap: 15px;
-                text-align: center;
-            }
+            .dt-bottom-controls { flex-direction: column; gap: 15px; text-align: center; }
         }
-        /* -------------------------------------------------------- */
 
         @media print {
             .topo, fieldset, .dt-controles, .dt-bottom-controls, .painel-totais { display: none !important; }
@@ -448,12 +440,15 @@
         }
 
         function render(dados) {
-            if (tabela) tabela.destroy();
+            if (tabela) {
+                tabela.destroy();
+                // A MÁGICA AQUI: Apaga a barra de pesquisa antiga antes de criar a nova
+                $('#painel-busca .dt-controles').remove();
+            }
             
             tabela = $('#tabela').DataTable({
                 data: dados,
                 pageLength: 10,
-                // NOVO DOM: Cria o wrapper "dt-bottom-controls" para os elementos de rodapé
                 dom: '<"dt-controles"lf>rt<"dt-bottom-controls"ip>',
                 language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
                 columns: [
