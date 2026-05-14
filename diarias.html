@@ -23,7 +23,6 @@
 
         .container { margin: 15px; display: none; }
         
-        /* DESIGN DAS CAIXAS DE FILTRO E EXPORTAÇÃO */
         fieldset.painel-grupo {
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
@@ -64,19 +63,13 @@
         button:hover { background: #00274d; transform: translateY(-1px); }
         .btn-acao { background: #64748b; }
 
-        /* CONTROLES DATATABLES */
         .dt-controles { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 5px; }
         .dataTables_filter input { padding: 10px 15px; border: 1px solid #e2e8f0; border-radius: 8px; width: 280px; background: white; }
 
-        /* --------------------------------------------------- */
-        /* DESIGN DOS CARTÕES (CARDS)                          */
-        /* --------------------------------------------------- */
-        
-        /* Esconde o cabeçalho da tabela pois os campos agora têm labels internos */
+        /* DESIGN DOS CARTÕES (CARDS) */
         #tabela thead { display: none; }
         table.dataTable { border: none !important; background: transparent !important; }
         
-        /* Cada linha da tabela vira um Cartão */
         .card-diaria {
             background: white;
             border: 1px solid #e2e8f0;
@@ -89,7 +82,6 @@
             flex-direction: column;
         }
 
-        /* Seção Superior do Card */
         .card-header {
             padding: 16px 20px;
             border-bottom: 1px solid #f1f5f9;
@@ -98,19 +90,25 @@
         .card-servidor { font-size: 18px; font-weight: 800; color: #003b75; margin-bottom: 4px; display: block; }
         .card-cargo { font-size: 13px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        /* Seção de Dados Numéricos e Datas */
-        .card-body-grid {
+        /* Estilo das linhas de dados do corpo */
+        .card-body-row {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            padding: 16px 20px;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 12px 20px;
             gap: 15px;
             background: #fff;
         }
+        .card-body-row.border-top {
+            border-top: 1px dashed #f1f5f9;
+            padding-top: 12px;
+            margin-top: 0;
+        }
+
         .info-bloco { display: flex; flex-direction: column; }
         .info-label { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
         .info-valor { font-size: 14px; font-weight: 700; color: #1e293b; }
 
-        /* O Quadro de Detalhes (Cinza) */
+        /* Quadro de Detalhes (Cinza) */
         .card-footer-quadro {
             background: #f8fafc;
             margin: 0 15px 15px 15px;
@@ -118,18 +116,17 @@
             border-radius: 10px;
             border: 1px solid #edf2f7;
             display: grid;
-            grid-template-columns: 1fr 1fr 2fr;
+            grid-template-columns: 1fr 2fr; /* 2 colunas agora que cidade subiu */
             gap: 20px;
         }
         .quadro-label { font-size: 10px; font-weight: 800; color: #003b75; text-transform: uppercase; margin-bottom: 5px; display: block; }
         .quadro-texto { font-size: 13px; color: #334155; line-height: 1.5; font-weight: 500; }
 
-        @media (max-width: 850px) {
-            .card-body-grid { grid-template-columns: 1fr 1fr; }
+        @media (max-width: 600px) {
+            .card-body-row { grid-template-columns: 1fr; gap: 10px; }
             .card-footer-quadro { grid-template-columns: 1fr; gap: 12px; }
         }
 
-        /* Paginação Customizada */
         .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border: none !important; border-radius: 6px; }
         
         @media print {
@@ -194,7 +191,8 @@
 
             <table id="tabela" style="width:100%">
                 <thead>
-                    <tr><th>Card</th></tr> </thead>
+                    <tr><th>Card</th></tr>
+                </thead>
                 <tbody></tbody>
             </table>
         </main>
@@ -342,26 +340,29 @@
                     { 
                         data: null,
                         render: function (data) {
-                            // CONSTRUÇÃO DO CARD HTML
                             return `
                                 <div class="card-diaria">
                                     <div class="card-header">
                                         <span class="card-servidor">${data.servidor || "NÃO INFORMADO"}</span>
                                         <span class="card-cargo">${data["cargo ou função"] || "-"}</span>
                                     </div>
-                                    <div class="card-body-grid">
+                                    
+                                    <div class="card-body-row">
                                         <div class="info-bloco">
                                             <span class="info-label">Nº Diárias</span>
                                             <span class="info-valor">${data["n de diárias"] || "0"}</span>
                                         </div>
                                         <div class="info-bloco">
-                                            <span class="info-label">Valor Diárias</span>
+                                            <span class="info-label">Valor das Diárias</span>
                                             <span class="info-valor">${formatarMoeda(data["valor diarias"])}</span>
                                         </div>
                                         <div class="info-bloco">
                                             <span class="info-label">Adiantamento</span>
                                             <span class="info-valor">${formatarMoeda(data["valor adiantamento"])}</span>
                                         </div>
+                                    </div>
+                                    
+                                    <div class="card-body-row border-top">
                                         <div class="info-bloco">
                                             <span class="info-label">Partida</span>
                                             <span class="info-valor">${data["data da partida"] || "-"}</span>
@@ -370,15 +371,16 @@
                                             <span class="info-label">Retorno</span>
                                             <span class="info-valor">${data["data do retorno"] || "-"}</span>
                                         </div>
+                                        <div class="info-bloco">
+                                            <span class="info-label">Cidade</span>
+                                            <span class="info-valor">${data["cidade"] || "-"}</span>
+                                        </div>
                                     </div>
+
                                     <div class="card-footer-quadro">
                                         <div class="quadro-col">
                                             <span class="quadro-label">Destino da Viagem</span>
                                             <span class="quadro-texto">${data["local de destino"] || "-"}</span>
-                                        </div>
-                                        <div class="quadro-col">
-                                            <span class="quadro-label">Cidade</span>
-                                            <span class="quadro-texto">${data["cidade"] || "-"}</span>
                                         </div>
                                         <div class="quadro-col">
                                             <span class="quadro-label">Finalidade</span>
@@ -438,7 +440,7 @@
                 if (carimboCompleto) $('#badge-atualizacao').html(`🟢 Dados atualizados em ${carimboCompleto}`);
                 else $('#badge-atualizacao').html(`🟢 Dados atualizados hoje`);
                 $('#loader').hide(); $('#main-container').fadeIn(400, function() { enviarAltura(); });
-            } catch (e) { $('#loader').html(`<div style="padding:20px; color:red;">Erro ao carregar dados. Verifique a internet.</div>`); }
+            } catch (e) { $('#loader').html(`<div style="padding:20px; color:red;">Erro ao carregar dados.</div>`); }
         }
 
         function exportarCSV() {
