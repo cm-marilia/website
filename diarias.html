@@ -40,7 +40,7 @@
             margin-top: 0; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; letter-spacing: 0.5px;
         }
 
-        /* CAMPO VERDE COM HORA */
+        /* CAMPO VERDE ATUALIZADO */
         .badge-atualizacao {
             position: absolute; top: 10px; right: 16px; font-size: 11px; color: #065f46;
             background: #d1fae5; padding: 4px 10px; border-radius: 12px; font-weight: bold;
@@ -105,7 +105,9 @@
     <main class="container" id="main-container">
         <div class="toolbar">
             <div class="painel-grupo painel-filtros">
-                <div id="badge-atualizacao" class="badge-atualizacao">🟢 Sincronizado</div>
+                
+                <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
+                
                 <h3 class="titulo-painel">Filtros de Pesquisa</h3>
                 <div class="toolbar-row">
                     <select id="filtroGabinete"><option value="">Gabinete</option></select>
@@ -161,7 +163,7 @@
                 </tr>
             </tfoot>
         </table>
-        </main>
+    </main>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -194,19 +196,31 @@
 
         function csvParaArray(str, isDiarias = false) {
             if (str.startsWith('\ufeff')) str = str.substring(1);
-            const linhas = str.trim().split("\n");
+            let linhas = str.trim().split("\n");
             if(linhas.length === 0) return [];
             
+            // INTELIGÊNCIA CAÇADORA CORRIGIDA (AGORA LÊ A HORA MESMO COM VÍRGULA)
             if (isDiarias) {
-                const primeiraLinha = linhas.shift(); 
-                if (primeiraLinha && primeiraLinha.toLowerCase().includes("modif_real:")) {
-                    // Extrai a data e hora e formata o texto para o selo verde
-                    let raw = primeiraLinha.split(',')[0].replace(/"/g, '').replace(/modif_real:\s*/i, "").trim();
-                    carimboCompleto = raw.replace(/\s/, " às "); 
+                for (let i = 0; i < linhas.length; i++) {
+                    if (linhas[i].toUpperCase().includes("MODIF_REAL:")) {
+                        // Regex captura data e hora: dd/mm/yyyy hh:mm:ss
+                        let match = linhas[i].match(/MODIF_REAL:\s*(\d{1,2}\/\d{1,2}\/\d{4}[^\d]+\d{1,2}:\d{2}(?::\d{2})?)/i);
+                        if (match && match[1]) {
+                            // Limpa vírgulas perdidas e insere o "às"
+                            let dataCrua = match[1].replace(/,/g, '').trim();
+                            carimboCompleto = dataCrua.replace(/\s+/, ' às ');
+                        }
+                        linhas.splice(i, 1);
+                        break; 
+                    }
                 }
             }
 
-            const cabecalhoLinha = linhas.shift(); 
+            let cabecalhoLinha = "";
+            while (linhas.length > 0) {
+                cabecalhoLinha = linhas.shift();
+                if (cabecalhoLinha.trim().replace(/,/g, '') !== "") break; 
+            }
             if(!cabecalhoLinha) return [];
             
             function extrairValores(linha) {
@@ -222,12 +236,17 @@
             }
 
             const cabecalhoLimpo = extrairValores(cabecalhoLinha).map(c => c.toLowerCase());
-            return linhas.map(linha => {
+            
+            let dadosFiltrados = [];
+            linhas.forEach(linha => {
                 const valores = extrairValores(linha);
-                let obj = {};
-                cabecalhoLimpo.forEach((coluna, i) => obj[coluna] = valores[i] || "");
-                return obj;
+                if (valores.filter(v => v !== "").length > 1) {
+                    let obj = {};
+                    cabecalhoLimpo.forEach((coluna, i) => obj[coluna] = valores[i] || "");
+                    dadosFiltrados.push(obj);
+                }
             });
+            return dadosFiltrados;
         }
 
         function formatarMoeda(valor) {
@@ -247,6 +266,12 @@
             if (!dataStr) return "00000000";
             const partes = dataStr.split("/");
             return partes.length === 3 ? `${partes[2]}${partes[1]}${partes[0]}` : dataStr;
+        }
+
+        function extrairData(dataStr) {
+            if (!dataStr || typeof dataStr !== 'string') return { mes: "", ano: "" };
+            const partes = dataStr.split("/");
+            return { mes: partes[1] || "", ano: partes[2] || "" };
         }
 
         function preencherFiltros(apenasServidor = false) {
@@ -332,7 +357,7 @@
                 let mG = true;
                 if (gab) {
                     const g = removerAcentos(gab).toLowerCase();
-                    mG = removerAcentos(d.servidor).toLowerCase().includes(g) || removerAcentos(d["cargo ou função"]).toLowerCase().includes(g);
+                    mG = removerAcentos(d.servidor || "").toLowerCase().includes(g) || removerAcentos(d["cargo ou função"] || "").toLowerCase().includes(g);
                 }
                 return mS && mM && mA && mG;
             });
@@ -365,16 +390,16 @@
                 $('#filtroMes').val(maxM); $('#filtroAno').val(maxA);
                 aplicarFiltros();
                 
-                // ATUALIZA O CAMPO VERDE COM DATA E HORA
-                if (carimboCompleto) {
-                    $('#badge-atualizacao').html(`🟢 Última modificação real: ${carimboCompleto}`);
+                // MENSAGEM FINAL EXATAMENTE COMO SOLICITADO E COM HORA
+                if (carimboCompleto && carimboCompleto !== "") {
+                    $('#badge-atualizacao').html(`🟢 Dados atualizados em ${carimboCompleto}`);
                 } else {
                     $('#badge-atualizacao').html(`🟢 Dados sincronizados`);
                 }
                 
                 $('#loader').hide(); $('#main-container').fadeIn(400, function() { enviarAltura(); });
             } catch (e) {
-                $('#loader').html(`<div style="padding:20px; color:red;">Erro ao carregar: ${e.message}</div>`);
+                $('#loader').html(`<div style="padding:20px; color:red; text-align:center;">Erro ao carregar: ${e.message}</div>`);
             }
         }
 
