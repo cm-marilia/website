@@ -35,6 +35,7 @@
             padding: 12px 16px;
             margin-bottom: 15px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: relative;
         }
 
         /* Títulos das Caixas */
@@ -49,6 +50,19 @@
             padding-bottom: 8px;
             border-bottom: 1px solid #e5e7eb;
             letter-spacing: 0.5px;
+        }
+
+        /* Selo de Atualização Real */
+        .badge-atualizacao {
+            position: absolute;
+            top: 10px;
+            right: 16px;
+            font-size: 11px;
+            color: #065f46;
+            background: #d1fae5;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: bold;
         }
 
         /* Trava de tamanho para os filtros */
@@ -81,6 +95,7 @@
         }
 
         @media (max-width: 768px) {
+            .badge-atualizacao { position: static; display: inline-block; margin-bottom: 12px; }
             .painel-filtros .toolbar-row { grid-template-columns: 1fr; }
             .painel-exportacao .toolbar-row { flex-direction: column; }
         }
@@ -97,7 +112,7 @@
         .dataTables_wrapper .dataTables_filter label { font-size: 0; }
         .dataTables_wrapper .dataTables_filter input { font-size: 14px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; margin-left: 0; }
 
-        /* Tabela DataTables com OPÇÃO 4: Cabeçalho Fixo (Sticky) */
+        /* Tabela DataTables com Cabeçalho Fixo (Sticky) */
         table.dataTable { border-collapse: separate !important; border-spacing: 0; }
         table.dataTable thead th { 
             background: #003b75 !important; 
@@ -105,7 +120,7 @@
             text-transform: uppercase; 
             font-size: 12px; 
             padding: 12px;
-            position: sticky; /* Torna o cabeçalho fixo ao rolar */
+            position: sticky; 
             top: 0; 
             z-index: 10;
             box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
@@ -117,7 +132,7 @@
             @page { size: landscape; margin: 10mm; } 
             .topo, .painel-grupo, .dt-controles, .dataTables_info, .dataTables_paginate { display: none !important; }
             .container { box-shadow: none; width: 100%; margin: 0; padding: 0; border: none; }
-            table.dataTable thead th { position: static !important; } /* Desativa sticky na impressão */
+            table.dataTable thead th { position: static !important; } 
             table.dataTable { border-collapse: collapse !important; width: 100% !important; margin-top: 0 !important;}
             table.dataTable th, table.dataTable td { font-size: 9px !important; border: 1px solid #ddd !important; display: table-cell !important; padding: 6px 4px !important; white-space: normal !important; }
             table.dataTable tr.child { display: none !important; }
@@ -145,6 +160,7 @@
     <main class="container" id="main-container">
         <div class="toolbar">
             <div class="painel-grupo painel-filtros">
+                <div id="badge-atualizacao" class="badge-atualizacao">⏳ Identificando última modificação...</div>
                 <h3 class="titulo-painel">Filtros de Pesquisa</h3>
                 <div class="toolbar-row">
                     <select id="filtroGabinete" title="Escolha o Vereador Ativo"><option value="">Gabinete</option></select>
@@ -219,6 +235,7 @@
         let tabela;
         let dadosGlobais = [];
         let listaGabinetes = [];
+        let dataUltimaModificacao = "Não identificada";
 
         function imprimirSeguro() {
             const linhaRodape = $('#tabela tfoot tr');
@@ -242,11 +259,25 @@
 
         function getCsvUrl(id) { return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&t=${Date.now()}`; }
 
-        function csvParaArray(str) {
+        // --- ATUALIZAÇÃO: Lê o carimbo da Célula A1 e os Cabeçalhos da Linha 2 ---
+        function csvParaArray(str, isDiarias = false) {
             if (str.startsWith('\ufeff')) str = str.substring(1);
             const linhas = str.trim().split("\n");
             if(linhas.length === 0) return [];
+            
+            // Se for a planilha de Diárias, lê a primeira linha para pegar o carimbo (A1)
+            if (isDiarias) {
+                const primeiraLinha = linhas.shift(); 
+                if (primeiraLinha && primeiraLinha.toLowerCase().includes("modif_real:")) {
+                    // Pega o conteúdo antes das vírgulas vazias do CSV
+                    let carimboPuro = primeiraLinha.split(',')[0].replace(/"/g, '').trim();
+                    dataUltimaModificacao = carimboPuro.replace(/modif_real:/i, "").trim();
+                }
+            }
+
+            // Agora a linha de cima do array passa a ser o cabeçalho (que estava na Linha 2)
             const cabecalhoLinha = linhas.shift();
+            if(!cabecalhoLinha) return [];
             
             function extrairValores(linha) {
                 let valores = [], dentroDeAspas = false, valorAtual = "";
@@ -260,11 +291,12 @@
                 return valores.map(v => v.replace(/^"|"$/g, '').trim());
             }
 
-            const cabecalho = extrairValores(cabecalhoLinha).map(c => c.toLowerCase());
+            const cabecalhoLimpo = extrairValores(cabecalhoLinha).map(c => c.toLowerCase());
+
             return linhas.map(linha => {
                 const valores = extrairValores(linha);
                 let obj = {};
-                cabecalho.forEach((coluna, i) => obj[coluna] = valores[i] || "");
+                cabecalhoLimpo.forEach((coluna, i) => obj[coluna] = valores[i] || "");
                 return obj;
             });
         }
@@ -358,7 +390,6 @@
                 pageLength: 10, 
                 responsive: true, 
                 dom: '<"painel-grupo dt-controles"lf>rtip',
-                /* OPÇÃO 2: Ordenação padrão por Data de Partida (Coluna 5) Descendente */
                 order: [[5, 'desc']], 
                 language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
                 initComplete: function() { 
@@ -427,8 +458,9 @@
 
                 if(txtD.includes("<html") || txtG.includes("<html")) throw new Error("Acesso negado às planilhas.");
 
-                dadosGlobais = csvParaArray(txtD);
-                listaGabinetes = csvParaArray(txtG);
+                // Passa true para a planilha de diárias (tem carimbo em A1) e false para gabinetes
+                dadosGlobais = csvParaArray(txtD, true);
+                listaGabinetes = csvParaArray(txtG, false);
 
                 preencherFiltros();
                 
@@ -457,6 +489,13 @@
                 $('#filtroAno').val(maxAno);
                 
                 aplicarFiltros();
+                
+                // Exibe o carimbo puxado diretamente da célula A1 do Google Sheets
+                if (dataUltimaModificacao && dataUltimaModificacao !== "Não identificada") {
+                    $('#badge-atualizacao').html(`🟢 Última modificação real: ${dataUltimaModificacao}`);
+                } else {
+                    $('#badge-atualizacao').html(`🟢 Sincronizado e online`);
+                }
                 
                 $('#loader').hide(); 
                 $('#main-container').fadeIn(400, function() {
