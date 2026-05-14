@@ -3,405 +3,523 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Relatório de Estagiários</title>
+    <title>Relatório de Diárias e Adiantamentos</title>
 
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
-        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden;}
-        #wrapper { padding-bottom: 20px; } 
+        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; overflow-x: hidden; color: #1e293b; }
+        
+        .topo { 
+            background: #003b75; 
+            color: white; 
+            padding: 20px 35px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
+            border-radius: 12px;
+            margin: 15px 15px 20px 15px; 
+            gap: 20px;
+        }
 
-        .topo { background: #003b75; color: white; padding: 20px 35px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin: 15px; gap: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .topo h1 { margin: 0; font-size: 1.8rem; font-weight: 800; letter-spacing: 1px; }
+        .topo h1 { 
+            margin: 0; 
+            font-size: 1.8rem; 
+            letter-spacing: 1px; 
+            font-weight: 800; 
+            text-shadow: 0 2px 2px rgba(0,0,0,0.3); 
+            white-space: nowrap;
+        }
+        
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .brasao { height: 60px; width: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
-        .texto-camara { font-size: 10px; color: #cbd5e1; letter-spacing: 3px; font-weight: 500; text-transform: uppercase; white-space: nowrap; }
+        
+        .texto-camara { 
+            font-size: 10px; 
+            color: #cbd5e1; 
+            font-weight: 500; 
+            letter-spacing: 3px; 
+            text-transform: uppercase; 
+            white-space: nowrap;
+        }
 
-        #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: #003b75; font-size: 16px; font-weight: bold; }
+        #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; font-size: 16px; color: #003b75; font-weight: bold; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .container { margin: 0 15px 15px 15px; display: none; }
-        fieldset.painel-grupo { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: relative; }
-        legend.titulo-painel { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; letter-spacing: 1px; }
-
-        .badge-atualizacao { position: absolute; top: -12px; right: 20px; font-size: 11px; color: #065f46; background: #d1fae5; padding: 5px 12px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-
-        .input-pesquisa, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; transition: 0.2s; box-sizing: border-box; width: 100%; }
         
+        fieldset.painel-grupo {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: relative;
+        }
+
+        legend.titulo-painel {
+            font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase;
+            padding: 0 10px; letter-spacing: 1px;
+        }
+
+        .badge-atualizacao {
+            position: absolute; top: -12px; right: 20px; font-size: 11px; color: #065f46;
+            background: #d1fae5; padding: 5px 12px; border-radius: 20px; font-weight: 700;
+            border: 1px solid #a7f3d0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .painel-filtros .toolbar-row { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 1.2fr; gap: 12px; align-items: center; }
+        .painel-exportacao .toolbar-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        
+        @media (max-width: 950px) {
+            .painel-filtros .toolbar-row { grid-template-columns: repeat(6, 1fr); }
+            #filtroGabinete, #filtroServidor { grid-column: span 3; }
+            #filtroMes, #filtroAno, .painel-filtros button { grid-column: span 2; }
+            .topo h1 { font-size: 1.4rem; }
+            .texto-camara { letter-spacing: 1px; }
+        }
+
+        @media (max-width: 600px) {
+            .painel-filtros .toolbar-row { grid-template-columns: 1fr; }
+            #filtroGabinete, #filtroServidor, #filtroMes, #filtroAno, .painel-filtros button { grid-column: span 1; }
+            .painel-exportacao .toolbar-row { flex-direction: column; }
+            .topo { flex-direction: column; gap: 15px; text-align: center; padding: 20px;}
+            .topo h1 { white-space: normal; font-size: 1.3rem; line-height: 1.2;}
+            .texto-camara { white-space: normal; }
+        }
+        
+        select, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; transition: 0.2s; box-sizing: border-box; width: 100%; }
         button { background: #003b75; color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; flex: 1; }
         button:hover { background: #00274d; transform: translateY(-1px); }
         .btn-acao { background: #0284c7; }
-        
-        .painel-filtros .toolbar-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1.2fr; gap: 12px; align-items: center; }
-        .painel-exportacao .toolbar-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .btn-acao:hover { background: #0369a1; }
 
-        .dt-controles { display: flex; justify-content: flex-start; align-items: center; width: 100%; }
-        .dataTables_length label { font-size: 13px; color: #475569; font-weight: 600; display: flex; align-items: center; white-space: nowrap; }
-        .dataTables_length select { width: auto !important; margin: 0 8px; padding: 8px 30px 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; }
+        /* AJUSTE ESPECÍFICO PARA O SELETOR DE QUANTIDADE (O que quebrou na sua imagem) */
+        .dataTables_length select { width: auto !important; display: inline-block !important; margin: 0 5px !important; padding-right: 30px !important; }
+        .dataTables_length label { display: flex !important; align-items: center; font-size: 13px; font-weight: 600; color: #475569; }
+
+        .dt-controles { display: flex; justify-content: space-between; align-items: center; width: 100%; margin: 0; padding: 0; }
+        .dataTables_filter label { font-size: 0; } 
+        .dataTables_filter input { font-size: 14px; padding: 10px 15px; border: 1px solid #e2e8f0; border-radius: 8px; width: 300px; background: white; margin-left: 0 !important; box-sizing: border-box; }
+
+        @media (max-width: 650px) {
+            .dt-controles { flex-direction: column-reverse; gap: 15px; align-items: stretch; }
+            .dataTables_filter input { width: 100%; }
+            .dataTables_length label { justify-content: center; }
+        }
+
+        .painel-totais {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .total-bloco {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-left: 5px solid #003b75;
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .total-bloco.destaque { border-left: 5px solid #0284c7; }
+        .total-label { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .total-valor { font-size: 24px; font-weight: 800; color: #1e293b; }
+        
+        @media (max-width: 600px) {
+            .painel-totais { grid-template-columns: 1fr; gap: 10px; }
+            .total-valor { font-size: 20px; }
+        }
 
         #tabela thead { display: none; }
-        .card-estagiario { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; }
-        .card-header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; }
-        .nome-estagiario { font-size: 16px; font-weight: 800; color: #003b75; }
-        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; border: 1px solid transparent; }
-        .status-ativo { background: #d1fae5; color: #065f46; border-color: #a7f3d0;}
-        .status-desligado { background: #fee2e2; color: #991b1b; border-color: #fecaca;}
+        table.dataTable { border: none !important; background: transparent !important; }
         
-        .card-body { display: grid; grid-template-columns: 1fr 1fr; padding: 15px 20px; gap: 15px; }
-        .info-label { font-size: 10px; color: #94a3b8; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 4px;}
-        .info-valor { font-size: 14px; font-weight: 700; color: #1e293b;}
+        .card-diaria {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 0;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
 
-        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: -5px; }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; background: #fff; }
+        .card-servidor { font-size: 18px; font-weight: 800; color: #003b75; margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .card-cargo { font-size: 13px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .card-body-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 12px 20px;
+            gap: 15px;
+            background: #fff;
+        }
+        .card-body-row.border-top { border-top: 1px dashed #f1f5f9; padding-top: 12px; margin-top: 0; }
+        .info-bloco { display: flex; flex-direction: column; }
+        .info-label { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
+        .info-valor { font-size: 14px; font-weight: 700; color: #1e293b; }
+
+        .card-footer-quadro {
+            background: #f8fafc;
+            margin: 0 15px 15px 15px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: 1px solid #edf2f7;
+            display: grid;
+            grid-template-columns: 1fr 1fr; 
+            gap: 15px 20px;
+        }
+        .quadro-col-full {
+            grid-column: 1 / -1; 
+            border-top: 1px dashed #e2e8f0;
+            padding-top: 10px;
+        }
+        .quadro-label { font-size: 10px; font-weight: 800; color: #003b75; text-transform: uppercase; margin-bottom: 5px; display: block; }
+        .quadro-texto { font-size: 13px; color: #334155; line-height: 1.5; font-weight: 500; }
+
+        @media (max-width: 600px) {
+            .card-body-row { grid-template-columns: 1fr; gap: 10px; }
+            .card-footer-quadro { grid-template-columns: 1fr; gap: 12px; }
+        }
+
+        .dt-bottom-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+            margin-top: -5px; 
+        }
         
-        #cabecalho-impressao { display: none; }
-        
+        .dataTables_wrapper .dataTables_info {
+            padding-top: 0 !important;
+            font-size: 13px;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        .dataTables_wrapper .dataTables_paginate {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            border-radius: 8px !important;
+            padding: 6px 12px !important;
+            border: 1px solid transparent !important;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569 !important;
+            margin: 0 2px !important;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+            background: #f1f5f9 !important;
+            color: #003b75 !important;
+            border: 1px solid #cbd5e1 !important;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current, 
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+            background: #003b75 !important;
+            color: white !important;
+            border: 1px solid #003b75 !important;
+        }
+
+        @media (max-width: 650px) {
+            .dt-bottom-controls { flex-direction: column; gap: 15px; text-align: center; }
+        }
+
         @media print {
+            @page { size: portrait; margin: 15mm; }
             .topo, fieldset, .dt-controles, .dt-bottom-controls { display: none !important; }
-            #cabecalho-impressao { display: block !important; margin-bottom: 25px; }
-            .cabecalho-print-flex { display: flex; align-items: center; gap: 15px; border-bottom: 2px solid #003b75; padding-bottom: 15px; margin-bottom: 15px; }
-            .cabecalho-print-flex img { height: 60px; }
-            .cabecalho-print-textos h2 { margin: 0 0 5px 0; color: #003b75; font-size: 22px; font-weight: 800; }
-            .cabecalho-print-textos span { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }
-            #texto-filtros-impressao { font-size: 14px; color: #1e293b; background: #f8fafc; padding: 10px 15px; border-left: 4px solid #0284c7; border-radius: 4px; }
-            body { background: white !important; padding: 0 !important; }
-            .container { margin: 0 !important; width: 100% !important; display: block !important; }
-            .card-estagiario { break-inside: avoid; border: 1px solid #cbd5e1 !important; box-shadow: none !important; margin-bottom: 15px; }
+            .painel-totais { display: grid !important; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px !important; page-break-inside: avoid; }
+            .total-bloco { border: 2px solid #003b75 !important; background: #f8fafc !important; box-shadow: none !important; padding: 12px; }
+            .total-valor { font-size: 18px !important; color: #000 !important; }
+            .card-diaria { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; page-break-inside: avoid;}
+            .card-footer-quadro { background: #f1f5f9 !important; border: 1px solid #ccc !important; }
+            .container { margin: 0; width: 100%; }
+            body { background: white; }
         }
     </style>
 </head>
+
 <body>
+    
+    <div id="wrapper">
+        <header class="topo">
+            <h1>Relatório de Diárias e Adiantamentos</h1>
+            <div class="logo-container">
+                <img src="Brasão_de_Marília.png" alt="Brasão de Marília" class="brasao">
+                <span class="texto-camara">Câmara Municipal de Marília</span>
+            </div>
+        </header>
 
-<div id="wrapper">
-    <header class="topo">
-        <h1>Relatório de Estagiários</h1>
-        <div class="logo-container">
-            <img src="Brasão_de_Marília.png" alt="Brasão de Marília" class="brasao">
-            <span class="texto-camara">Câmara Municipal de Marília</span>
+        <div id="loader">
+            <div class="spinner"></div>
+            <span>Sincronizando base de dados...</span>
         </div>
-    </header>
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <span>Sincronizando base de dados...</span>
-    </div>
+        <main class="container" id="main-container">
+            <div class="toolbar">
+                <fieldset class="painel-grupo painel-filtros">
+                    <legend class="titulo-painel">Filtros de Pesquisa</legend>
+                    <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
+                    <div class="toolbar-row">
+                        <select id="filtroGabinete"><option value="">Gabinete</option></select>
+                        <select id="filtroServidor"><option value="">Servidor</option></select>
+                        <select id="filtroMes">
+                            <option value="">Mês</option>
+                            <option value="01">Janeiro</option><option value="02">Fevereiro</option>
+                            <option value="03">Março</option><option value="04">Abril</option>
+                            <option value="05">Maio</option><option value="06">Junho</option>
+                            <option value="07">Julho</option><option value="08">Agosto</option>
+                            <option value="09">Setembro</option><option value="10">Outubro</option>
+                            <option value="11">Novembro</option><option value="12">Dezembro</option>
+                        </select>
+                        <select id="filtroAno"><option value="">Ano</option></select>
+                        <button onclick="limparFiltros()">Limpar filtros</button>
+                    </div>
+                </fieldset>
+                
+                <fieldset class="painel-grupo painel-exportacao">
+                    <legend class="titulo-painel">Exportação e Impressão</legend>
+                    <div class="toolbar-row">
+                        <button onclick="exportarCSV()">⬇️ CSV</button>
+                        <button onclick="exportarXLSX()">⬇️ Excel</button>
+                        <button onclick="exportarJSON()">⬇️ JSON</button>
+                        <button onclick="exportarXML()">⬇️ XML</button>
+                        <button class="btn-acao" onclick="imprimirSeguro()">🖨️ Imprimir</button>
+                        <button class="btn-acao" onclick="iniciarCarregamento()">🔄 Atualizar</button>
+                    </div>
+                </fieldset>
 
-    <main class="container" id="main-container">
+                <fieldset class="painel-grupo" id="painel-busca">
+                    <legend class="titulo-painel">Visualização e Busca Rápida</legend>
+                </fieldset>
+            </div>
 
-        <div id="cabecalho-impressao">
-            <div class="cabecalho-print-flex">
-                <img src="Brasão_de_Marília.png" alt="Brasão de Marília">
-                <div class="cabecalho-print-textos">
-                    <h2>Relatório de Estagiários</h2>
-                    <span>Câmara Municipal de Marília</span>
+            <div id="painel-totais" class="painel-totais">
+                <div class="total-bloco">
+                    <span class="total-label">Soma das Diárias Filtradas</span>
+                    <span class="total-valor" id="total-diarias">R$ 0,00</span>
+                </div>
+                <div class="total-bloco destaque">
+                    <span class="total-label">Soma dos Adiantamentos Filtrados</span>
+                    <span class="total-valor" id="total-adiantamentos">R$ 0,00</span>
                 </div>
             </div>
-            <div id="texto-filtros-impressao"></div>
-        </div>
 
-        <fieldset class="painel-grupo painel-filtros">
-            <legend class="titulo-painel">Filtros de Pesquisa</legend>
-            <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
-            <div class="toolbar-row">
-                <input type="text" id="filtroNome" class="input-pesquisa" list="listaNomes" placeholder="Estagiário..." autocomplete="off" onfocus="this.value=''" onmousedown="if(this.value.length > 0) this.value='';">
-                <datalist id="listaNomes"></datalist>
-
-                <input type="text" id="filtroStatus" class="input-pesquisa" list="listaStatus" placeholder="Situação..." autocomplete="off" onfocus="this.value=''" onmousedown="if(this.value.length > 0) this.value='';">
-                <datalist id="listaStatus">
-                    <option value="Ativo">
-                    <option value="Desligado">
-                </datalist>
-
-                <input type="text" id="filtroMes" class="input-pesquisa" list="listaMeses" placeholder="Mês..." autocomplete="off" onfocus="this.value=''" onmousedown="if(this.value.length > 0) this.value='';">
-                <datalist id="listaMeses">
-                    <option value="Janeiro">
-                    <option value="Fevereiro">
-                    <option value="Março">
-                    <option value="Abril">
-                    <option value="Maio">
-                    <option value="Junho">
-                    <option value="Julho">
-                    <option value="Agosto">
-                    <option value="Setembro">
-                    <option value="Outubro">
-                    <option value="Novembro">
-                    <option value="Dezembro">
-                </datalist>
-
-                <input type="text" id="filtroAno" class="input-pesquisa" list="listaAnos" placeholder="Ano..." autocomplete="off" onfocus="this.value=''" onmousedown="if(this.value.length > 0) this.value='';">
-                <datalist id="listaAnos"></datalist>
-
-                <button onclick="limparFiltros()">Limpar filtros</button>
-            </div>
-        </fieldset>
-
-        <fieldset class="painel-grupo painel-exportacao">
-            <legend class="titulo-painel">Exportação e Impressão</legend>
-            <div class="toolbar-row">
-                <button onclick="exportarCSV()">⬇️ CSV</button>
-                <button onclick="exportarXLSX()">⬇️ Excel</button>
-                <button onclick="exportarJSON()">⬇️ JSON</button>
-                <button onclick="exportarXML()">⬇️ XML</button>
-                <button class="btn-acao" onclick="imprimirSeguro()">🖨️ Imprimir</button>
-                <button class="btn-acao" onclick="iniciarCarregamento()">🔄 Atualizar</button>
-            </div>
-        </fieldset>
-
-        <fieldset class="painel-grupo" id="painel-busca">
-            <legend class="titulo-painel">Visualização</legend>
-        </fieldset>
-
-        <table id="tabela" style="width:100%">
-            <thead><tr><th>Dados</th></tr></thead>
-            <tbody></tbody>
-        </table>
-    </main>
-</div>
+            <table id="tabela" style="width:100%">
+                <thead>
+                    <tr><th>Card</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </main>
+    </div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
     <script>
-        const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTK8EGvu2R21KpD3-E3SFDVC5qfWSihafXCpj_Y-ZnpM9DNBEb_Gimw0TboxkpiuMqJQ01WNNHm8-FA/pub?output=csv";
-        let dadosGlobais = [];
+        const SHEET_ID_DIARIAS = "1XP67Ojd_HK3S1IPvC_9eY32-lf0_qI3jfBfrLzasvQo";
+        const SHEET_ID_GABINETES = "1GwDig1yn9YIX8FSsHFPHL2iLCtwsZkNnquNjp5D7Oaw"; 
+
         let tabela;
+        let dadosGlobais = [];
+        let listaGabinetes = [];
         let carimboCompleto = "";
 
-        const mesesMapa = {
-            "janeiro": "01", "fevereiro": "02", "marco": "03", "abril": "04", "maio": "05", "junho": "06",
-            "julho": "07", "agosto": "08", "setembro": "09", "outubro": "10", "novembro": "11", "dezembro": "12"
-        };
+        function imprimirSeguro() {
+            if (!tabela) { window.print(); return; }
+            const originalLen = tabela.page.len();
+            tabela.page.len(-1).draw();
+            setTimeout(() => { window.print(); tabela.page.len(originalLen).draw(); }, 500);
+        }
 
-        function enviarAltura() {
-            setTimeout(function() {
-                const wrapper = document.getElementById('wrapper');
-                if (wrapper) {
-                    const altura = wrapper.offsetHeight + 40; 
-                    window.parent.postMessage({ tipo: 'ajustarAltura', valor: altura }, '*');
+        function getCsvUrl(id) { return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&t=${Date.now()}`; }
+
+        function csvParaArray(str, isDiarias = false) {
+            if (str.startsWith('\ufeff')) str = str.substring(1);
+            let linhas = str.trim().split("\n");
+            if (isDiarias) {
+                for (let i = 0; i < linhas.length; i++) {
+                    if (linhas[i].toUpperCase().includes("MODIF_REAL:")) {
+                        let match = linhas[i].match(/MODIF_REAL:\s*(\d{1,2}\/\d{1,2}\/\d{4}[^\d]+\d{1,2}:\d{2})/i);
+                        if (match) carimboCompleto = match[1].replace(/\s+/, ' às ');
+                        linhas.splice(i, 1); break;
+                    }
                 }
-            }, 100);
+            }
+            let cabecalhoLinha = linhas.shift();
+            const extrair = (l) => {
+                let res = [], d = false, v = "";
+                for (let c of l) { if (c === '"') d = !d; else if (c === ',' && !d) { res.push(v); v = ""; } else v += c; }
+                res.push(v); return res.map(x => x.replace(/^"|"$/g, '').trim());
+            };
+            const cab = extrair(cabecalhoLinha).map(c => c.toLowerCase());
+            return linhas.map(l => {
+                let val = extrair(l), o = {};
+                cab.forEach((c, i) => o[c] = val[i] || "");
+                if(o.servidor) o.servidor = o.servidor.toUpperCase();
+                return o;
+            }).filter(d => Object.values(d).some(v => v !== ""));
         }
 
-        const resizeObserver = new ResizeObserver(() => { enviarAltura(); });
-        window.addEventListener('load', () => {
-            const wrapper = document.getElementById('wrapper');
-            if (wrapper) resizeObserver.observe(wrapper);
-        });
-
-        function removerAcentos(str) {
-            return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : "";
+        function formatarMoeda(v) {
+            if (!v) return "R$ 0,00";
+            let n = v.replace(/R\$\s?/g, "").trim();
+            return n.includes(",") ? `R$ ${n}` : `R$ ${n},00`;
         }
+
+        function removerAcentos(s) { return s ? s.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
+
+        function preencherFiltros(mudouGabinete = false) {
+            const valServ = $('#filtroServidor').val(), valGab = $('#filtroGabinete').val();
+            if (!mudouGabinete) {
+                const gabs = [...new Set(listaGabinetes.map(g => Object.values(g)[0].toUpperCase()))].sort();
+                $('#filtroGabinete').html('<option value="">Gabinete</option>');
+                gabs.forEach(g => $('#filtroGabinete').append(`<option value="${g}">${g}</option>`));
+                $('#filtroGabinete').val(valGab);
+            }
+            let servs = [];
+            if (valGab) {
+                const gNorm = removerAcentos(valGab).toLowerCase();
+                servs = [...new Set(dadosGlobais.filter(d => removerAcentos(d.servidor).toLowerCase().includes(gNorm) || removerAcentos(d.cargo).toLowerCase().includes(gNorm)).map(d => d.servidor))].sort();
+            } else {
+                servs = [...new Set(dadosGlobais.map(d => d.servidor))].sort();
+            }
+            $('#filtroServidor').html('<option value="">Servidor</option>');
+            servs.forEach(s => $('#filtroServidor').append(`<option value="${s}">${s}</option>`));
+            $('#filtroServidor').val(valServ);
+            if (!mudouGabinete) {
+                const anos = [...new Set(dadosGlobais.map(d => (d.data_partida || "").split("/")[2]))].filter(a => a).sort();
+                $('#filtroAno').html('<option value="">Ano</option>');
+                anos.forEach(a => $('#filtroAno').append(`<option value="${a}">${a}</option>`));
+            }
+        }
+
+        function render(dados) {
+            if (tabela) { tabela.destroy(); $('#painel-busca .dt-controles').remove(); }
+            tabela = $('#tabela').DataTable({
+                data: dados, pageLength: 10,
+                dom: '<"dt-controles"lf>rt<"dt-bottom-controls"ip>',
+                language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
+                columns: [{ 
+                    data: null,
+                    render: (d) => `
+                        <div class="card-diaria">
+                            <div class="card-header"><span class="card-servidor">${d.servidor}</span><span class="card-cargo">${d.cargo || "-"}</span></div>
+                            <div class="card-body-row">
+                                <div class="info-bloco"><span class="info-label">Qtd Diárias</span><span class="info-valor">${d.qtde_diarias || "0"}</span></div>
+                                <div class="info-bloco"><span class="info-label">Partida</span><span class="info-valor">${d.data_partida || "-"}</span></div>
+                                <div class="info-bloco"><span class="info-label">Retorno</span><span class="info-valor">${d.data_retorno || "-"}</span></div>
+                            </div>
+                            <div class="card-body-row border-top">
+                                <div class="info-bloco"><span class="info-label">Valor Diárias</span><span class="info-valor">${formatarMoeda(d.valor_diarias)}</span></div>
+                                <div class="info-bloco"><span class="info-label">Adiantamento</span><span class="info-valor">${formatarMoeda(d.valor_adiantamento)}</span></div>
+                                <div class="info-bloco"><span class="info-label">Dotação</span><span class="info-valor">${d.dotacao || d["dotação"] || "-"}</span></div>
+                            </div>
+                            <div class="card-footer-quadro">
+                                <div class="quadro-col"><span class="quadro-label">Cidade</span><span class="quadro-texto">${d.cidade_destino || "-"}</span></div>
+                                <div class="quadro-col"><span class="quadro-label">Local</span><span class="quadro-texto">${d.local_destino || "-"}</span></div>
+                                <div class="quadro-col quadro-col-full"><span class="quadro-label">Motivação</span><span class="quadro-texto">${d.motivacao_viagem || "-"}</span></div>
+                            </div>
+                        </div>`
+                }],
+                initComplete: function() { 
+                    $('.dataTables_filter input').attr('placeholder', 'Pesquisar servidor, cargo ou destino...');
+                    $('.dt-controles').appendTo('#painel-busca'); 
+                },
+                drawCallback: function() {
+                    let api = this.api(), tD = 0, tA = 0;
+                    const parse = (v) => parseFloat(v.replace(/R\$\s?|[.]/g, '').replace(',', '.')) || 0;
+                    api.rows({ filter: 'applied' }).data().each(d => { tD += parse(d.valor_diarias); tA += parse(d.valor_adiantamento); });
+                    const fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+                    $('#total-diarias').text(fmt.format(tD)); $('#total-adiantamentos').text(fmt.format(tA));
+                    const h = document.getElementById('wrapper').offsetHeight + 50;
+                    window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
+                }
+            });
+        }
+
+        function aplicarFiltros() {
+            const serv = $('#filtroServidor').val(), mes = $('#filtroMes').val(), ano = $('#filtroAno').val(), gab = $('#filtroGabinete').val();
+            const res = dadosGlobais.filter(d => {
+                const p = (d.data_partida || "").split("/"), mD = p[1], aD = p[2];
+                const mS = !serv || d.servidor === serv, mM = !mes || mD === mes, mA = !ano || aD === ano;
+                let mG = true;
+                if (gab) {
+                    const gN = removerAcentos(gab).toLowerCase();
+                    mG = removerAcentos(d.servidor).toLowerCase().includes(gN) || removerAcentos(d.cargo).toLowerCase().includes(gN);
+                }
+                return mS && mM && mA && mG;
+            });
+            render(res);
+        }
+
+        function limparFiltros() { $('#filtroServidor, #filtroMes, #filtroAno, #filtroGabinete').val(''); preencherFiltros(); aplicarFiltros(); }
 
         async function iniciarCarregamento() {
             $('#loader').show(); $('#main-container').hide();
             try {
-                const response = await fetch(`${SHEET_URL}&t=${Date.now()}`, { cache: "no-store" });
-                const csvText = await response.text();
-                
-                dadosGlobais = csvParaArrayOriginal(csvText);
-                dadosGlobais = ordenarDados(dadosGlobais);
-                
-                preencherFiltros();
-                aplicarFiltros();
-
-                if (carimboCompleto) $('#badge-atualizacao').html(`🟢 Dados atualizados em ${carimboCompleto}`);
-                else $('#badge-atualizacao').html(`🟢 Dados atualizados agora`);
-
-                $('#loader').hide();
-                $('#main-container').fadeIn(400, () => enviarAltura());
-            } catch (e) {
-                $('#loader').html('<span style="color:red">Erro ao carregar dados.</span>');
-            }
-        }
-
-        function csvParaArrayOriginal(str) {
-            if (str.startsWith('\ufeff')) str = str.substring(1);
-            let linhas = str.trim().split("\n");
-            for (let i = 0; i < linhas.length; i++) {
-                if (linhas[i].toUpperCase().includes("MODIF_REAL:")) {
-                    let match = linhas[i].match(/MODIF_REAL:\s*(\d{1,2}\/\d{1,2}\/\d{4}[^\d]+\d{1,2}:\d{2}(?::\d{2})?)/i);
-                    if (match && match[1]) {
-                        let dataCrua = match[1].replace(/,/g, '').trim();
-                        carimboCompleto = dataCrua.replace(/\s+/, ' às ').replace(/:\d{2}$/, '');
-                    }
-                    linhas.splice(i, 1);
-                    break; 
-                }
-            }
-            let cabecalhoLinha = "";
-            while (linhas.length > 0) {
-                cabecalhoLinha = linhas.shift();
-                if (cabecalhoLinha.trim().replace(/,/g, '') !== "") break; 
-            }
-            if(!cabecalhoLinha) return [];
-            function extrairValores(linha) {
-                let valores = [], dentroDeAspas = false, valorAtual = "";
-                for (let i = 0; i < linha.length; i++) {
-                    let char = linha[i];
-                    if (char === '"') dentroDeAspas = !dentroDeAspas;
-                    else if (char === ',' && !dentroDeAspas) { valores.push(valorAtual); valorAtual = ""; }
-                    else valorAtual += char;
-                }
-                valores.push(valorAtual);
-                return valores.map(v => v.replace(/^"|"$/g, '').trim());
-            }
-            const colunas = extrairValores(cabecalhoLinha).map(c => c.toLowerCase().trim());
-            let dados = [];
-            linhas.forEach(linha => {
-                const valores = extrairValores(linha);
-                if (valores.filter(v => v !== "").length > 0) {
-                    let obj = {};
-                    colunas.forEach((col, i) => {
-                        if(col.includes('nome')) obj.nome_estagiario = valores[i];
-                        if(col.includes('admissao')) obj.data_admissao = valores[i];
-                        if(col.includes('desligamento')) obj.data_desligamento = valores[i];
-                        obj[col] = valores[i];
-                    });
-                    if(obj.nome_estagiario) {
-                        obj.situacao = (!obj.data_desligamento || obj.data_desligamento === "" || obj.data_desligamento === "-") ? "Ativo" : "Desligado";
-                        dados.push(obj);
-                    }
-                }
-            });
-            return dados;
-        }
-
-        function converterDataParaNumero(dataStr) {
-            if (!dataStr || dataStr === '-' || dataStr.trim() === '') return 0;
-            const p = dataStr.split('/');
-            if(p.length === 3) return parseInt(p[2] + p[1] + p[0], 10);
-            return 0;
-        }
-
-        function ordenarDados(dadosArray) {
-            return dadosArray.sort((a, b) => {
-                if (a.situacao !== b.situacao) return a.situacao === 'Ativo' ? -1 : 1;
-                if (a.situacao === 'Ativo') return converterDataParaNumero(a.data_admissao) - converterDataParaNumero(b.data_admissao);
-                return converterDataParaNumero(b.data_desligamento) - converterDataParaNumero(a.data_desligamento);
-            });
-        }
-
-        function preencherFiltros() {
-            const nomes = [...new Set(dadosGlobais.map(d => d.nome_estagiario))].filter(n => n).sort();
-            $('#listaNomes').empty();
-            nomes.forEach(n => $('#listaNomes').append(`<option value="${n}">`));
-            
-            const anos = new Set();
-            dadosGlobais.forEach(d => {
-                if (d.data_admissao) anos.add(d.data_admissao.split('/')[2]);
-                if (d.data_desligamento && d.data_desligamento !== "-") anos.add(d.data_desligamento.split('/')[2]);
-            });
-            const anosOrdenados = Array.from(anos).filter(a => a && a.length === 4).sort((a, b) => b - a);
-            $('#listaAnos').empty();
-            anosOrdenados.forEach(a => $('#listaAnos').append(`<option value="${a}">`));
-        }
-
-        function render(dados) {
-            if (tabela) {
-                tabela.destroy();
-                $('#painel-busca .dt-controles').remove();
-            }
-            tabela = $('#tabela').DataTable({
-                data: dados,
-                pageLength: 10,
-                ordering: false,
-                language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
-                dom: '<"dt-controles"l>rt<"dt-bottom-controls"ip>',
-                columns: [{
-                    data: null,
-                    render: function(data) {
-                        const statusClass = data.situacao === 'Ativo' ? 'status-ativo' : 'status-desligado';
-                        return `
-                            <div class="card-estagiario">
-                                <div class="card-header">
-                                    <span class="nome-estagiario">${data.nome_estagiario}</span>
-                                    <span class="status-badge ${statusClass}">${data.situacao}</span>
-                                </div>
-                                <div class="card-body">
-                                    <div><span class="info-label">Data de Admissão</span><span class="info-valor">${data.data_admissao || '-'}</span></div>
-                                    <div><span class="info-label">Data de Desligamento</span><span class="info-valor">${data.data_desligamento || '-'}</span></div>
-                                </div>
-                            </div>
-                        `;
-                    }
-                }],
-                initComplete: function() {
-                    $('.dt-controles').appendTo('#painel-busca');
-                    enviarAltura();
-                }
-            });
-            tabela.on('draw.dt page.dt', () => enviarAltura());
-        }
-
-        function aplicarFiltros() {
-            const n = removerAcentos($('#filtroNome').val());
-            const s = removerAcentos($('#filtroStatus').val());
-            const mDigitado = removerAcentos($('#filtroMes').val());
-            const a = $('#filtroAno').val();
-            
-            const mAlvo = mesesMapa[mDigitado] || "";
-
-            let res = dadosGlobais.filter(d => {
-                const nomeMatch = !n || removerAcentos(d.nome_estagiario).includes(n);
-                const statusMatch = !s || removerAcentos(d.situacao).includes(s);
-                const anoMatch = !a || (d.data_admissao.includes(a) || (d.data_desligamento && d.data_desligamento.includes(a)));
-                
-                const dAdm = (d.data_admissao || "").split('/');
-                const dDes = (d.data_desligamento || "").split('/');
-                
-                const mesMatch = !mDigitado || (dAdm[1] === mAlvo || dDes[1] === mAlvo);
-
-                return nomeMatch && statusMatch && mesMatch && anoMatch;
-            });
-            res = ordenarDados(res);
-            render(res);
-        }
-
-        function limparFiltros() { 
-            $('.input-pesquisa').val('');
-            aplicarFiltros(); 
-        }
-        
-        $('.input-pesquisa').on('input', aplicarFiltros);
-        window.onload = iniciarCarregamento;
-
-        function imprimirSeguro() {
-            if (!tabela) return;
-            const descFiltros = `<strong>Relatório Filtrado:</strong> Gerado em ${new Date().toLocaleDateString('pt-BR')}`;
-            $('#texto-filtros-impressao').html(descFiltros);
-            const tamanhoOriginal = tabela.page.len();
-            tabela.page.len(-1).draw('page');
-            setTimeout(function() {
-                window.print();
-                tabela.page.len(tamanhoOriginal).draw('page');
-            }, 500);
+                const [rD, rG] = await Promise.all([fetch(getCsvUrl(SHEET_ID_DIARIAS)), fetch(getCsvUrl(SHEET_ID_GABINETES))]);
+                dadosGlobais = csvParaArray(await rD.text(), true);
+                listaGabinetes = csvParaArray(await rG.text(), false);
+                preencherFiltros(); aplicarFiltros();
+                $('#badge-atualizacao').html(carimboCompleto ? `🟢 Atualizado em ${carimboCompleto}` : `🟢 Atualizado hoje`);
+                $('#loader').hide(); $('#main-container').fadeIn();
+            } catch (e) { $('#loader').html('<div style="color:red">Erro ao carregar dados.</div>'); }
         }
 
         function exportarCSV() {
-            const d = tabela.rows({filter:'applied'}).data().toArray();
-            let csv = "\ufeffNome,Admissão,Desligamento,Situação\n";
-            d.forEach(r => csv += `"${r.nome_estagiario}","${r.data_admissao}","${r.data_desligamento}","${r.situacao}"\n`);
-            baixar(csv, "estagiarios.csv", "text/csv;charset=utf-8;");
+            const d = tabela.rows({ filter: 'applied' }).data().toArray(); if(!d.length) return;
+            let csv = "\ufeff" + Object.keys(d[0]).join(",") + "\n";
+            d.forEach(r => csv += Object.values(r).map(v => `"${v}"`).join(",") + "\n");
+            baixar(csv, "relatorio.csv", "text/csv");
         }
-        function exportarJSON() { baixar(JSON.stringify(tabela.rows({filter:'applied'}).data().toArray(), null, 2), "estagiarios.json", "application/json"); }
+
+        function exportarXLSX() {
+            const d = tabela.rows({ filter: 'applied' }).data().toArray(); if(!d.length) return;
+            const ws = XLSX.utils.json_to_sheet(d), wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Diarias"); XLSX.writeFile(wb, "relatorio.xlsx");
+        }
+
+        function exportarJSON() {
+            const d = tabela.rows({ filter: 'applied' }).data().toArray(); if(!d.length) return;
+            baixar(JSON.stringify(d, null, 2), "relatorio.json", "application/json");
+        }
+
+        function exportarXML() {
+            const d = tabela.rows({ filter: 'applied' }).data().toArray(); if(!d.length) return;
+            let xml = '<?xml version="1.0" encoding="UTF-8"?><relatorio>';
+            d.forEach(r => { xml += '<registro>'; for(let k in r) xml += `<${k}>${r[k]}</${k}>`; xml += '</registro>'; });
+            xml += '</relatorio>'; baixar(xml, "relatorio.xml", "application/xml");
+        }
+
         function baixar(c, n, t) {
             const b = new Blob([c], { type: t }), u = URL.createObjectURL(b), a = document.createElement("a");
             a.href = u; a.download = n; a.click(); URL.revokeObjectURL(u);
         }
-        function exportarXLSX() {
-            const ws = XLSX.utils.json_to_sheet(tabela.rows({filter:'applied'}).data().toArray());
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Estagiários");
-            XLSX.writeFile(wb, "estagiarios.xlsx");
-        }
-        function exportarXML() {
-            const d = tabela.rows({filter:'applied'}).data().toArray();
-            let xml = '<?xml version="1.0" encoding="UTF-8"?><estagiarios>';
-            d.forEach(r => xml += `<estagiario><nome>${r.nome_estagiario}</nome><adm>${r.data_admissao}</adm><des>${r.data_desligamento}</des><sit>${r.situacao}</sit></estagiario>`);
-            xml += '</estagiarios>';
-            baixar(xml, "estagiarios.xml", "application/xml");
-        }
+
+        $('#filtroGabinete').on('change', () => { preencherFiltros(true); aplicarFiltros(); });
+        $('#filtroServidor, #filtroMes, #filtroAno').on('change', aplicarFiltros);
+        window.onload = iniciarCarregamento;
     </script>
 </body>
 </html>
