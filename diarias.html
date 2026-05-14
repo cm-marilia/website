@@ -116,7 +116,7 @@
             border-radius: 10px;
             border: 1px solid #edf2f7;
             display: grid;
-            grid-template-columns: 1fr 2fr; /* 2 colunas agora que cidade subiu */
+            grid-template-columns: 1fr 2fr; 
             gap: 20px;
         }
         .quadro-label { font-size: 10px; font-weight: 800; color: #003b75; text-transform: uppercase; margin-bottom: 5px; display: block; }
@@ -349,7 +349,7 @@
                                     
                                     <div class="card-body-row">
                                         <div class="info-bloco">
-                                            <span class="info-label">Nº Diárias</span>
+                                            <span class="info-label">Quantidade de Diárias</span>
                                             <span class="info-valor">${data["n de diárias"] || "0"}</span>
                                         </div>
                                         <div class="info-bloco">
@@ -357,18 +357,18 @@
                                             <span class="info-valor">${formatarMoeda(data["valor diarias"])}</span>
                                         </div>
                                         <div class="info-bloco">
-                                            <span class="info-label">Adiantamento</span>
+                                            <span class="info-label">Valor do Adiantamento</span>
                                             <span class="info-valor">${formatarMoeda(data["valor adiantamento"])}</span>
                                         </div>
                                     </div>
                                     
                                     <div class="card-body-row border-top">
                                         <div class="info-bloco">
-                                            <span class="info-label">Partida</span>
+                                            <span class="info-label">Data da Partida</span>
                                             <span class="info-valor">${data["data da partida"] || "-"}</span>
                                         </div>
                                         <div class="info-bloco">
-                                            <span class="info-label">Retorno</span>
+                                            <span class="info-label">Data do Retorno</span>
                                             <span class="info-valor">${data["data do retorno"] || "-"}</span>
                                         </div>
                                         <div class="info-bloco">
@@ -379,11 +379,11 @@
 
                                     <div class="card-footer-quadro">
                                         <div class="quadro-col">
-                                            <span class="quadro-label">Destino da Viagem</span>
+                                            <span class="quadro-label">Local do Destino</span>
                                             <span class="quadro-texto">${data["local de destino"] || "-"}</span>
                                         </div>
                                         <div class="quadro-col">
-                                            <span class="quadro-label">Finalidade</span>
+                                            <span class="quadro-label">Motivação da Viagem</span>
                                             <span class="quadro-texto">${data["finalidade"] || "-"}</span>
                                         </div>
                                     </div>
@@ -443,25 +443,55 @@
             } catch (e) { $('#loader').html(`<div style="padding:20px; color:red;">Erro ao carregar dados.</div>`); }
         }
 
+        // Alterados os nomes aqui também para saírem corretamente nos botões de Exportar (Excel, CSV, JSON)
+        function obterDadosFiltradosDoDOM() {
+            const dados = [];
+            // Como agora usamos Cards, pegamos os dados filtrados diretamente da API do DataTables (dadosGlobais filtrados)
+            const dadosAtuais = tabela.rows({ filter: 'applied' }).data().toArray();
+            
+            dadosAtuais.forEach(d => {
+                dados.push({ 
+                    "Servidor": d.servidor || "", 
+                    "Cargo": d["cargo ou função"] || "", 
+                    "Quantidade de Diárias": d["n de diárias"] || "", 
+                    "Valor das Diárias": formatarMoeda(d["valor diarias"]), 
+                    "Valor do Adiantamento": formatarMoeda(d["valor adiantamento"]), 
+                    "Data da Partida": d["data da partida"] || "", 
+                    "Data do Retorno": d["data do retorno"] || "", 
+                    "Local do Destino": d["local de destino"] || "", 
+                    "Cidade": d.cidade || "", 
+                    "Motivação da Viagem": d.finalidade || "" 
+                });
+            });
+            return dados;
+        }
+
+        function obterNomeArquivoBase() {
+            const serv = $('#filtroServidor').val(), mes = $('#filtroMes').val(), ano = $('#filtroAno').val(), gab = $('#filtroGabinete').val();
+            if (!serv && !mes && !ano && !gab) return "diarias_completo";
+            let p = ["diarias"]; if (gab) p.push(gab); if (serv) p.push(serv); if (mes) p.push(mes); if (ano) p.push(ano);
+            return p.join('_').normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, "");
+        }
+
         function exportarCSV() {
-            if (!dadosGlobais.length) return;
-            const h = Object.keys(dadosGlobais[0]);
+            const d = obterDadosFiltradosDoDOM(); if (!d.length) return;
+            const h = Object.keys(d[0]);
             let csv = "\ufeff" + h.join(",") + "\n";
-            dadosGlobais.forEach(r => { csv += h.map(key => `"${(r[key] || "").replace(/"/g, '""')}"`).join(",") + "\n"; });
-            baixarArquivo(csv, "relatorio_diarias.csv", "text/csv;charset=utf-8;");
+            d.forEach(r => { csv += h.map(key => `"${(r[key] || "").replace(/"/g, '""')}"`).join(",") + "\n"; });
+            baixarArquivo(csv, obterNomeArquivoBase() + ".csv", "text/csv;charset=utf-8;");
         }
 
         function exportarXLSX() {
-            if (!dadosGlobais.length) return;
-            const ws = XLSX.utils.json_to_sheet(dadosGlobais);
+            const d = obterDadosFiltradosDoDOM(); if (!d.length) return;
+            const ws = XLSX.utils.json_to_sheet(d);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Diárias");
-            XLSX.writeFile(wb, "relatorio_diarias.xlsx");
+            XLSX.writeFile(wb, obterNomeArquivoBase() + ".xlsx");
         }
 
         function exportarJSON() {
-            if (!dadosGlobais.length) return;
-            baixarArquivo(JSON.stringify(dadosGlobais, null, 2), "relatorio_diarias.json", "application/json");
+            const d = obterDadosFiltradosDoDOM(); if (!d.length) return;
+            baixarArquivo(JSON.stringify(d, null, 2), obterNomeArquivoBase() + ".json", "application/json");
         }
 
         function baixarArquivo(c, n, t) {
