@@ -54,21 +54,18 @@
         .info-valor { font-size: 14px; font-weight: 700; color: #1e293b;}
 
         .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: -5px; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button { border-radius: 8px !important; padding: 6px 12px !important; border: 1px solid transparent !important; font-size: 13px; font-weight: 600; color: #475569 !important; margin: 0 2px !important; }
         
         #cabecalho-impressao { display: none; }
         
         @media print {
-            /* ESTA REGRA REMOVE O LINK/DATA DO RODAPÉ E CABEÇALHO DO NAVEGADOR */
             @page { margin: 10mm; } 
-
             .topo, fieldset, .dt-controles, .dt-bottom-controls { display: none !important; }
             #cabecalho-impressao { display: block !important; margin-bottom: 25px; }
             .cabecalho-print-flex { display: flex; align-items: center; gap: 15px; border-bottom: 2px solid #003b75; padding-bottom: 15px; margin-bottom: 15px; }
             .cabecalho-print-flex img { height: 60px; }
             .cabecalho-print-textos h2 { margin: 0 0 5px 0; color: #003b75; font-size: 22px; font-weight: 800; }
             .cabecalho-print-textos span { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }
-            
-            #texto-filtros-impressao { font-size: 14px; color: #1e293b; padding: 5px 0; border: none; background: transparent; }
             
             body { background: white !important; padding: 0 !important; }
             .container { margin: 0 !important; width: 100% !important; display: block !important; }
@@ -102,7 +99,6 @@
                     <span>Câmara Municipal de Marília</span>
                 </div>
             </div>
-            <div id="texto-filtros-impressao"></div>
         </div>
 
         <fieldset class="painel-grupo painel-filtros">
@@ -196,16 +192,12 @@
             try {
                 const response = await fetch(`${SHEET_URL}&t=${Date.now()}`, { cache: "no-store" });
                 const csvText = await response.text();
-                
                 dadosGlobais = csvParaArrayOriginal(csvText);
                 dadosGlobais = ordenarDados(dadosGlobais);
-                
                 preencherFiltros();
                 aplicarFiltros();
-
                 if (carimboCompleto) $('#badge-atualizacao').html(`🟢 Dados atualizados em ${carimboCompleto}`);
                 else $('#badge-atualizacao').html(`🟢 Dados atualizados agora`);
-
                 $('#loader').hide();
                 $('#main-container').fadeIn(400, () => enviarAltura());
             } catch (e) {
@@ -284,7 +276,6 @@
             const nomes = [...new Set(dadosGlobais.map(d => d.nome_estagiario))].filter(n => n).sort();
             $('#filtroNome').html('<option value="">Nome do Estagiário</option>');
             nomes.forEach(n => $('#filtroNome').append(`<option value="${n}">${n}</option>`));
-            
             const anos = new Set();
             dadosGlobais.forEach(d => {
                 if (d.data_admissao) anos.add(d.data_admissao.split('/')[2]);
@@ -337,7 +328,6 @@
             const s = $('#filtroStatus').val();
             const m = $('#filtroMes').val();
             const a = $('#filtroAno').val();
-
             let res = dadosGlobais.filter(d => {
                 const matchN = !n || d.nome_estagiario === n;
                 const matchS = !s || d.situacao === s;
@@ -351,18 +341,12 @@
             render(res);
         }
 
-        function limparFiltros() { 
-            $('select').val(''); 
-            aplicarFiltros(); 
-        }
-        
+        function limparFiltros() { $('select').val(''); aplicarFiltros(); }
         $('select').on('change', aplicarFiltros);
         window.onload = iniciarCarregamento;
 
         function imprimirSeguro() {
             if (!tabela) return;
-            const descFiltros = `<strong>Relatório Filtrado:</strong> Gerado em ${new Date().toLocaleDateString('pt-BR')}`;
-            $('#texto-filtros-impressao').html(descFiltros);
             const tamanhoOriginal = tabela.page.len();
             tabela.page.len(-1).draw('page');
             setTimeout(function() {
