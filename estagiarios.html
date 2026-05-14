@@ -15,6 +15,7 @@
         .topo { background: #003b75; color: white; padding: 20px 35px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin: 15px; gap: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         .topo h1 { margin: 0; font-size: 1.8rem; font-weight: 800; letter-spacing: 1px; }
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .brasao { height: 60px; width: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
         .texto-camara { font-size: 10px; color: #cbd5e1; letter-spacing: 3px; font-weight: 500; text-transform: uppercase; white-space: nowrap; }
 
         /* Loader */
@@ -24,8 +25,15 @@
 
         /* Container e Painéis */
         .container { margin: 0 15px 15px 15px; display: none; }
-        fieldset.painel-grupo { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        fieldset.painel-grupo { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: relative; }
         legend.titulo-painel { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; letter-spacing: 1px; }
+
+        /* Badge de Atualização */
+        .badge-atualizacao {
+            position: absolute; top: -12px; right: 20px; font-size: 11px; color: #065f46;
+            background: #d1fae5; padding: 5px 12px; border-radius: 20px; font-weight: 700;
+            border: 1px solid #a7f3d0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
 
         /* Botões e Inputs Padrão */
         select, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; transition: 0.2s; box-sizing: border-box; width: 100%; white-space: nowrap; }
@@ -38,7 +46,7 @@
         .painel-filtros .toolbar-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1.2fr; gap: 12px; align-items: center; }
         .painel-exportacao .toolbar-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
-        /* --- VISUALIZAÇÃO E BUSCA RÁPIDA (Estilo Idêntico à Imagem) --- */
+        /* Visualização e Busca Rápida */
         .dt-controles { display: flex; justify-content: space-between; align-items: center; width: 100%; margin: 0; padding: 0; }
         .dataTables_length label { font-size: 13px; color: #475569; font-weight: 600; display: flex; align-items: center; }
         .dataTables_length select { width: auto !important; margin: 0 8px; padding: 8px 30px 8px 12px; } 
@@ -98,6 +106,7 @@
     <header class="topo">
         <h1>Relatório de Estagiários</h1>
         <div class="logo-container">
+            <img src="Brasão_de_Marília.png" alt="Brasão de Marília" class="brasao">
             <span class="texto-camara">Câmara Municipal de Marília</span>
         </div>
     </header>
@@ -111,6 +120,7 @@
         
         <fieldset class="painel-grupo painel-filtros">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
+            <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
             <div class="toolbar-row">
                 <select id="filtroNome"><option value="">Nome do Estagiário</option></select>
                 <select id="filtroStatus">
@@ -174,6 +184,12 @@
                 preencherFiltros();
                 aplicarFiltros();
 
+                // Atualiza o relógio da sincronização
+                const agora = new Date();
+                const dataFormatada = agora.toLocaleDateString('pt-BR');
+                const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                $('#badge-atualizacao').html(`🟢 Dados atualizados em ${dataFormatada} às ${horaFormatada}`);
+
                 $('#loader').hide();
                 $('#main-container').fadeIn();
             } catch (e) {
@@ -182,6 +198,7 @@
             }
         }
 
+        // Função de leitura mantida na versão anterior (sem a correção de caracteres ocultos/acentos)
         function csvParaArray(str) {
             const linhas = str.split("\n").filter(l => l.trim() !== "");
             if(linhas.length === 0) return [];
@@ -224,14 +241,13 @@
         function render(dados) {
             if (tabela) {
                 tabela.destroy();
-                $('#painel-busca .dt-controles').remove(); // Remove controles velhos
+                $('#painel-busca .dt-controles').remove(); 
             }
 
             tabela = $('#tabela').DataTable({
                 data: dados,
                 pageLength: 10,
                 language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
-                // Configuração DOM idêntica à do relatório de diárias
                 dom: '<"dt-controles"lf>rt<"dt-bottom-controls"ip>',
                 columns: [{
                     data: null,
@@ -258,9 +274,7 @@
                     }
                 }],
                 initComplete: function() {
-                    // Texto do placeholder ajustado
                     $('.dataTables_filter input').attr('placeholder', 'Pesquisar estagiário ou situação...');
-                    // Move os controles superiores para dentro do fieldset Visualização
                     $('.dt-controles').appendTo('#painel-busca');
                 }
             });
@@ -297,9 +311,7 @@
         window.onload = iniciarCarregamento;
 
         // Funções de Exportação
-        function obterDadosFiltrados() {
-            return tabela.rows({filter:'applied'}).data().toArray();
-        }
+        function obterDadosFiltrados() { return tabela.rows({filter:'applied'}).data().toArray(); }
 
         function baixarArquivo(conteudo, nomeArquivo, tipo) {
             const blob = new Blob([conteudo], { type: tipo });
@@ -325,7 +337,6 @@
 
         function exportarXLSX() {
             const data = obterDadosFiltrados();
-            // Formata o json antes de gerar o excel para ficar bonito
             const dadosExcel = data.map(d => ({
                 "Nome do Estagiário": d.nome_estagiario,
                 "Data de Admissão": d.data_admissao,
