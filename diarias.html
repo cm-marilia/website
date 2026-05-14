@@ -21,6 +21,7 @@
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
             border-radius: 12px;
             margin: 15px 15px 20px 15px; 
+            gap: 20px;
         }
 
         .topo h1 { 
@@ -29,6 +30,7 @@
             letter-spacing: 1px; 
             font-weight: 800; 
             text-shadow: 0 2px 2px rgba(0,0,0,0.3); 
+            white-space: nowrap;
         }
         
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -40,6 +42,7 @@
             font-weight: 500; 
             letter-spacing: 3px; 
             text-transform: uppercase; 
+            white-space: nowrap;
         }
 
         #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; font-size: 16px; color: #003b75; font-weight: bold; }
@@ -76,6 +79,8 @@
             .painel-filtros .toolbar-row { grid-template-columns: repeat(6, 1fr); }
             #filtroGabinete, #filtroServidor { grid-column: span 3; }
             #filtroMes, #filtroAno, .painel-filtros button { grid-column: span 2; }
+            .topo h1 { font-size: 1.4rem; }
+            .texto-camara { letter-spacing: 1px; }
         }
 
         @media (max-width: 600px) {
@@ -83,6 +88,8 @@
             #filtroGabinete, #filtroServidor, #filtroMes, #filtroAno, .painel-filtros button { grid-column: span 1; }
             .painel-exportacao .toolbar-row { flex-direction: column; }
             .topo { flex-direction: column; gap: 15px; text-align: center; padding: 20px;}
+            .topo h1 { white-space: normal; font-size: 1.3rem; line-height: 1.2;}
+            .texto-camara { white-space: normal; }
         }
         
         select, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; transition: 0.2s; box-sizing: border-box; width: 100%; white-space: nowrap; }
@@ -230,11 +237,52 @@
             .dt-bottom-controls { flex-direction: column; gap: 15px; text-align: center; }
         }
 
+        /* --------------------------------------------------- */
+        /* CONFIGURAÇÕES DE IMPRESSÃO - RETRATO E TOTAIS NO TOPO */
+        /* --------------------------------------------------- */
         @media print {
-            .topo, fieldset, .dt-controles, .dt-bottom-controls, .painel-totais { display: none !important; }
-            .card-diaria { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; page-break-inside: avoid;}
-            .card-footer-quadro { background: #eee !important; border: 1px solid #ccc !important; }
-            .container { margin: 0; }
+            @page { 
+                size: portrait; /* Força o formato Retrato */
+                margin: 15mm; 
+            }
+            
+            /* Esconde menus e botões para uma impressão limpa */
+            .topo, fieldset, .dt-controles, .dt-bottom-controls { display: none !important; }
+            
+            /* Garante que o painel de totais apareça na primeira página */
+            .painel-totais { 
+                display: grid !important; 
+                grid-template-columns: 1fr 1fr; 
+                gap: 15px; 
+                margin-bottom: 30px !important;
+                page-break-inside: avoid;
+            }
+            
+            .total-bloco {
+                border: 2px solid #003b75 !important;
+                background: #f8fafc !important;
+                box-shadow: none !important;
+                padding: 12px;
+            }
+            
+            .total-valor { font-size: 18px !important; color: #000 !important; }
+
+            /* Estilização dos Cards na Impressão */
+            .card-diaria { 
+                break-inside: avoid; /* Tenta não cortar o cartão entre páginas */
+                border: 1px solid #ccc; 
+                box-shadow: none; 
+                margin-bottom: 15px; 
+                page-break-inside: avoid;
+            }
+            
+            .card-footer-quadro { 
+                background: #f1f5f9 !important; 
+                border: 1px solid #ccc !important; 
+            }
+            
+            .container { margin: 0; width: 100%; }
+            body { background: white; }
         }
     </style>
 </head>
