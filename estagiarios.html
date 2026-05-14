@@ -31,9 +31,8 @@
             border: 1px solid #a7f3d0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        /* Adicionado #filtroNome para herdar o estilo visual igual ao select */
         #filtroNome, select, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; transition: 0.2s; box-sizing: border-box; width: 100%; white-space: nowrap; }
-        #filtroNome { white-space: normal; } /* Permite digitar normalmente */
+        #filtroNome { white-space: normal; } 
         
         button { background: #003b75; color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; flex: 1; }
         button:hover { background: #00274d; transform: translateY(-1px); }
@@ -42,12 +41,9 @@
         .painel-filtros .toolbar-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1.2fr; gap: 12px; align-items: center; }
         .painel-exportacao .toolbar-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
-        .dt-controles { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        /* CORREÇÃO DO TEXTO QUEBRADO: white-space: nowrap adicionado abaixo */
+        .dt-controles { display: flex; justify-content: flex-start; align-items: center; width: 100%; }
         .dataTables_length label { font-size: 13px; color: #475569; font-weight: 600; display: flex; align-items: center; white-space: nowrap; }
         .dataTables_length select { width: auto !important; margin: 0 8px; padding: 8px 30px 8px 12px; }
-        .dataTables_filter label { font-size: 0; }
-        .dataTables_filter input { font-size: 14px; padding: 10px 15px; border: 1px solid #e2e8f0; border-radius: 8px; width: 300px; }
 
         #tabela thead { display: none; }
         .card-estagiario { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; }
@@ -140,6 +136,11 @@
         let tabela;
         let carimboCompleto = "";
 
+        // Função auxiliar para ignorar acentos durante a pesquisa
+        function removerAcentos(str) {
+            return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+        }
+
         async function iniciarCarregamento() {
             $('#loader').show(); $('#main-container').hide();
             try {
@@ -147,7 +148,7 @@
                 const csvText = await response.text();
                 
                 dadosGlobais = csvParaArrayOriginal(csvText);
-                dadosGlobais = ordenarDados(dadosGlobais); // Aplica ordenação inicial
+                dadosGlobais = ordenarDados(dadosGlobais);
                 
                 preencherFiltros();
                 aplicarFiltros();
@@ -221,38 +222,29 @@
             return dados;
         }
 
-        // --- FUNÇÕES DE ORDENAÇÃO CUSTOMIZADA ---
         function converterDataParaNumero(dataStr) {
             if (!dataStr || dataStr === '-' || dataStr.trim() === '') return 0;
             const p = dataStr.split('/');
-            // Transforma DD/MM/YYYY em YYYYMMDD para comparar numericamente
             if(p.length === 3) return parseInt(p[2] + p[1] + p[0], 10);
             return 0;
         }
 
         function ordenarDados(dadosArray) {
             return dadosArray.sort((a, b) => {
-                // 1. Situação (Ativos primeiro)
                 if (a.situacao !== b.situacao) {
                     return a.situacao === 'Ativo' ? -1 : 1;
                 }
-                
-                // 2. Se for Ativo, ordena por Data de Admissão mais antiga primeiro (Crescente)
                 if (a.situacao === 'Ativo') {
                     return converterDataParaNumero(a.data_admissao) - converterDataParaNumero(b.data_admissao);
-                } 
-                // 3. Se for Desligado, ordena por Data de Desligamento mais recente primeiro (Decrescente)
-                else {
+                } else {
                     return converterDataParaNumero(b.data_desligamento) - converterDataParaNumero(a.data_desligamento);
                 }
             });
         }
-        // ------------------------------------------
 
         function preencherFiltros() {
             const nomes = [...new Set(dadosGlobais.map(d => d.nome_estagiario))].filter(n => n).sort();
             
-            // Popula o datalist para o campo de input pesquisável
             $('#listaNomes').empty();
             nomes.forEach(n => $('#listaNomes').append(`<option value="${n}">`));
 
@@ -275,9 +267,10 @@
             tabela = $('#tabela').DataTable({
                 data: dados,
                 pageLength: 10,
-                ordering: false, // Desativa a ordenação padrão para respeitar a nossa customizada
+                ordering: false,
                 language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
-                dom: '<"dt-controles"lf>rt<"dt-bottom-controls"ip>',
+                // Configuração DOM alterada: O 'f' (filtro do datatables) foi removido daqui
+                dom: '<"dt-controles"l>rt<"dt-bottom-controls"ip>',
                 columns: [{
                     data: null,
                     render: function(data) {
@@ -297,26 +290,34 @@
                     }
                 }],
                 initComplete: function() {
-                    $('.dataTables_filter input').attr('placeholder', 'Pesquisar na tabela...');
                     $('.dt-controles').appendTo('#painel-busca');
                 }
             });
         }
 
         function aplicarFiltros() {
-            // O input de nome agora usa .val() da mesma forma que o select usava
-            const n = $('#filtroNome').val(), s = $('#filtroStatus').val(), m = $('#filtroMes').val(), a = $('#filtroAno').val();
+            // Pega o valor digitado e remove acentos e maiúsculas para facilitar a busca parcial
+            const n = removerAcentos($('#filtroNome').val().toLowerCase());
+            const s = $('#filtroStatus').val();
+            const m = $('#filtroMes').val();
+            const a = $('#filtroAno').val();
+
             let res = dadosGlobais.filter(d => {
-                const matchN = !n || d.nome_estagiario === n;
+                // A lógica matchN agora verifica se o nome do estagiário CONTÉM o que foi digitado
+                const nomeDoEstagiarioLpo = removerAcentos(d.nome_estagiario.toLowerCase());
+                const matchN = !n || nomeDoEstagiarioLpo.includes(n);
+                
                 const matchS = !s || d.situacao === s;
+                
                 const dAdm = (d.data_admissao || "").split('/');
                 const dDes = (d.data_desligamento || "").split('/');
+                
                 const matchM = !m || (dAdm[1] === m || dDes[1] === m);
                 const matchA = !a || (dAdm[2] === a || dDes[2] === a);
+                
                 return matchN && matchS && matchM && matchA;
             });
 
-            // Aplica ordenação nos resultados filtrados
             res = ordenarDados(res);
             render(res);
         }
@@ -327,13 +328,11 @@
             aplicarFiltros(); 
         }
         
-        // Dispara o filtro ao digitar no input de nome ou mudar as opções dos selects
         $('#filtroNome').on('input', aplicarFiltros);
         $('select').on('change', aplicarFiltros);
         
         window.onload = iniciarCarregamento;
 
-        // Exportações
         function exportarCSV() {
             const d = tabela.rows({filter:'applied'}).data().toArray();
             let csv = "\ufeffNome,Admissão,Desligamento,Situação\n";
