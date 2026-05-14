@@ -44,7 +44,6 @@
             border: 1px solid #a7f3d0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        /* AJUSTE AQUI: 2 partes para os grandes, e 1 parte exata para Mês, Ano e Limpar Filtros */
         .painel-filtros .toolbar-row { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 1fr; gap: 12px; align-items: center; }
         .painel-exportacao .toolbar-row { display: flex; gap: 10px; align-items: center; }
         
@@ -102,8 +101,22 @@
             .total-valor { font-size: 20px; }
         }
 
+        /* CONTROLES DATATABLES E CAIXA DE PESQUISA */
         .dt-controles { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 5px; }
-        .dataTables_filter input { padding: 10px 15px; border: 1px solid #e2e8f0; border-radius: 8px; width: 280px; background: white; }
+        
+        /* Zera a fonte do label para esconder o "Pesquisar:" */
+        .dataTables_filter label { font-size: 0; } 
+        
+        /* Restaura a fonte e aplica o design apenas na caixa de input */
+        .dataTables_filter input { 
+            font-size: 14px; 
+            padding: 10px 15px; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 8px; 
+            width: 280px; 
+            background: white; 
+            margin-left: 0 !important;
+        }
 
         #tabela thead { display: none; }
         table.dataTable { border: none !important; background: transparent !important; }
