@@ -418,4 +418,54 @@
     }
 
     function exportarXLSX() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray(); if(!data.
+        const data = tabela.rows({ filter: 'applied' }).data().toArray(); if(!data.length) return;
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Diarias");
+        XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx");
+    }
+
+    function exportarJSON() {
+        const data = tabela.rows({ filter: 'applied' }).data().toArray(); if(!data.length) return;
+        downloadFile(JSON.stringify(data, null, 2), gerarNomeArquivoBase() + ".json", "application/json");
+    }
+
+    function exportarXML() {
+        const data = tabela.rows({ filter: 'applied' }).data().toArray(); if(!data.length) return;
+        let xml = '<?xml version="1.0" encoding="UTF-8"?><diarias>';
+        data.forEach(r => {
+            xml += '<registro>';
+            for (let k in r) xml += `<${k}>${r[k]}</${k}>`;
+            xml += '</registro>';
+        });
+        xml += '</diarias>';
+        downloadFile(xml, gerarNomeArquivoBase() + ".xml", "application/xml");
+    }
+
+    function downloadFile(content, fileName, mime) {
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = fileName; a.click();
+    }
+
+    function imprimirSeguro() {
+        if (!tabela) return;
+        const len = tabela.page.len();
+        tabela.page.len(-1).draw('page');
+        setTimeout(() => { window.print(); tabela.page.len(len).draw('page'); }, 500);
+    }
+
+    function limparFiltros() { 
+        $('#filtroTexto, #filtroServidor, #filtroMes, #filtroAno, #filtroGabinete').val(''); 
+        preencherFiltros(); 
+        aplicarFiltros(); 
+    }
+
+    $('#filtroTexto').on('input', aplicarFiltros);
+    $('#filtroGabinete').on('change', () => { preencherFiltros(true); aplicarFiltros(); });
+    $('#filtroServidor, #filtroMes, #filtroAno').on('change', aplicarFiltros);
+    window.onload = iniciarCarregamento;
+</script>
+</body>
+</html>
