@@ -32,12 +32,13 @@
         legend.titulo-painel { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; letter-spacing: 1px; }
         .badge-atualizacao { position: absolute; top: -12px; right: 20px; font-size: 11px; color: #065f46; background: #d1fae5; padding: 5px 12px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
 
-        /* Grades de Layout */
-        .toolbar-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-items: center; }
-        .painel-exportacao .toolbar-row { grid-template-columns: repeat(6, 1fr); }
+        /* Grades de Layout - ORGANIZAÇÃO DOS FILTROS E EXPORTAÇÃO */
+        .filtro-linha-1 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+        .filtro-linha-2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .painel-exportacao .toolbar-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 
         select, input, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; box-sizing: border-box; width: 100%; height: 42px;}
-        button { background: #003b75; color: white; border: none; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        button { background: #003b75; color: white; border: none; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
         .btn-acao { background: #0284c7 !important; }
 
         /* Visualização */
@@ -111,7 +112,8 @@
 
         @media (max-width: 850px) {
             .card-body { grid-template-columns: 1fr 1fr; }
-            .painel-exportacao .toolbar-row { grid-template-columns: repeat(3, 1fr); }
+            /* Ajusta os botões de exportação em iframes pequenos para não quebrarem linha */
+            .painel-exportacao .toolbar-row button { font-size: 11px; padding: 10px 4px; gap: 4px; }
             .dt-bottom-controls { flex-direction: column; justify-content: center; text-align: center; padding: 15px 10px; }
             .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 4px 8px !important; font-size: 12px; }
         }
@@ -142,7 +144,8 @@
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
             <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
-            <div class="toolbar-row">
+            
+            <div class="filtro-linha-1">
                 <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off">
                 <select id="filtroStatus">
                     <option value="">Situação</option>
@@ -154,6 +157,9 @@
                     <option value="admissao">Por Admissão</option>
                     <option value="demissao">Por Demissão</option>
                 </select>
+            </div>
+            
+            <div class="filtro-linha-2">
                 <select id="filtroMes">
                     <option value="">Mês</option>
                     <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
@@ -229,16 +235,15 @@
             let obj = {};
             headers.forEach((h, i) => {
                 let val = colunas[i] ? colunas[i].replace(/"/g, '').trim() : "";
-                if (h.includes("nome_estagiario")) obj.nome = val;
-                if (h.includes("data_admissao")) obj.admissao = val;
-                if (h.includes("data_desligamento")) obj.desligamento = val;
+                if (h.includes("nome")) obj.nome = val;
+                if (h.includes("admissao")) obj.admissao = val;
+                if (h.includes("desligamento")) obj.desligamento = val;
             });
             obj.situacao = (!obj.desligamento || obj.desligamento === "-") ? "Ativo" : "Desligado";
             return obj;
         }).filter(d => d.nome);
     }
 
-    // ATUALIZADO: Agora lê os anos tanto da Admissão quanto do Desligamento
     function popularFiltroAno(dados) {
         let anos = new Set();
         dados.forEach(d => {
@@ -251,7 +256,6 @@
         anos.forEach(a => $('#filtroAno').append(new Option(a, a)));
     }
 
-    // ATUALIZADO: Motor de busca de datas igual ao de funcionários
     function aplicarFiltros() {
         const txt = $('#filtroNome').val().toLowerCase();
         const sit = $('#filtroStatus').val();
@@ -352,7 +356,7 @@
         setTimeout(() => { window.print(); tabela.page.len(tOriginal).draw('page'); }, 500);
     }
 
-    function limparFiltros() { $('#filtroNome').val(''); $('select').val(''); aplicarFiltros(); }
+    function limparFiltros() { $('#filtroNome').val(''); $('select').val(''); $('#filtroStatus').val('Ativo'); aplicarFiltros(); }
     $('#filtroNome').on('input', aplicarFiltros);
     $('select').on('change', aplicarFiltros);
     window.onload = iniciarCarregamento;
