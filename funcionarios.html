@@ -54,7 +54,10 @@
         .card-func { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden; }
         
         .card-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
+        .card-header-texto { display: flex; flex-direction: column; gap: 2px; }
         .card-nome { font-size: 17px; font-weight: 800; color: #003b75; text-transform: uppercase; }
+        .card-cargo { font-size: 13px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+        
         .status-tag { font-size: 10px; padding: 4px 10px; border-radius: 20px; font-weight: 800; text-transform: uppercase; }
         .tag-ativo { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
         .tag-desligado { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
@@ -64,9 +67,15 @@
         .info-label { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
         .info-valor { font-size: 14px; font-weight: 700; color: #334155; }
 
-        /* Controles DataTables */
-        .dt-controles { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; }
-        .dataTables_filter input { padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; width: 280px; }
+        /* Controles DataTables (Topo) */
+        .dt-controles { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; }
+        
+        /* Correção do visual "Exibir X resultados" */
+        .dataTables_length label { display: flex !important; align-items: center; font-size: 13px; font-weight: 600; color: #475569; white-space: nowrap; }
+        .dataTables_length select { width: auto !important; margin: 0 8px !important; padding: 6px 30px 6px 12px !important; border-radius: 6px; }
+
+        /* Estilo da nova contagem de registros */
+        .info-total { font-size: 14px; font-weight: 600; color: #003b75; background: #e0f2fe; padding: 8px 16px; border-radius: 8px; border: 1px solid #bae6fd; }
 
         /* Paginação Customizada */
         .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; }
@@ -80,8 +89,8 @@
                 display: flex !important; align-items: center; gap: 20px; 
                 border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px;
             }
-            .card-func { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; }
-            .container { display: block !important; }
+            .card-func { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; }
+            .container { display: block !important; margin: 0; }
             /* Numeração de página via CSS */
             .page-footer { position: fixed; bottom: 0; right: 0; font-size: 10px; color: #666; content: "Página " counter(page); }
         }
@@ -132,11 +141,10 @@
                 <select id="filtroMesDem">
                     <option value="">Mês Demissão</option>
                     <option value="01">Janeiro</option><option value="02">Fevereiro</option>
-                    <option value="03">Março</option><option value="04">Abril</option>
-                    <option value="05">Maio</option><option value="06">Junho</option>
-                    <option value="07">Julho</option><option value="08">Agosto</option>
-                    <option value="09">Setembro</option><option value="10">Outubro</option>
-                    <option value="11">Novembro</option><option value="12">Dezembro</option>
+                    <option value="03">Março</option><option value="04">Abril</option><option value="05">Maio</option>
+                    <option value="06">Junho</option><option value="07">Julho</option><option value="08">Agosto</option>
+                    <option value="09">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
                 </select>
                 <button onclick="limparFiltros()">Limpar Filtros</button>
             </div>
@@ -154,7 +162,7 @@
             </div>
         </fieldset>
 
-        <div id="area-busca"></div> <table id="tabela" style="width:100%">
+        <table id="tabela" style="width:100%">
             <thead><tr><th>Dados</th></tr></thead>
             <tbody></tbody>
         </table>
@@ -170,17 +178,18 @@
         let dadosGlobais = [];
         let carimboAtualizacao = "";
 
-        // Função para converter Data BR (DD/MM/YYYY) para Objeto Date
+        // Função para converter Data BR (DD/MM/YYYY) para Objeto Date (para ordenação)
         function parseDataBR(str) {
             if (!str) return null;
             const p = str.split('/');
             return new Date(p[2], p[1] - 1, p[0]);
         }
 
-        // Função de Impressão
+        // Função de Impressão (revela tudo, imprime, restaura)
         function imprimirRelatorio() {
+            if(!tabela) return;
             const len = tabela.page.len();
-            tabela.page.len(-1).draw(); // Mostra todos para imprimir
+            tabela.page.len(-1).draw(); 
             setTimeout(() => { 
                 window.print(); 
                 tabela.page.len(len).draw(); 
@@ -191,8 +200,15 @@
         function processarCSV(csvText) {
             const linhas = csvText.split(/\r?\n/);
             
-            // 1. Pega carimbo da Célula A1
-            carimboAtualizacao = linhas[0].split(',')[0].replace(/"/g, '');
+            // 1. Pega carimbo da Célula A1 e extrai Data e Hora com Regex
+            let textoA1 = linhas[0].split(',')[0].replace(/"/g, '');
+            let matchDataHora = textoA1.match(/(\d{2}\/\d{2}\/\d{4})[^\d]*(\d{2}:\d{2})/);
+            
+            if (matchDataHora) {
+                carimboAtualizacao = `Atualizado em ${matchDataHora[1]} às ${matchDataHora[2]}`;
+            } else {
+                carimboAtualizacao = textoA1.replace(/MODIF_REAL:\s*/i, "Atualizado em ");
+            }
 
             // 2. Cabeçalho está na linha 2 (índice 1)
             const headers = linhas[1].split(',').map(h => h.trim().toLowerCase());
@@ -202,7 +218,7 @@
             for (let i = 2; i < linhas.length; i++) {
                 if (!linhas[i].trim()) continue;
                 
-                // Regex para lidar com vírgulas dentro de aspas se houver
+                // Trata aspas dentro do CSV
                 const colunas = linhas[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 let obj = {};
                 
@@ -211,7 +227,7 @@
                     obj[h] = val;
                 });
 
-                // Lógica de Situação
+                // Lógica de Situação baseada na demissão
                 obj.situacao = obj.data_demissao === "" ? "Ativo" : "Desligado";
                 
                 // Lógica de Jornada
@@ -222,20 +238,26 @@
             return lista;
         }
 
-        // Regra de Ordenação solicitada
+        // Regra de Ordenação: Ativos (Antigos 1º) e Desligados (Recentes 1º)
         function ordenarFuncionarios(lista) {
             return lista.sort((a, b) => {
-                // Primeiro: Ativos em cima
+                // 1. Prioridade: Ativos primeiro
                 if (a.situacao !== b.situacao) {
                     return a.situacao === "Ativo" ? -1 : 1;
                 }
                 
+                // 2. Sub-ordenação por data
+                const dataA_adm = parseDataBR(a.data_admissao) || 0;
+                const dataB_adm = parseDataBR(b.data_admissao) || 0;
+                const dataA_dem = parseDataBR(a.data_demissao) || 0;
+                const dataB_dem = parseDataBR(b.data_demissao) || 0;
+
                 if (a.situacao === "Ativo") {
-                    // Ativos: Mais antigos primeiro (Data Admissão ASC)
-                    return parseDataBR(a.data_admissao) - parseDataBR(b.data_admissao);
+                    // Ativos: Mais antigos primeiro (ASC)
+                    return dataA_adm - dataB_adm;
                 } else {
-                    // Desligados: Mais recentes primeiro (Data Demissão DESC)
-                    return parseDataBR(b.data_demissao) - parseDataBR(a.data_demissao);
+                    // Desligados: Mais recentes primeiro (DESC)
+                    return dataB_dem - dataA_dem;
                 }
             });
         }
@@ -274,7 +296,8 @@
             tabela = $('#tabela').DataTable({
                 data: dados,
                 pageLength: 10,
-                dom: '<"dt-controles"lf>rt<"dt-bottom-controls"ip>',
+                ordering: false, // Desativa ordenação automática p/ manter regra mista
+                dom: '<"dt-controles"l<"info-total">>rt<"dt-bottom-controls"ip>', // layout: exibe registros em vez da busca livre
                 language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
                 columns: [{
                     data: null,
@@ -283,14 +306,13 @@
                         return `
                             <div class="card-func">
                                 <div class="card-header">
-                                    <span class="card-nome">${d.nome_func}</span>
+                                    <div class="card-header-texto">
+                                        <span class="card-nome">${d.nome_func}</span>
+                                        <span class="card-cargo">${d.cargo || "-"}</span>
+                                    </div>
                                     <span class="status-tag ${statusClass}">${d.situacao}</span>
                                 </div>
                                 <div class="card-body">
-                                    <div class="info-bloco">
-                                        <span class="info-label">Cargo</span>
-                                        <span class="info-valor">${d.cargo}</span>
-                                    </div>
                                     <div class="info-bloco">
                                         <span class="info-label">Lotação</span>
                                         <span class="info-valor">${d.lotacao}</span>
@@ -312,20 +334,22 @@
                         `;
                     }
                 }],
-                initComplete: function() {
-                    $('.dataTables_filter input').attr('placeholder', 'Nome, cargo ou lotação...');
+                drawCallback: function(settings) {
+                    // Atualiza dinamicamente o número de registros encontrados ao desenhar tabela
+                    const total = this.api().rows({ filter: 'applied' }).count();
+                    $('.info-total').html(`<b>${total}</b> registros encontrados`);
                 }
             });
         }
 
-        // Lógica de Filtros Combinados
+        // Aplicação de Filtros Combinados com reordenação
         function aplicarFiltros() {
             const lot = $('#filtroLotacao').val();
             const sit = $('#filtroSituacao').val();
             const mAdm = $('#filtroMesAdm').val();
             const mDem = $('#filtroMesDem').val();
 
-            const filtrados = dadosGlobais.filter(d => {
+            let filtrados = dadosGlobais.filter(d => {
                 const matchLot = !lot || d.lotacao === lot;
                 const matchSit = !sit || d.situacao === sit;
                 const matchMAdm = !mAdm || (d.data_admissao && d.data_admissao.split('/')[1] === mAdm);
@@ -334,6 +358,8 @@
                 return matchLot && matchSit && matchMAdm && matchMDem;
             });
 
+            // Reordena sempre antes de atualizar a tabela para manter regra
+            filtrados = ordenarFuncionarios(filtrados); 
             renderizarTabela(filtrados);
         }
 
@@ -386,7 +412,7 @@
             a.click();
         }
 
-        // Listeners
+        // Gatilhos
         $('select').on('change', aplicarFiltros);
         window.onload = carregarDados;
 
