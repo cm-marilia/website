@@ -57,7 +57,9 @@
         .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
         .status-ativo { background: #d1fae5; color: #065f46; }
         .status-desligado { background: #fee2e2; color: #991b1b; }
-        .card-body { display: grid; grid-template-columns: repeat(4, 1fr); padding: 20px 25px; gap: 15px; }
+        
+        /* ATUALIZADO: Removida a jornada, alterado para 3 colunas em vez de 4 */
+        .card-body { display: grid; grid-template-columns: repeat(3, 1fr); padding: 20px 25px; gap: 15px; }
         .info-label { font-size: 10px; color: #94a3b8; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 4px; }
         .info-valor { font-size: 14px; font-weight: 700; color: #1e293b; }
 
@@ -112,7 +114,6 @@
 
         @media (max-width: 850px) {
             .card-body { grid-template-columns: 1fr 1fr; }
-            /* Ajusta os botões de exportação em iframes pequenos para não quebrarem linha */
             .painel-exportacao .toolbar-row button { font-size: 11px; padding: 10px 4px; gap: 4px; }
             .dt-bottom-controls { flex-direction: column; justify-content: center; text-align: center; padding: 15px 10px; }
             .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 4px 8px !important; font-size: 12px; }
@@ -206,8 +207,11 @@
 
     function enviarAltura() {
         setTimeout(() => {
-            const h = document.getElementById('wrapper').offsetHeight + 40;
-            window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
+            const wrapper = document.getElementById('wrapper');
+            if (wrapper) {
+                const h = wrapper.offsetHeight + 40;
+                window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
+            }
         }, 200);
     }
 
@@ -307,6 +311,7 @@
                 data: null,
                 render: function(data) {
                     const statusClass = data.situacao === 'Ativo' ? 'status-ativo' : 'status-desligado';
+                    // ATUALIZADO: HTML do card sem a jornada
                     return `
                         <div class="card-estagiario">
                             <div class="card-header">
@@ -315,7 +320,6 @@
                             </div>
                             <div class="card-body">
                                 <div class="info-col"><span class="info-label">Lotação</span><span class="info-valor">Câmara Municipal</span></div>
-                                <div class="info-col"><span class="info-label">Jornada</span><span class="info-valor">30h</span></div>
                                 <div class="info-col"><span class="info-label">Admissão</span><span class="info-valor">${data.admissao}</span></div>
                                 <div class="info-col"><span class="info-label">Desligamento</span><span class="info-valor">${data.desligamento || '-'}</span></div>
                             </div>
@@ -341,7 +345,9 @@
             const ws = XLSX.utils.json_to_sheet(filtrados);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Dados");
-            XLSX.writeFile(wb, `relatorio_estagiarios.xlsx`);
+            // Se certifique de ter a função removerAcentos e gerarNomeArquivoBase disponíveis no código ou altere o nome aqui
+            let nomeFinal = "relatorio_estagiarios";
+            XLSX.writeFile(wb, `${nomeFinal}.xlsx`);
         } else {
             let conteudo = JSON.stringify(filtrados, null, 2);
             const b = new Blob([conteudo], { type: "text/plain" });
