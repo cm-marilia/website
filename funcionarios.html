@@ -241,29 +241,28 @@
 
         function gerarNomeArquivoBase() {
             let partes = [];
+            
+            // Pega o que foi digitado no campo de texto
             const nome = $('#filtroNome').val().trim();
-            if (nome) partes.push(removerAcentos(nome).replace(/\s+/g, '_'));
+            if (nome) partes.push(nome.replace(/\s+/g, '_'));
             
-            const cargo = $('#filtroCargo').val();
-            if (cargo) partes.push(removerAcentos(cargo).replace(/\s+/g, '_'));
+            // Pega o texto exato da opção selecionada nos selects (ignora se estiver no genérico)
+            if ($('#filtroCargo').val()) partes.push($('#filtroCargo option:selected').text().replace(/\s+/g, '_'));
+            if ($('#filtroLotacao').val()) partes.push($('#filtroLotacao option:selected').text().replace(/\s+/g, '_'));
+            if ($('#filtroSituacao').val()) partes.push($('#filtroSituacao option:selected').text().replace(/\s+/g, '_'));
+            if ($('#filtroTipoData').val()) partes.push($('#filtroTipoData option:selected').text().replace(/\s+/g, '_'));
+            if ($('#filtroMes').val()) partes.push($('#filtroMes option:selected').text().replace(/\s+/g, '_'));
+            if ($('#filtroAno').val()) partes.push($('#filtroAno option:selected').text().replace(/\s+/g, '_'));
             
-            const lotacao = $('#filtroLotacao').val();
-            if (lotacao) partes.push(removerAcentos(lotacao).replace(/\s+/g, '_'));
+            // Se nenhum filtro foi aplicado, nomeia como completo
+            if (partes.length === 0) return "funcionarios_completo";
             
-            const situacao = $('#filtroSituacao').val();
-            if (situacao) partes.push(situacao); 
-
-            const tipoData = $('#filtroTipoData').val();
-            if (tipoData) partes.push(tipoData);
-
-            const mesStr = $('#filtroMes').val() ? removerAcentos($('#filtroMes option:selected').text()) : '';
-            if (mesStr) partes.push(mesStr);
-
-            const ano = $('#filtroAno').val();
-            if (ano) partes.push(ano);
+            // Junta as partes com underline e garante o prefixo "funcionarios_"
+            let nomeFinal = "funcionarios_" + partes.join('_');
             
-            if (partes.length === 0) return "relatorio_completo";
-            return "relatorio_" + partes.join('_').replace(/[^a-zA-Z0-9_]/g, '');
+            // Removemos acentos e caracteres especiais (como ç ou ~) apenas para garantir 
+            // que o Windows/Mac/Linux não bloqueiem ou corrompam o arquivo na hora de salvar.
+            return removerAcentos(nomeFinal).replace(/[^a-zA-Z0-9_]/g, '');
         }
 
         function imprimirRelatorio() {
