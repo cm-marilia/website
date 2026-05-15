@@ -40,10 +40,11 @@
         button { background: #003b75; color: white; border: none; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-acao { background: #0284c7 !important; }
 
-        /* Visualização - Seletor e Badge */
+        /* Visualização */
         .dt-custom-header { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .dataTables_length { display: inline-block; font-size: 14px; color: #475569; font-weight: 500; }
-        .dataTables_length select { width: 70px !important; margin: 0 10px; height: 38px; display: inline-block; }
+        .dataTables_length { display: flex !important; align-items: center; font-size: 14px; color: #475569; font-weight: 500; margin-bottom: 0; }
+        .dataTables_length label { display: flex; align-items: center; gap: 8px; margin: 0; }
+        .dataTables_length select { width: auto !important; padding: 5px 10px !important; border-radius: 6px; height: auto; }
         .badge-contagem { background: #e0f2fe; color: #0369a1; padding: 10px 25px; border-radius: 10px; font-weight: 700; border: 1px solid #bae6fd; }
 
         /* Cards de Dados */
@@ -59,7 +60,7 @@
         .info-label { font-size: 10px; color: #94a3b8; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 4px; }
         .info-valor { font-size: 14px; font-weight: 700; color: #1e293b; }
 
-        /* PAGINAÇÃO IDÊNTICA AO CÓDIGO DE FUNCIONÁRIOS */
+        /* Paginação Responsiva */
         .dt-bottom-controls { 
             display: flex; 
             justify-content: space-between; 
@@ -103,7 +104,7 @@
             color: #475569 !important; 
             margin: 0 !important; 
             background: transparent !important; 
-            height: auto; /* Evita que herde o height:42px dos botões globais */
+            height: auto; 
         }
         .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border: 1px solid #003b75 !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button:hover { background: #e2e8f0 !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; }
@@ -145,8 +146,13 @@
                 <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off">
                 <select id="filtroStatus">
                     <option value="">Situação</option>
-                    <option value="Ativo">Ativo</option>
-                    <option value="Desligado">Desligado</option>
+                    <option value="Ativo" selected>Ativos</option>
+                    <option value="Desligado">Desligados</option>
+                </select>
+                <select id="filtroTipoData">
+                    <option value="">Filtro de Data...</option>
+                    <option value="admissao">Por Admissão</option>
+                    <option value="demissao">Por Demissão</option>
                 </select>
                 <select id="filtroMes">
                     <option value="">Mês</option>
@@ -232,27 +238,57 @@
         }).filter(d => d.nome);
     }
 
+    // ATUALIZADO: Agora lê os anos tanto da Admissão quanto do Desligamento
     function popularFiltroAno(dados) {
-        const anos = [...new Set(dados.map(d => d.admissao.split('/')[2]))].filter(a => a).sort((a,b) => b-a);
+        let anos = new Set();
+        dados.forEach(d => {
+            if (d.admissao) anos.add(d.admissao.split('/')[2]);
+            if (d.desligamento && d.desligamento !== "-") anos.add(d.desligamento.split('/')[2]);
+        });
+        anos = [...anos].filter(a => a && a.length === 4).sort((a,b) => b-a);
+        
         $('#filtroAno').html('<option value="">Ano</option>');
         anos.forEach(a => $('#filtroAno').append(new Option(a, a)));
     }
 
+    // ATUALIZADO: Motor de busca de datas igual ao de funcionários
     function aplicarFiltros() {
         const txt = $('#filtroNome').val().toLowerCase();
         const sit = $('#filtroStatus').val();
+        
+        const tipoData = $('#filtroTipoData').val();
         const mes = $('#filtroMes').val();
         const ano = $('#filtroAno').val();
+
         const res = dadosGlobais.filter(d => {
-            const p = d.admissao.split("/");
-            return (!txt || d.nome.toLowerCase().includes(txt)) && (!sit || d.situacao === sit) && (!mes || p[1] === mes) && (!ano || p[2] === ano);
+            const matchNome = !txt || d.nome.toLowerCase().includes(txt);
+            const matchSit = !sit || d.situacao === sit;
+
+            let matchData = true;
+            if (tipoData || mes || ano) {
+                const mAdm = d.admissao ? (!mes || d.admissao.split('/')[1] === mes) && (!ano || d.admissao.split('/')[2] === ano) : false;
+                const mDem = (d.desligamento && d.desligamento !== "-") ? (!mes || d.desligamento.split('/')[1] === mes) && (!ano || d.desligamento.split('/')[2] === ano) : false;
+
+                if (tipoData === 'admissao') {
+                    matchData = !!d.admissao && mAdm;
+                } else if (tipoData === 'demissao') {
+                    matchData = !!d.desligamento && d.desligamento !== "-" && mDem;
+                } else {
+                    matchData = (!!d.admissao && mAdm) || (!!d.desligamento && d.desligamento !== "-" && mDem);
+                }
+            }
+
+            return matchNome && matchSit && matchData;
         });
+
         render(res);
     }
 
     function render(dados) {
-        if (tabela) tabela.destroy();
-        $('#contagem-registros').text(`${dados.length} registros encontrados`);
+        if (tabela) {
+            tabela.destroy();
+            $('#comprimento-tabela').empty();
+        }
 
         tabela = $('#tabela').DataTable({
             data: dados,
@@ -260,10 +296,9 @@
             ordering: false,
             language: { 
                 url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json',
-                lengthMenu: "Exibir _MENU_ resultados"
+                lengthMenu: "Exibir _MENU_ resultados por página"
             },
-            // DOM ATUALIZADO PARA A CLASSE NOVA
-            dom: 'rt<"dt-bottom-controls"ip>',
+            dom: 'lrt<"dt-bottom-controls"ip>',
             columns: [{
                 data: null,
                 render: function(data) {
@@ -285,12 +320,14 @@
                 }
             }],
             initComplete: function() {
-                // Força o movimento do seletor para o topo
-                $('#comprimento-tabela').empty();
                 $('.dataTables_length').appendTo('#comprimento-tabela');
                 enviarAltura();
             },
-            drawCallback: () => enviarAltura()
+            drawCallback: function() {
+                const totalFiltrado = this.api().rows({ filter: 'applied' }).count();
+                $('#contagem-registros').html(`<b>${totalFiltrado}</b> registros encontrados`);
+                enviarAltura();
+            }
         });
     }
 
