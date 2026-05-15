@@ -23,36 +23,30 @@
         .brasao { height: 55px; width: auto; }
         .texto-camara { font-size: 9px; color: #cbd5e1; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
 
-        /* Cabeçalho de Impressão */
         #cabecalho-impressao { display: none; }
 
-        /* Loader */
         #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; font-weight: bold; color: #003b75; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Container Principal */
         .container { margin: 0 15px 15px 15px; display: none; }
         
-        /* Painéis de Controle */
         fieldset.painel-grupo { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: relative; }
         legend.titulo-painel { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; letter-spacing: 1px; }
 
         .badge-atualizacao { position: absolute; top: -12px; right: 20px; font-size: 11px; color: #065f46; background: #d1fae5; padding: 5px 12px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
 
-        /* --- ALTERAÇÃO: Grade de Filtros Unificada (Compacta e do Mesmo Tamanho) --- */
-        .filtro-grade { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; align-items: center; }
+        /* GRADE DE FILTROS RESPONSIVA: Adaptando todos os campos e o botão para o mesmo tamanho */
+        .filtro-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; align-items: center; }
         
         select, button, input[type="text"] { padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13px; transition: 0.2s; box-sizing: border-box; width: 100%; font-family: inherit; }
-        button { background: #003b75; color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; }
+        button { background: #003b75; color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; height: 35px; }
         button:hover { background: #00274d; transform: translateY(-1px); }
         
-        /* Botões da barra de exportação (para manter o visual anterior) */
         .export-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; align-items: center; margin-top: 5px; }
-        .export-row button { padding: 10px 12px; border-radius: 8px; font-size: 14px; }
+        .export-row button { padding: 10px 12px; border-radius: 8px; font-size: 14px; height: auto; }
         .btn-acao { background: #0284c7; }
 
-        /* Estilo dos Cards de Funcionário */
         #tabela thead { display: none; }
         table.dataTable { border: none !important; background: transparent !important; margin-top: 10px !important;}
         .card-func { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden; }
@@ -71,14 +65,12 @@
         .info-label { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
         .info-valor { font-size: 14px; font-weight: 700; color: #334155; }
 
-        /* Controles DataTables */
         .dt-controles { display: flex; justify-content: space-between; align-items: center; width: 100%; margin: 0; padding: 0; }
         .dataTables_length label { display: flex !important; align-items: center; font-size: 13px; font-weight: 600; color: #475569; white-space: nowrap; margin-bottom: 0; }
         .dataTables_length select { width: auto !important; margin: 0 8px !important; padding: 6px 30px 6px 12px !important; border-radius: 6px; }
         .info-total { font-size: 14px; font-weight: 600; color: #003b75; background: #e0f2fe; padding: 8px 16px; border-radius: 8px; border: 1px solid #bae6fd; }
         .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; }
 
-        /* Configurações de Impressão */
         @media print {
             @page { size: portrait; margin: 15mm; @bottom-right { content: "Página " counter(page); } }
             body { background: white; }
@@ -127,6 +119,23 @@
                     <option value="Ativo" selected>Ativos</option>
                     <option value="Desligado">Desligados</option>
                 </select>
+                
+                <select id="filtroTipoData">
+                    <option value="">Filtro de Data...</option>
+                    <option value="admissao">Por Admissão</option>
+                    <option value="demissao">Por Demissão</option>
+                </select>
+                <select id="filtroMes">
+                    <option value="">Mês</option>
+                    <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+                    <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+                    <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+                    <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                </select>
+                <select id="filtroAno">
+                    <option value="">Ano</option>
+                </select>
+
                 <button onclick="limparFiltros()">Limpar Filtros</button>
             </div>
         </fieldset>
@@ -175,12 +184,25 @@
             let partes = [];
             const nome = $('#filtroNome').val().trim();
             if (nome) partes.push(removerAcentos(nome).replace(/\s+/g, '_'));
+            
             const cargo = $('#filtroCargo').val();
             if (cargo) partes.push(removerAcentos(cargo).replace(/\s+/g, '_'));
+            
             const lotacao = $('#filtroLotacao').val();
             if (lotacao) partes.push(removerAcentos(lotacao).replace(/\s+/g, '_'));
+            
             const situacao = $('#filtroSituacao').val();
             if (situacao) partes.push(situacao); 
+
+            const tipoData = $('#filtroTipoData').val();
+            if (tipoData) partes.push(tipoData);
+
+            const mesStr = $('#filtroMes').val() ? removerAcentos($('#filtroMes option:selected').text()) : '';
+            if (mesStr) partes.push(mesStr);
+
+            const ano = $('#filtroAno').val();
+            if (ano) partes.push(ano);
+            
             if (partes.length === 0) return "relatorio_completo";
             return "relatorio_" + partes.join('_').replace(/[^a-zA-Z0-9_]/g, '');
         }
@@ -249,15 +271,25 @@
         }
 
         function popularFiltrosDynamic() {
-            // Lotações Dinâmicas
+            // Lotações
             const lotacoes = [...new Set(dadosGlobais.map(d => d.lotacao))].filter(Boolean).sort();
             $('#filtroLotacao').html('<option value="">Lotação (Todas)</option>');
             lotacoes.forEach(l => $('#filtroLotacao').append(`<option value="${l}">${l}</option>`));
 
-            // Cargos Dinâmicos
+            // Cargos
             const cargos = [...new Set(dadosGlobais.map(d => d.cargo))].filter(Boolean).sort();
             $('#filtroCargo').html('<option value="">Cargo (Todos)</option>');
             cargos.forEach(c => $('#filtroCargo').append(`<option value="${c}">${c}</option>`));
+
+            // Anos (Admissão e Demissão)
+            let anos = new Set();
+            dadosGlobais.forEach(d => {
+                if (d.data_admissao) anos.add(d.data_admissao.split('/')[2]);
+                if (d.data_demissao) anos.add(d.data_demissao.split('/')[2]);
+            });
+            anos = [...anos].filter(a => a && a.length === 4).sort((a, b) => b - a);
+            $('#filtroAno').html('<option value="">Ano</option>');
+            anos.forEach(a => $('#filtroAno').append(`<option value="${a}">${a}</option>`));
         }
 
         function renderizarTabela(dados) {
@@ -306,6 +338,11 @@
             const cargo = $('#filtroCargo').val();
             const lot = $('#filtroLotacao').val();
             const sit = $('#filtroSituacao').val();
+            
+            // Filtros de Data Restaurados
+            const tipoData = $('#filtroTipoData').val();
+            const mes = $('#filtroMes').val();
+            const ano = $('#filtroAno').val();
 
             let filtrados = dadosGlobais.filter(d => {
                 const nomeFunc = removerAcentos((d.nome_func || "").toLowerCase());
@@ -313,14 +350,28 @@
                 const matchCargo = !cargo || d.cargo === cargo;
                 const matchLot = !lot || d.lotacao === lot;
                 const matchSit = !sit || d.situacao === sit;
-                return matchNome && matchCargo && matchLot && matchSit;
+
+                let matchData = true;
+                if (tipoData || mes || ano) {
+                    const mAdm = d.data_admissao ? (!mes || d.data_admissao.split('/')[1] === mes) && (!ano || d.data_admissao.split('/')[2] === ano) : false;
+                    const mDem = d.data_demissao ? (!mes || d.data_demissao.split('/')[1] === mes) && (!ano || d.data_demissao.split('/')[2] === ano) : false;
+                    if (tipoData === 'admissao') {
+                        matchData = !!d.data_admissao && mAdm;
+                    } else if (tipoData === 'demissao') {
+                        matchData = !!d.data_demissao && mDem;
+                    } else {
+                        matchData = (!!d.data_admissao && mAdm) || (!!d.data_demissao && mDem);
+                    }
+                }
+
+                return matchNome && matchCargo && matchLot && matchSit && matchData;
             });
 
             renderizarTabela(ordenarFuncionarios(filtrados));
         }
 
         function limparFiltros() {
-            $('#filtroNome, #filtroCargo, #filtroLotacao').val('');
+            $('#filtroNome, #filtroCargo, #filtroLotacao, #filtroTipoData, #filtroMes, #filtroAno').val('');
             $('#filtroSituacao').val('Ativo');
             aplicarFiltros();
         }
