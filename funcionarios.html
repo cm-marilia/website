@@ -40,7 +40,7 @@
         .filtro-linha-1 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
         .filtro-linha-2 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
         
-        /* Exportação (6 colunas) */
+        /* Exportação */
         .export-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; align-items: center; margin-top: 5px; }
         
         select, input[type="text"] { padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13px; transition: 0.2s; box-sizing: border-box; width: 100%; font-family: inherit; }
@@ -71,16 +71,58 @@
         .dataTables_length select { width: auto !important; margin: 0 8px !important; padding: 6px 30px 6px 12px !important; border-radius: 6px; }
         .info-total { font-size: 14px; font-weight: 600; color: #003b75; background: #e0f2fe; padding: 8px 16px; border-radius: 8px; border: 1px solid #bae6fd; }
         
-        /* CORREÇÃO DO CARD DE PAGINAÇÃO */
-        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; flex-wrap: wrap; gap: 15px; }
+        /* CORREÇÃO DEFINITIVA DA PAGINAÇÃO */
+        .dt-bottom-controls { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: white; 
+            padding: 15px 20px; 
+            border-radius: 12px; 
+            border: 1px solid #e2e8f0; 
+            margin-top: 10px; 
+            flex-wrap: wrap; 
+            gap: 15px; 
+            box-sizing: border-box; 
+            width: 100%; 
+        }
         .dataTables_wrapper .dataTables_info { padding-top: 0 !important; font-size: 13px; color: #475569; font-weight: 500; }
-        .dataTables_wrapper .dataTables_paginate { padding-top: 0 !important; margin-top: 0 !important; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button { border-radius: 6px !important; padding: 6px 12px !important; border: 1px solid transparent !important; font-size: 13px; font-weight: 600; color: #475569 !important; margin: 0 !important; background: transparent !important; }
+        
+        /* Transforma a paginação num Flexbox que quebra linha */
+        .dataTables_wrapper .dataTables_paginate { 
+            padding-top: 0 !important; 
+            margin-top: 0 !important; 
+            display: flex; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 4px; 
+        }
+        /* Força os números (que estão dentro de um <span> invisível) a quebrarem linha também */
+        .dataTables_wrapper .dataTables_paginate span {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button { 
+            border-radius: 6px !important; 
+            padding: 6px 12px !important; 
+            border: 1px solid transparent !important; 
+            font-size: 13px; 
+            font-weight: 600; 
+            color: #475569 !important; 
+            margin: 0 !important; 
+            background: transparent !important; 
+        }
         .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border: 1px solid #003b75 !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button:hover { background: #e2e8f0 !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; }
 
-        @media (max-width: 768px) {
-            .dt-bottom-controls { flex-direction: column; justify-content: center; text-align: center; }
+        /* Media Query para Iframe / Mobile */
+        @media (max-width: 850px) {
+            .dt-bottom-controls { flex-direction: column; justify-content: center; text-align: center; padding: 15px 10px; }
+            .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 4px 8px !important; font-size: 12px; }
         }
 
         @media print {
