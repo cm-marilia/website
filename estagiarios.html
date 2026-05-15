@@ -41,11 +41,8 @@
         button { background: #003b75; color: white; border: none; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
         .btn-acao { background: #0284c7 !important; }
 
-        /* --- NOVO: AUMENTANDO A FONTE DOS BOTÕES DE EXPORTAÇÃO --- */
-        .painel-exportacao .toolbar-row button {
-            font-size: 16px; /* Fonte maior */
-            padding: 10px 8px; /* Padding ligeiramente menor para garantir que não quebre a linha */
-        }
+        /* Exportação */
+        .painel-exportacao .toolbar-row button { font-size: 16px; padding: 10px 8px; }
 
         /* Visualização */
         .dt-custom-header { display: flex; justify-content: space-between; align-items: center; width: 100%; }
@@ -67,27 +64,40 @@
         .info-label { font-size: 10px; color: #94a3b8; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 4px; }
         .info-valor { font-size: 14px; font-weight: 700; color: #1e293b; }
 
-        /* Paginação Responsiva */
+        /* Paginação Responsiva - FONTE AUMENTADA */
         .dt-bottom-controls { 
             display: flex; justify-content: space-between; align-items: center; background: white; 
             padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; 
             margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); flex-wrap: wrap; 
             gap: 15px; box-sizing: border-box; width: 100%; 
         }
-        .dataTables_wrapper .dataTables_info { padding-top: 0 !important; font-size: 13px; color: #475569; font-weight: 500; }
+        /* Texto "Mostrando de 1 até X" aumentado para 15px */
+        .dataTables_wrapper .dataTables_info { padding-top: 0 !important; font-size: 15px; color: #475569; font-weight: 500; }
+        
         .dataTables_wrapper .dataTables_paginate { padding-top: 0 !important; margin-top: 0 !important; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px; }
         .dataTables_wrapper .dataTables_paginate span { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button { border-radius: 6px !important; padding: 6px 12px !important; border: 1px solid transparent !important; font-size: 13px; font-weight: 600; color: #475569 !important; margin: 0 !important; background: transparent !important; height: auto; }
+        
+        /* Botões "Anterior", "Próximo" e Números aumentados para 15px */
+        .dataTables_wrapper .dataTables_paginate .paginate_button { 
+            border-radius: 6px !important; 
+            padding: 6px 12px !important; 
+            border: 1px solid transparent !important; 
+            font-size: 15px; 
+            font-weight: 600; 
+            color: #475569 !important; 
+            margin: 0 !important; 
+            background: transparent !important; 
+            height: auto; 
+        }
         .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border: 1px solid #003b75 !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button:hover { background: #e2e8f0 !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; }
 
         /* Responsividade */
         @media (max-width: 850px) {
             .card-body { grid-template-columns: 1fr 1fr; }
-            /* Fonte otimizada para mobile para garantir os botões na mesma linha */
             .painel-exportacao .toolbar-row button { font-size: 13px; padding: 10px 4px; gap: 4px; }
             .dt-bottom-controls { flex-direction: column; justify-content: center; text-align: center; padding: 15px 10px; }
-            .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 4px 8px !important; font-size: 12px; }
+            .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 4px 8px !important; font-size: 13px; }
         }
 
         @media print {
