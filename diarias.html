@@ -131,7 +131,7 @@
             <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
             
             <div class="filtro-linha-1">
-                <input type="text" id="filtroTexto" placeholder="Pesquisar servidor, cargo, destino..." autocomplete="off">
+                <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off">
                 <select id="filtroGabinete"><option value="">Gabinete (Todos)</option></select>
                 <select id="filtroServidor"><option value="">Servidor (Todos)</option></select>
             </div>
@@ -304,7 +304,7 @@
 
     // LÓGICA DE FILTRO E RENDERIZAÇÃO
     function aplicarFiltros() {
-        const texto = removerAcentos($('#filtroTexto').val().toLowerCase());
+        const nomeDigitado = removerAcentos($('#filtroNome').val().toLowerCase());
         const serv = $('#filtroServidor').val();
         const mes = $('#filtroMes').val();
         const ano = $('#filtroAno').val();
@@ -322,13 +322,12 @@
                 mG = removerAcentos(d.servidor).toLowerCase().includes(gN) || removerAcentos(d.cargo).toLowerCase().includes(gN);
             }
 
-            let mTexto = true;
-            if (texto) {
-                const buscaTotal = removerAcentos(`${d.servidor} ${d.cargo} ${d.cidade_destino} ${d.motivacao_viagem}`).toLowerCase();
-                mTexto = buscaTotal.includes(texto);
+            let mNome = true;
+            if (nomeDigitado) {
+                mNome = removerAcentos(d.servidor).toLowerCase().includes(nomeDigitado);
             }
 
-            return mS && mM && mA && mG && mTexto;
+            return mS && mM && mA && mG && mNome;
         });
 
         // Ordenar os resultados (Data da Partida mais recente primeiro)
@@ -457,12 +456,12 @@
     }
 
     function limparFiltros() { 
-        $('#filtroTexto, #filtroServidor, #filtroMes, #filtroAno, #filtroGabinete').val(''); 
+        $('#filtroNome, #filtroServidor, #filtroMes, #filtroAno, #filtroGabinete').val(''); 
         preencherFiltros(); 
         aplicarFiltros(); 
     }
 
-    $('#filtroTexto').on('input', aplicarFiltros);
+    $('#filtroNome').on('input', aplicarFiltros);
     $('#filtroGabinete').on('change', () => { preencherFiltros(true); aplicarFiltros(); });
     $('#filtroServidor, #filtroMes, #filtroAno').on('change', aplicarFiltros);
     window.onload = iniciarCarregamento;
