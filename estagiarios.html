@@ -229,9 +229,9 @@
             let obj = {};
             headers.forEach((h, i) => {
                 let val = colunas[i] ? colunas[i].replace(/"/g, '').trim() : "";
-                if (h.includes("nome")) obj.nome = val;
-                if (h.includes("admissao")) obj.admissao = val;
-                if (h.includes("desligamento")) obj.desligamento = val;
+                if (h.includes("nome_estagiario")) obj.nome = val;
+                if (h.includes("data_admissao")) obj.admissao = val;
+                if (h.includes("data_desligamento")) obj.desligamento = val;
             });
             obj.situacao = (!obj.desligamento || obj.desligamento === "-") ? "Ativo" : "Desligado";
             return obj;
