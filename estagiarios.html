@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Relatório de Estagiários</title>
+    <title>Relatório de Estagiários - CMC</title>
 
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -11,98 +11,77 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
+        /* CSS PADRONIZADO - IDÊNTICO AO DE FUNCIONÁRIOS */
         body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden;}
         #wrapper { padding-bottom: 40px; } 
 
-        /* Cabeçalho */
         .topo { background: #003b75; color: white; padding: 20px 35px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin: 15px; gap: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         .topo h1 { margin: 0; font-size: 1.8rem; font-weight: 800; letter-spacing: 1px; }
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .brasao { height: 60px; width: auto; }
         .texto-camara { font-size: 10px; color: #cbd5e1; letter-spacing: 3px; font-weight: 500; text-transform: uppercase; white-space: nowrap; }
 
-        /* Loader */
         #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: #003b75; font-weight: bold; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Containers Principais */
         .container { margin: 0 15px 15px 15px; display: none; }
         fieldset.painel-grupo { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: relative; }
         legend.titulo-painel { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; letter-spacing: 1px; }
         .badge-atualizacao { position: absolute; top: -12px; right: 20px; font-size: 11px; color: #065f46; background: #d1fae5; padding: 5px 12px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
 
-        /* Grades de Layout */
         .filtro-linha-1 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
         .filtro-linha-2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .painel-exportacao .toolbar-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+        .toolbar-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 
         select, input, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; box-sizing: border-box; width: 100%; height: 42px;}
         button { background: #003b75; color: white; border: none; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+        button:hover { background: #00274d; transform: translateY(-1px); }
         .btn-acao { background: #0284c7 !important; }
 
-        /* Exportação */
-        .painel-exportacao .toolbar-row button { font-size: 16px; padding: 10px 8px; }
-
-        /* Visualização */
         .dt-custom-header { display: flex; justify-content: space-between; align-items: center; width: 100%; }
         .dataTables_length { display: flex !important; align-items: center; font-size: 14px; color: #475569; font-weight: 500; margin-bottom: 0; }
         .dataTables_length label { display: flex; align-items: center; gap: 8px; margin: 0; }
         .dataTables_length select { width: auto !important; padding: 5px 10px !important; border-radius: 6px; height: auto; }
         .badge-contagem { background: #e0f2fe; color: #0369a1; padding: 10px 25px; border-radius: 10px; font-weight: 700; border: 1px solid #bae6fd; }
 
-        /* Cards de Dados */
         #tabela thead { display: none; }
         table.dataTable { border: none !important; }
-        .card-estagiario { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        .card-header { padding: 20px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; }
-        .nome-estagiario { font-size: 18px; font-weight: 800; color: #003b75; text-transform: uppercase; }
+        .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .card-header { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; }
+        .card-header-texto { display: flex; flex-direction: column; gap: 2px; }
+        .nome-principal { font-size: 17px; font-weight: 800; color: #003b75; text-transform: uppercase; }
+        .subtitulo-card { font-size: 13px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+
         .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
         .status-ativo { background: #d1fae5; color: #065f46; }
         .status-desligado { background: #fee2e2; color: #991b1b; }
+        
         .card-body { display: grid; grid-template-columns: repeat(3, 1fr); padding: 20px 25px; gap: 15px; }
+        .info-col { display: flex; flex-direction: column; }
         .info-label { font-size: 10px; color: #94a3b8; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 4px; }
         .info-valor { font-size: 14px; font-weight: 700; color: #1e293b; }
 
-        /* Paginação Responsiva - FONTE AUMENTADA */
-        .dt-bottom-controls { 
-            display: flex; justify-content: space-between; align-items: center; background: white; 
-            padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; 
-            margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); flex-wrap: wrap; 
-            gap: 15px; box-sizing: border-box; width: 100%; 
-        }
-        /* Texto "Mostrando de 1 até X" aumentado para 15px */
+        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); flex-wrap: wrap; gap: 15px; box-sizing: border-box; width: 100%; }
         .dataTables_wrapper .dataTables_info { padding-top: 0 !important; font-size: 15px; color: #475569; font-weight: 500; }
-        
-        .dataTables_wrapper .dataTables_paginate { padding-top: 0 !important; margin-top: 0 !important; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px; }
-        .dataTables_wrapper .dataTables_paginate span { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
-        
-        /* Botões "Anterior", "Próximo" e Números aumentados para 15px */
-        .dataTables_wrapper .dataTables_paginate .paginate_button { 
-            border-radius: 6px !important; 
-            padding: 6px 12px !important; 
-            border: 1px solid transparent !important; 
-            font-size: 15px; 
-            font-weight: 600; 
-            color: #475569 !important; 
-            margin: 0 !important; 
-            background: transparent !important; 
-            height: auto; 
-        }
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border: 1px solid #003b75 !important; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button:hover { background: #e2e8f0 !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; }
+        .dataTables_wrapper .dataTables_paginate { display: flex; gap: 4px; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button { border-radius: 6px !important; padding: 6px 12px !important; font-size: 15px; font-weight: 600; color: #475569 !important; background: transparent !important; border: 1px solid transparent !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; }
 
-        /* Responsividade */
+        #cabecalho-impressao { display: none; }
+
         @media (max-width: 850px) {
             .card-body { grid-template-columns: 1fr 1fr; }
-            .painel-exportacao .toolbar-row button { font-size: 13px; padding: 10px 4px; gap: 4px; }
-            .dt-bottom-controls { flex-direction: column; justify-content: center; text-align: center; padding: 15px 10px; }
-            .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 4px 8px !important; font-size: 13px; }
+            .dt-bottom-controls { flex-direction: column; text-align: center; }
+            .toolbar-row { grid-template-columns: repeat(3, 1fr); }
+            .filtro-linha-1, .filtro-linha-2 { grid-template-columns: 1fr; }
         }
 
         @media print {
             .topo, fieldset, .dt-bottom-controls { display: none !important; }
-            .card-estagiario { break-inside: avoid; border: 1px solid #cbd5e1 !important; }
+            #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
+            .card-info { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; }
+            .container { display: block !important; margin: 0; }
         }
     </style>
 </head>
@@ -117,12 +96,21 @@
         </div>
     </header>
 
+    <div id="cabecalho-impressao">
+        <img src="Brasão_de_Marília.png" height="70">
+        <div>
+            <h1 style="margin:0; color:#003b75;">Relatório de Estagiários</h1>
+            <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
+        </div>
+    </div>
+
     <div id="loader">
         <div class="spinner"></div>
         <span>Carregando base de dados...</span>
     </div>
 
     <main class="container" id="main-container">
+        
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
             <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
@@ -130,20 +118,21 @@
             <div class="filtro-linha-1">
                 <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off">
                 <select id="filtroStatus">
-                    <option value="">Situação</option>
+                    <option value="">Situação (Todas)</option>
                     <option value="Ativo" selected>Ativos</option>
                     <option value="Desligado">Desligados</option>
                 </select>
                 <select id="filtroTipoData">
                     <option value="">Filtrar período por...</option>
-                    <option value="admissao">Por Admissão</option>
-                    <option value="demissao">Por Demissão</option>
+                    <option value="admissao">Admissão</option>
+                    <option value="demissao">Demissão</option>
                 </select>
             </div>
             
             <div class="filtro-linha-2">
                 <select id="filtroMes">
                     <option value="">Mês</option>
+                    <option value="01">Janeiro</option><option value="02">Fevereiro</option>...
                     <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
                     <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
                     <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
@@ -154,15 +143,15 @@
             </div>
         </fieldset>
 
-        <fieldset class="painel-grupo painel-exportacao">
+        <fieldset class="painel-grupo">
             <legend class="titulo-painel">Exportação e Impressão</legend>
             <div class="toolbar-row">
-                <button onclick="exportarRelatorio('csv')">⬇️ CSV</button>
-                <button onclick="exportarRelatorio('xlsx')">⬇️ Excel</button>
-                <button onclick="exportarRelatorio('json')">⬇️ JSON</button>
-                <button onclick="exportarRelatorio('xml')">⬇️ XML</button>
+                <button onclick="exportarCSV()">⬇️ CSV</button>
+                <button onclick="exportarXLSX()">⬇️ Excel</button>
+                <button onclick="exportarJSON()">⬇️ JSON</button>
+                <button onclick="exportarXML()">⬇️ XML</button>
                 <button class="btn-acao" onclick="imprimirSeguro()">🖨️ Imprimir</button>
-                <button class="btn-acao" onclick="iniciarCarregamento()">🔄 Atualizar</button>
+                <button class="btn-acao" onclick="carregarDados()">🔄 Atualizar</button>
             </div>
         </fieldset>
 
@@ -183,37 +172,60 @@
 
 <script>
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTK8EGvu2R21KpD3-E3SFDVC5qfWSihafXCpj_Y-ZnpM9DNBEb_Gimw0TboxkpiuMqJQ01WNNHm8-FA/pub?output=csv";
-    let dadosGlobais = [];
+    
     let tabela;
+    let dadosGlobais = [];
+    let carimboAtualizacao = "";
 
-    function enviarAltura() {
+    // INFRAESTRUTURA
+    function enviarAlturaIframe() {
         setTimeout(() => {
             const wrapper = document.getElementById('wrapper');
             if (wrapper) {
-                const h = wrapper.offsetHeight + 40;
+                const h = wrapper.offsetHeight + 40; 
                 window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
             }
-        }, 200);
+        }, 200); 
     }
 
-    async function iniciarCarregamento() {
+    function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
+
+    function parseDataBR(str) {
+        if (!str || str === "-") return null;
+        const p = str.split('/');
+        return new Date(p[2], p[1] - 1, p[0]);
+    }
+
+    function gerarNomeArquivoBase() {
+        let partes = ["estagiarios"];
+        const nome = $('#filtroNome').val().trim();
+        if (nome) partes.push(nome.replace(/\s+/g, '_'));
+        if ($('#filtroStatus').val()) partes.push($('#filtroStatus').val());
+        if ($('#filtroAno').val()) partes.push($('#filtroAno').val());
+        return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '');
+    }
+
+    // CARREGAMENTO E PROCESSAMENTO
+    async function carregarDados() {
         $('#loader').show(); $('#main-container').hide();
         try {
-            const response = await fetch(`${SHEET_URL}&t=${Date.now()}`);
-            const csvText = await response.text();
-            const metaLinha = csvText.split("\n")[0];
-            const match = metaLinha.match(/(\d{2}\/\d{2}\/\d{4},?\s*\d{2}:\d{2})/);
-            if(match) $('#badge-atualizacao').html(`🟢 Dados atualizados em ${match[1].replace(',', '')}`);
-            dadosGlobais = processarCSV(csvText);
-            popularFiltroAno(dadosGlobais);
+            const response = await fetch(`${SHEET_URL}&cache=${Date.now()}`);
+            const text = await response.text();
+            dadosGlobais = processarCSV(text);
+            popularFiltroAno();
             aplicarFiltros();
+            $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
             $('#loader').hide();
-            $('#main-container').fadeIn(400, () => enviarAltura());
+            $('#main-container').fadeIn(400, () => enviarAlturaIframe());
         } catch (e) { console.error(e); }
     }
 
     function processarCSV(str) {
         const linhas = str.trim().split("\n");
+        // Captura data da primeira linha
+        const match = linhas[0].match(/(\d{2}\/\d{2}\/\d{4},?\s*\d{2}:\d{2})/);
+        carimboAtualizacao = match ? `Atualizado em ${match[1].replace(',', '')}` : "Dados Sincronizados";
+
         const headers = linhas[1].split(",").map(h => h.trim().replace(/"/g, '').toLowerCase());
         return linhas.slice(2).map(row => {
             const colunas = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
@@ -229,28 +241,27 @@
         }).filter(d => d.nome);
     }
 
-    function popularFiltroAno(dados) {
+    function popularFiltroAno() {
         let anos = new Set();
-        dados.forEach(d => {
+        dadosGlobais.forEach(d => {
             if (d.admissao) anos.add(d.admissao.split('/')[2]);
             if (d.desligamento && d.desligamento !== "-") anos.add(d.desligamento.split('/')[2]);
         });
         anos = [...anos].filter(a => a && a.length === 4).sort((a,b) => b-a);
-        
         $('#filtroAno').html('<option value="">Ano</option>');
         anos.forEach(a => $('#filtroAno').append(new Option(a, a)));
     }
 
+    // LÓGICA DE FILTRO E RENDER
     function aplicarFiltros() {
-        const txt = $('#filtroNome').val().toLowerCase();
+        const txt = removerAcentos($('#filtroNome').val().toLowerCase());
         const sit = $('#filtroStatus').val();
-        
         const tipoData = $('#filtroTipoData').val();
         const mes = $('#filtroMes').val();
         const ano = $('#filtroAno').val();
 
         const res = dadosGlobais.filter(d => {
-            const matchNome = !txt || d.nome.toLowerCase().includes(txt);
+            const matchNome = !txt || removerAcentos(d.nome.toLowerCase()).includes(txt);
             const matchSit = !sit || d.situacao === sit;
 
             let matchData = true;
@@ -258,93 +269,112 @@
                 const mAdm = d.admissao ? (!mes || d.admissao.split('/')[1] === mes) && (!ano || d.admissao.split('/')[2] === ano) : false;
                 const mDem = (d.desligamento && d.desligamento !== "-") ? (!mes || d.desligamento.split('/')[1] === mes) && (!ano || d.desligamento.split('/')[2] === ano) : false;
 
-                if (tipoData === 'admissao') {
-                    matchData = !!d.admissao && mAdm;
-                } else if (tipoData === 'demissao') {
-                    matchData = !!d.desligamento && d.desligamento !== "-" && mDem;
-                } else {
-                    matchData = (!!d.admissao && mAdm) || (!!d.desligamento && d.desligamento !== "-" && mDem);
-                }
+                if (tipoData === 'admissao') matchData = mAdm;
+                else if (tipoData === 'demissao') matchData = mDem;
+                else matchData = mAdm || mDem;
             }
-
             return matchNome && matchSit && matchData;
         });
 
-        render(res);
+        // Ordenação: Ativos primeiro, depois Admissão mais recente
+        res.sort((a, b) => {
+            if (a.situacao !== b.situacao) return a.situacao === "Ativo" ? -1 : 1;
+            return (parseDataBR(b.admissao) || 0) - (parseDataBR(a.admissao) || 0);
+        });
+
+        renderizar(res);
     }
 
-    function render(dados) {
-        if (tabela) {
-            tabela.destroy();
-            $('#comprimento-tabela').empty();
-        }
+    function renderizar(dados) {
+        if (tabela) { tabela.destroy(); $('#comprimento-tabela').empty(); }
 
         tabela = $('#tabela').DataTable({
             data: dados,
             pageLength: 10,
             ordering: false,
-            language: { 
-                url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json',
-                lengthMenu: "Exibir _MENU_ resultados por página"
-            },
+            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
             dom: 'lrt<"dt-bottom-controls"ip>',
             columns: [{
                 data: null,
-                render: function(data) {
-                    const statusClass = data.situacao === 'Ativo' ? 'status-ativo' : 'status-desligado';
+                render: function(d) {
+                    const statusClass = d.situacao === 'Ativo' ? 'status-ativo' : 'status-desligado';
                     return `
-                        <div class="card-estagiario">
+                        <div class="card-info">
                             <div class="card-header">
-                                <span class="nome-estagiario">${data.nome}</span>
-                                <span class="status-badge ${statusClass}">${data.situacao}</span>
+                                <div class="card-header-texto">
+                                    <span class="nome-principal">${d.nome}</span>
+                                    <span class="subtitulo-card">Estagiário(a)</span>
+                                </div>
+                                <span class="status-badge ${statusClass}">${d.situacao}</span>
                             </div>
                             <div class="card-body">
                                 <div class="info-col"><span class="info-label">Lotação</span><span class="info-valor">Câmara Municipal</span></div>
-                                <div class="info-col"><span class="info-label">Admissão</span><span class="info-valor">${data.admissao}</span></div>
-                                <div class="info-col"><span class="info-label">Desligamento</span><span class="info-valor">${data.desligamento || '-'}</span></div>
+                                <div class="info-col"><span class="info-label">Admissão</span><span class="info-valor">${d.admissao}</span></div>
+                                <div class="info-col"><span class="info-label">Desligamento</span><span class="info-valor">${d.desligamento || '-'}</span></div>
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                 }
             }],
-            initComplete: function() {
-                $('.dataTables_length').appendTo('#comprimento-tabela');
-                enviarAltura();
-            },
-            drawCallback: function() {
-                const totalFiltrado = this.api().rows({ filter: 'applied' }).count();
-                $('#contagem-registros').html(`<b>${totalFiltrado}</b> registros encontrados`);
-                enviarAltura();
+            initComplete: function() { $('.dataTables_length').appendTo('#comprimento-tabela'); enviarAlturaIframe(); },
+            drawCallback: function() { 
+                const total = this.api().rows({ filter: 'applied' }).count();
+                $('#contagem-registros').html(`<b>${total}</b> registros encontrados`);
+                enviarAlturaIframe(); 
             }
         });
     }
 
-    function exportarRelatorio(formato) {
-        const filtrados = tabela.rows({search:'applied'}).data().toArray();
-        if(formato === 'xlsx') {
-            const ws = XLSX.utils.json_to_sheet(filtrados);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Dados");
-            let nomeFinal = "relatorio_estagiarios";
-            XLSX.writeFile(wb, `${nomeFinal}.xlsx`);
-        } else {
-            let conteudo = JSON.stringify(filtrados, null, 2);
-            const b = new Blob([conteudo], { type: "text/plain" });
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(b); a.download = `relatorio.${formato}`; a.click();
-        }
+    // EXPORTAÇÃO (VERSÃO MELHORADA)
+    function exportarCSV() {
+        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+        let csv = "\ufeffNome,Situacao,Admissao,Desligamento\n";
+        data.forEach(d => { csv += `"${d.nome}","${d.situacao}","${d.admissao}","${d.desligamento}"\n`; });
+        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv");
+    }
+
+    function exportarXLSX() {
+        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Estagiários");
+        XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx");
+    }
+
+    function exportarJSON() {
+        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+        downloadFile(JSON.stringify(data, null, 2), gerarNomeArquivoBase() + ".json", "application/json");
+    }
+
+    function exportarXML() {
+        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+        let xml = '<?xml version="1.0" encoding="UTF-8"?><estagiarios>';
+        data.forEach(d => {
+            xml += '<estagiario>';
+            for (let k in d) xml += `<${k}>${d[k]}</${k}>`;
+            xml += '</estagiario>';
+        });
+        xml += '</estagiarios>';
+        downloadFile(xml, gerarNomeArquivoBase() + ".xml", "application/xml");
+    }
+
+    function downloadFile(content, fileName, mime) {
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = fileName; a.click();
     }
 
     function imprimirSeguro() {
-        const tOriginal = tabela.page.len();
+        const len = tabela.page.len();
         tabela.page.len(-1).draw('page');
-        setTimeout(() => { window.print(); tabela.page.len(tOriginal).draw('page'); }, 500);
+        setTimeout(() => { window.print(); tabela.page.len(len).draw('page'); }, 500);
     }
 
     function limparFiltros() { $('#filtroNome').val(''); $('select').val(''); $('#filtroStatus').val('Ativo'); aplicarFiltros(); }
+    
     $('#filtroNome').on('input', aplicarFiltros);
     $('select').on('change', aplicarFiltros);
-    window.onload = iniciarCarregamento;
+    window.onload = carregarDados;
 </script>
 </body>
 </html>
