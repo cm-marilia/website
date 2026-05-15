@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Relatório de Funcionários</title>
+    <title>Relatório de Funcionários - CMC</title>
 
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -50,9 +50,8 @@
 
         #tabela thead { display: none; }
         table.dataTable { border: none !important; background: transparent !important; margin-top: 10px !important;}
-        
-        /* Cards de Funcionário */
         .card-func { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden; }
+        
         .card-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
         .card-header-texto { display: flex; flex-direction: column; gap: 2px; }
         .card-nome { font-size: 17px; font-weight: 800; color: #003b75; text-transform: uppercase; }
@@ -72,7 +71,6 @@
         .dataTables_length select { width: auto !important; margin: 0 8px !important; padding: 6px 30px 6px 12px !important; border-radius: 6px; }
         .info-total { font-size: 14px; font-weight: 600; color: #003b75; background: #e0f2fe; padding: 8px 16px; border-radius: 8px; border: 1px solid #bae6fd; }
         
-        /* CORREÇÃO DO CARD DE PAGINAÇÃO: Sombra e margem garantidas */
         .dt-bottom-controls { 
             display: flex; 
             justify-content: space-between; 
@@ -82,8 +80,8 @@
             border-radius: 12px; 
             border: 1px solid #e2e8f0; 
             margin-top: 10px; 
-            margin-bottom: 25px; /* Evita colar no fundo do iframe */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); /* Mesma sombra dos cards */
+            margin-bottom: 25px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); 
             flex-wrap: wrap; 
             gap: 15px; 
             box-sizing: border-box; 
@@ -137,89 +135,91 @@
 </head>
 
 <body>
-    <header class="topo">
-        <h1>Relatório de Funcionários</h1>
-        <div class="logo-container">
-            <img src="Brasão_de_Marília.png" alt="Brasão de Marília" class="brasao">
-            <span class="texto-camara">Câmara Municipal de Marília</span>
+    <div id="wrapper">
+        <header class="topo">
+            <h1>Relatório de Funcionários</h1>
+            <div class="logo-container">
+                <img src="Brasão_de_Marília.png" alt="Brasão de Marília" class="brasao">
+                <span class="texto-camara">Câmara Municipal de Marília</span>
+            </div>
+        </header>
+
+        <div id="cabecalho-impressao">
+            <img src="Brasão_de_Marília.png" height="70">
+            <div>
+                <h1 style="margin:0; color:#003b75;">Relatório de Funcionários</h1>
+                <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
+            </div>
         </div>
-    </header>
 
-    <div id="cabecalho-impressao">
-        <img src="Brasão_de_Marília.png" height="70">
-        <div>
-            <h1 style="margin:0; color:#003b75;">Relatório de Funcionários</h1>
-            <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
+        <div id="loader">
+            <div class="spinner"></div>
+            <span>Carregando base de funcionários...</span>
         </div>
-    </div>
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <span>Carregando base de funcionários...</span>
-    </div>
-
-    <main class="container" id="main-container">
-        
-        <fieldset class="painel-grupo">
-            <legend class="titulo-painel">Filtros de Pesquisa</legend>
-            <div id="badge-atualizacao" class="badge-atualizacao">Sincronizando...</div>
+        <main class="container" id="main-container">
             
-            <div class="filtro-linha-1">
-                <input type="text" id="filtroNome" placeholder="Pesquisar por nome...">
-                <select id="filtroCargo"><option value="">Cargo</option></select>
-                <select id="filtroLotacao"><option value="">Lotação</option></select>
-            </div>
-
-            <div class="filtro-linha-2">
-                <select id="filtroSituacao">
-                    <option value="">Situação</option>
-                    <option value="Ativo" selected>Ativos</option>
-                    <option value="Desligado">Desligados</option>
-                </select>
+            <fieldset class="painel-grupo">
+                <legend class="titulo-painel">Filtros de Pesquisa</legend>
+                <div id="badge-atualizacao" class="badge-atualizacao">Sincronizando...</div>
                 
-                <select id="filtroTipoData">
-                    <option value="">Filtro de Data...</option>
-                    <option value="admissao">Por Admissão</option>
-                    <option value="demissao">Por Demissão</option>
-                </select>
-                
-                <select id="filtroMes">
-                    <option value="">Mês</option>
-                    <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
-                    <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
-                    <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
-                    <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-                </select>
-                
-                <select id="filtroAno">
-                    <option value="">Ano</option>
-                </select>
+                <div class="filtro-linha-1">
+                    <input type="text" id="filtroNome" placeholder="Pesquisar por nome...">
+                    <select id="filtroCargo"><option value="">Cargo (Todos)</option></select>
+                    <select id="filtroLotacao"><option value="">Lotação (Todas)</option></select>
+                </div>
 
-                <button onclick="limparFiltros()">Limpar Filtros</button>
-            </div>
-        </fieldset>
+                <div class="filtro-linha-2">
+                    <select id="filtroSituacao">
+                        <option value="">Situação (Todas)</option>
+                        <option value="Ativo" selected>Ativos</option>
+                        <option value="Desligado">Desligados</option>
+                    </select>
+                    
+                    <select id="filtroTipoData">
+                        <option value="">Filtro de Data...</option>
+                        <option value="admissao">Por Admissão</option>
+                        <option value="demissao">Por Demissão</option>
+                    </select>
+                    
+                    <select id="filtroMes">
+                        <option value="">Mês</option>
+                        <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+                        <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+                        <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+                        <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                    
+                    <select id="filtroAno">
+                        <option value="">Ano</option>
+                    </select>
 
-        <fieldset class="painel-grupo">
-            <legend class="titulo-painel">Exportação e Impressão</legend>
-            <div class="export-row">
-                <button onclick="exportarCSV()">⬇️ CSV</button>
-                <button onclick="exportarXLSX()">⬇️ Excel</button>
-                <button onclick="exportarJSON()">⬇️ JSON</button>
-                <button onclick="exportarXML()">⬇️ XML</button>
-                <button class="btn-acao" onclick="imprimirRelatorio()">🖨️ Imprimir</button>
-                <button class="btn-acao" onclick="carregarDados()">🔄 Atualizar</button>
-            </div>
-        </fieldset>
+                    <button onclick="limparFiltros()">Limpar Filtros</button>
+                </div>
+            </fieldset>
 
-        <fieldset class="painel-grupo" id="painel-visualizacao">
-            <legend class="titulo-painel">Visualização</legend>
-        </fieldset>
+            <fieldset class="painel-grupo">
+                <legend class="titulo-painel">Exportação e Impressão</legend>
+                <div class="export-row">
+                    <button onclick="exportarCSV()">⬇️ CSV</button>
+                    <button onclick="exportarXLSX()">⬇️ Excel</button>
+                    <button onclick="exportarJSON()">⬇️ JSON</button>
+                    <button onclick="exportarXML()">⬇️ XML</button>
+                    <button class="btn-acao" onclick="imprimirRelatorio()">🖨️ Imprimir</button>
+                    <button class="btn-acao" onclick="carregarDados()">🔄 Atualizar</button>
+                </div>
+            </fieldset>
 
-        <table id="tabela" style="width:100%">
-            <thead><tr><th>Dados</th></tr></thead>
-            <tbody></tbody>
-        </table>
-    </main>
+            <fieldset class="painel-grupo" id="painel-visualizacao">
+                <legend class="titulo-painel">Visualização</legend>
+            </fieldset>
+
+            <table id="tabela" style="width:100%">
+                <thead><tr><th>Dados</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </main>
+    </div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -230,6 +230,18 @@
         let tabela;
         let dadosGlobais = [];
         let carimboAtualizacao = "";
+
+        // FUNÇÃO CENTRALIZADA DE AJUSTE DE IFRAME
+        function enviarAlturaIframe() {
+            setTimeout(() => {
+                const wrapper = document.getElementById('wrapper');
+                if (wrapper) {
+                    // offsetHeight mede apenas o conteúdo real (ignora se o iframe já estiver esticado)
+                    const h = wrapper.offsetHeight + 40; // 40px de respiro para garantir a sombra final
+                    window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
+                }
+            }, 200); // 200ms garante que os cards do DataTables já terminaram de renderizar
+        }
 
         function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
 
@@ -242,11 +254,9 @@
         function gerarNomeArquivoBase() {
             let partes = [];
             
-            // Pega o que foi digitado no campo de texto
             const nome = $('#filtroNome').val().trim();
             if (nome) partes.push(nome.replace(/\s+/g, '_'));
             
-            // Pega o texto exato da opção selecionada nos selects (ignora se estiver no genérico)
             if ($('#filtroCargo').val()) partes.push($('#filtroCargo option:selected').text().replace(/\s+/g, '_'));
             if ($('#filtroLotacao').val()) partes.push($('#filtroLotacao option:selected').text().replace(/\s+/g, '_'));
             if ($('#filtroSituacao').val()) partes.push($('#filtroSituacao option:selected').text().replace(/\s+/g, '_'));
@@ -254,14 +264,9 @@
             if ($('#filtroMes').val()) partes.push($('#filtroMes option:selected').text().replace(/\s+/g, '_'));
             if ($('#filtroAno').val()) partes.push($('#filtroAno option:selected').text().replace(/\s+/g, '_'));
             
-            // Se nenhum filtro foi aplicado, nomeia como completo
             if (partes.length === 0) return "funcionarios_completo";
             
-            // Junta as partes com underline e garante o prefixo "funcionarios_"
             let nomeFinal = "funcionarios_" + partes.join('_');
-            
-            // Removemos acentos e caracteres especiais (como ç ou ~) apenas para garantir 
-            // que o Windows/Mac/Linux não bloqueiem ou corrompam o arquivo na hora de salvar.
             return removerAcentos(nomeFinal).replace(/[^a-zA-Z0-9_]/g, '');
         }
 
@@ -323,9 +328,7 @@
                 $('#loader').hide();
                 
                 $('#main-container').fadeIn(400, () => {
-                    // Adiciona uma folga de 30px para garantir que a sombra e a borda apareçam
-                    const h = document.documentElement.scrollHeight + 30;
-                    window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
+                    enviarAlturaIframe();
                 });
             } catch (error) {
                 console.error(error);
@@ -335,11 +338,11 @@
 
         function popularFiltrosDynamic() {
             const lotacoes = [...new Set(dadosGlobais.map(d => d.lotacao))].filter(Boolean).sort();
-            $('#filtroLotacao').html('<option value="">Lotação</option>');
+            $('#filtroLotacao').html('<option value="">Lotação (Todas)</option>');
             lotacoes.forEach(l => $('#filtroLotacao').append(`<option value="${l}">${l}</option>`));
 
             const cargos = [...new Set(dadosGlobais.map(d => d.cargo))].filter(Boolean).sort();
-            $('#filtroCargo').html('<option value="">Cargo</option>');
+            $('#filtroCargo').html('<option value="">Cargo (Todos)</option>');
             cargos.forEach(c => $('#filtroCargo').append(`<option value="${c}">${c}</option>`));
 
             let anos = new Set();
@@ -392,11 +395,7 @@
                     const total = this.api().rows({ filter: 'applied' }).count();
                     $('.info-total').html(`<b>${total}</b> registros encontrados`);
                     
-                    setTimeout(() => {
-                        // Adiciona uma folga de 30px no iframe ao paginar
-                        const h = document.documentElement.scrollHeight + 30;
-                        window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
-                    }, 100);
+                    enviarAlturaIframe();
                 }
             });
         }
