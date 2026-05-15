@@ -36,13 +36,11 @@
 
         .badge-atualizacao { position: absolute; top: -12px; right: 20px; font-size: 11px; color: #065f46; background: #d1fae5; padding: 5px 12px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
 
-        /* --- NOVAS CLASSES DE GRADE FIXA --- */
-        /* Linha 1 dos Filtros (3 colunas iguais) */
+        /* Grade de Filtros Fixa */
         .filtro-linha-1 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
-        /* Linha 2 dos Filtros (5 colunas iguais) */
         .filtro-linha-2 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
         
-        /* Exportação (6 colunas iguais) */
+        /* Exportação (6 colunas) */
         .export-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; align-items: center; margin-top: 5px; }
         
         select, input[type="text"] { padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13px; transition: 0.2s; box-sizing: border-box; width: 100%; font-family: inherit; }
@@ -72,7 +70,18 @@
         .dataTables_length label { display: flex !important; align-items: center; font-size: 13px; font-weight: 600; color: #475569; white-space: nowrap; margin-bottom: 0; }
         .dataTables_length select { width: auto !important; margin: 0 8px !important; padding: 6px 30px 6px 12px !important; border-radius: 6px; }
         .info-total { font-size: 14px; font-weight: 600; color: #003b75; background: #e0f2fe; padding: 8px 16px; border-radius: 8px; border: 1px solid #bae6fd; }
-        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; }
+        
+        /* CORREÇÃO DO CARD DE PAGINAÇÃO */
+        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; flex-wrap: wrap; gap: 15px; }
+        .dataTables_wrapper .dataTables_info { padding-top: 0 !important; font-size: 13px; color: #475569; font-weight: 500; }
+        .dataTables_wrapper .dataTables_paginate { padding-top: 0 !important; margin-top: 0 !important; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button { border-radius: 6px !important; padding: 6px 12px !important; border: 1px solid transparent !important; font-size: 13px; font-weight: 600; color: #475569 !important; margin: 0 !important; background: transparent !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border: 1px solid #003b75 !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover { background: #e2e8f0 !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; }
+
+        @media (max-width: 768px) {
+            .dt-bottom-controls { flex-direction: column; justify-content: center; text-align: center; }
+        }
 
         @media print {
             @page { size: portrait; margin: 15mm; @bottom-right { content: "Página " counter(page); } }
@@ -272,7 +281,6 @@
                 $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
                 $('#loader').hide();
                 
-                // Comunica ao Iframe que carregou e ajusta altura
                 $('#main-container').fadeIn(400, () => {
                     const h = document.body.scrollHeight;
                     window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
@@ -284,17 +292,14 @@
         }
 
         function popularFiltrosDynamic() {
-            // Lotações
             const lotacoes = [...new Set(dadosGlobais.map(d => d.lotacao))].filter(Boolean).sort();
             $('#filtroLotacao').html('<option value="">Lotação (Todas)</option>');
             lotacoes.forEach(l => $('#filtroLotacao').append(`<option value="${l}">${l}</option>`));
 
-            // Cargos
             const cargos = [...new Set(dadosGlobais.map(d => d.cargo))].filter(Boolean).sort();
             $('#filtroCargo').html('<option value="">Cargo (Todos)</option>');
             cargos.forEach(c => $('#filtroCargo').append(`<option value="${c}">${c}</option>`));
 
-            // Anos (Admissão e Demissão)
             let anos = new Set();
             dadosGlobais.forEach(d => {
                 if (d.data_admissao) anos.add(d.data_admissao.split('/')[2]);
@@ -345,7 +350,6 @@
                     const total = this.api().rows({ filter: 'applied' }).count();
                     $('.info-total').html(`<b>${total}</b> registros encontrados`);
                     
-                    // Avisa o iframe sobre mudança de tamanho sempre que paginação mudar
                     setTimeout(() => {
                         const h = document.body.scrollHeight;
                         window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
