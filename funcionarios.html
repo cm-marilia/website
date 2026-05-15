@@ -259,7 +259,7 @@
         function popularFiltros() {
             // Lotação
             const lotacoes = [...new Set(dadosGlobais.map(d => d.lotacao))].sort();
-            $('#filtroLotacao').html('<option value="">Lotação (Todas)</option>');
+            $('#filtroLotacao').html('<option value="">Lotação</option>');
             lotacoes.forEach(l => $('#filtroLotacao').append(`<option value="${l}">${l}</option>`));
 
             // Anos Dinâmicos (Admissão + Demissão)
