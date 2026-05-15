@@ -1,247 +1,939 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
+
 <head>
+
     <meta charset="UTF-8" />
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>Relatório de Diárias e Adiantamentos - CMC</title>
 
+
+
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+
+
     <style>
-        /* CSS PADRONIZADO - IDÊNTICO AOS OUTROS RELATÓRIOS */
+
+        /* CSS PADRONIZADO - IDÊNTICO AO DE FUNCIONÁRIOS/ESTAGIÁRIOS */
+
         body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden;}
+
         #wrapper { padding-bottom: 40px; } 
 
+
+
         .topo { background: #003b75; color: white; padding: 20px 35px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin: 15px; gap: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+
         .topo h1 { margin: 0; font-size: 1.8rem; font-weight: 800; letter-spacing: 1px; }
+
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+
         .brasao { height: 60px; width: auto; }
+
         .texto-camara { font-size: 10px; color: #cbd5e1; letter-spacing: 3px; font-weight: 500; text-transform: uppercase; white-space: nowrap; }
 
+
+
         #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: #003b75; font-weight: bold; }
+
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+
+
         .container { margin: 0 15px 15px 15px; display: none; }
+
         fieldset.painel-grupo { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: relative; }
+
         legend.titulo-painel { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; letter-spacing: 1px; }
+
         .badge-atualizacao { position: absolute; top: -12px; right: 20px; font-size: 11px; color: #065f46; background: #d1fae5; padding: 5px 12px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
 
-        /* GRIDS DE FILTROS - FORÇANDO 3 COLUNAS */
-        .filtro-linha { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
 
-        /* BOTÕES EM UMA LINHA SÓ */
-        .grid-exportacao { display: flex; gap: 8px; flex-wrap: nowrap; }
-        .grid-exportacao button { flex: 1; font-size: 12px !important; padding: 10px 5px !important; }
+
+        .filtro-linha-1 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+
+        .filtro-linha-2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+        .toolbar-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+
+
 
         select, input, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; box-sizing: border-box; width: 100%; height: 42px;}
+
         button { background: #003b75; color: white; border: none; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+
+        button:hover { background: #00274d; transform: translateY(-1px); }
+
         .btn-acao { background: #0284c7 !important; }
 
-        /* TOTAIS */
+
+
+        /* Painel Totais (Exclusivo Diárias) */
+
         .painel-totais { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .total-bloco { background: white; border: 1px solid #e2e8f0; border-left: 5px solid #003b75; border-radius: 12px; padding: 16px 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+
+        .total-bloco { background: white; border: 1px solid #e2e8f0; border-left: 5px solid #003b75; border-radius: 12px; padding: 16px 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: center; }
+
+        .total-bloco.destaque { border-left: 5px solid #0284c7; }
+
+        .total-label { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
         .total-valor { font-size: 24px; font-weight: 800; color: #1e293b; }
 
-        /* VISUALIZAÇÃO */
+
+
         .dt-custom-header { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 14px; color: #475569; font-weight: 500; }
+
+        .dataTables_length { display: flex !important; align-items: center; font-size: 14px; color: #475569; font-weight: 500; margin-bottom: 0; }
+
+        .dataTables_length label { display: flex; align-items: center; gap: 8px; margin: 0; }
+
+        .dataTables_length select { width: auto !important; padding: 5px 10px !important; border-radius: 6px; height: auto; }
+
         .badge-contagem { background: #e0f2fe; color: #0369a1; padding: 10px 25px; border-radius: 10px; font-weight: 700; border: 1px solid #bae6fd; }
 
-        /* CARD DE DADOS */
+
+
         #tabela thead { display: none; }
-        table.dataTable { border: none !important; }
-        .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; }
-        .card-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; }
-        .nome-principal { font-size: 18px; font-weight: 800; color: #003b75; text-transform: uppercase; }
-        .subtitulo-card { font-size: 13px; color: #64748b; font-weight: 500; text-transform: uppercase; display: block; margin-top: 4px; }
-        .card-body-row { display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 15px 20px; gap: 15px; }
+
+        table.dataTable { border: none !important; margin-top: 0 !important; }
+
+        
+
+        .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden;}
+
+        .card-header { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; background: #fff;}
+
+        .card-header-texto { display: flex; flex-direction: column; gap: 2px; }
+
+        .nome-principal { font-size: 17px; font-weight: 800; color: #003b75; text-transform: uppercase; }
+
+        .subtitulo-card { font-size: 13px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        
+
+        .card-body-row { display: grid; grid-template-columns: repeat(3, 1fr); padding: 15px 20px; gap: 15px; background: #fff; }
+
         .card-body-row.border-top { border-top: 1px dashed #f1f5f9; }
-        .info-label { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
+
+        .info-col { display: flex; flex-direction: column; }
+
+        .info-label { font-size: 10px; color: #94a3b8; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 4px; }
+
         .info-valor { font-size: 14px; font-weight: 700; color: #1e293b; }
-        .card-footer-quadro { background: #f8fafc; margin: 0 15px 15px 15px; padding: 15px 20px; border-radius: 10px; border: 1px solid #edf2f7; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
+
+
+        .card-footer-quadro { background: #f8fafc; padding: 15px 20px; border-top: 1px solid #edf2f7; display: grid; grid-template-columns: 1fr 1fr; gap: 15px 20px; }
+
+        .quadro-col { display: flex; flex-direction: column; }
+
         .quadro-col-full { grid-column: 1 / -1; border-top: 1px dashed #e2e8f0; padding-top: 10px; }
 
-        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 25px; }
+        .quadro-label { font-size: 10px; font-weight: 800; color: #003b75; text-transform: uppercase; margin-bottom: 5px; }
+
+        .quadro-texto { font-size: 13px; color: #334155; line-height: 1.5; font-weight: 500; }
+
+
+
+        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); flex-wrap: wrap; gap: 15px; box-sizing: border-box; width: 100%; }
+
+        .dataTables_wrapper .dataTables_info { padding-top: 0 !important; font-size: 15px; color: #475569; font-weight: 500; }
+
+        .dataTables_wrapper .dataTables_paginate { display: flex; gap: 4px; }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button { border-radius: 6px !important; padding: 6px 12px !important; font-size: 15px; font-weight: 600; color: #475569 !important; background: transparent !important; border: 1px solid transparent !important; }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; }
+
+
+
+        #cabecalho-impressao { display: none; }
+
+
 
         @media (max-width: 850px) {
-            .filtro-linha, .grid-exportacao, .painel-totais { grid-template-columns: 1fr; flex-wrap: wrap; }
+
             .card-body-row { grid-template-columns: 1fr 1fr; }
+
+            .dt-bottom-controls { flex-direction: column; text-align: center; }
+
+            .toolbar-row { grid-template-columns: repeat(3, 1fr); }
+
+            .filtro-linha-1, .filtro-linha-2 { grid-template-columns: 1fr; }
+
+            .painel-totais { grid-template-columns: 1fr; }
+
+            .card-footer-quadro { grid-template-columns: 1fr; }
+
         }
+
+
+
+        @media print {
+
+            .topo, fieldset, .dt-bottom-controls { display: none !important; }
+
+            #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
+
+            .card-info { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; }
+
+            .painel-totais { display: grid !important; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px !important; }
+
+            .total-bloco { border: 1px solid #003b75 !important; box-shadow: none !important; }
+
+            .container { display: block !important; margin: 0; }
+
+        }
+
     </style>
+
 </head>
+
 <body>
 
+
+
 <div id="wrapper">
+
     <header class="topo">
+
         <h1>Relatório de Diárias e Adiantamentos</h1>
+
         <div class="logo-container">
+
             <img src="Brasão_de_Marília.png" alt="Brasão de Marília" class="brasao">
+
             <span class="texto-camara">Câmara Municipal de Marília</span>
+
         </div>
+
     </header>
 
-    <div id="loader"><div class="spinner"></div><span>Carregando dados...</span></div>
 
-    <main class="container" id="main-container">
-        <fieldset class="painel-grupo">
-            <legend class="titulo-painel">Filtros de Pesquisa</legend>
-            <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
-            <div class="filtro-linha">
-                <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off">
-                <select id="filtroGabinete"><option value="">Gabinete (Todos)</option></select>
-                <select id="filtroServidor"><option value="">Servidor (Todos)</option></select>
-            </div>
-            <div class="filtro-linha">
-                <select id="filtroMes"><option value="">Mês</option><option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option><option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option><option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option></select>
-                <select id="filtroAno"><option value="">Ano</option></select>
-                <button onclick="limparFiltros()">Limpar filtros</button>
-            </div>
-        </fieldset>
 
-        <fieldset class="painel-grupo">
-            <legend class="titulo-painel">Exportação e Impressão</legend>
-            <div class="grid-exportacao">
-                <button onclick="exportarCSV()">⬇️ CSV</button>
-                <button onclick="exportarXLSX()">⬇️ Excel</button>
-                <button onclick="exportarJSON()">⬇️ JSON</button>
-                <button onclick="exportarXML()">⬇️ XML</button>
-                <button class="btn-acao" onclick="window.print()">🖨️ Imprimir</button>
-                <button class="btn-acao" onclick="iniciarCarregamento()">🔄 Atualizar</button>
-            </div>
-        </fieldset>
+    <div id="cabecalho-impressao">
 
-        <div class="painel-totais">
-            <div class="total-bloco">
-                <div class="info-label">Soma das Diárias</div>
-                <div class="total-valor" id="total-diarias">R$ 0,00</div>
-            </div>
-            <div class="total-bloco" style="border-left-color: #0284c7;">
-                <div class="info-label">Soma dos Adiantamentos</div>
-                <div class="total-valor" id="total-adiantamentos">R$ 0,00</div>
-            </div>
+        <img src="Brasão_de_Marília.png" height="70">
+
+        <div>
+
+            <h1 style="margin:0; color:#003b75; font-size: 24px;">Relatório de Diárias e Adiantamentos</h1>
+
+            <p style="margin:0; font-weight:bold; font-size: 14px;">Câmara Municipal de Marília</p>
+
         </div>
 
+    </div>
+
+
+
+    <div id="loader">
+
+        <div class="spinner"></div>
+
+        <span>Sincronizando base de dados...</span>
+
+    </div>
+
+
+
+    <main class="container" id="main-container">
+
+        
+
         <fieldset class="painel-grupo">
-            <legend class="titulo-painel">Visualização</legend>
-            <div class="dt-custom-header">
-                <div id="comprimento-tabela"></div>
-                <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
+
+            <legend class="titulo-painel">Filtros de Pesquisa</legend>
+
+            <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
+
+            
+
+            <div class="filtro-linha-1">
+
+                <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off">
+
+                <select id="filtroGabinete"><option value="">Gabinete (Todos)</option></select>
+
+                <select id="filtroServidor"><option value="">Servidor (Todos)</option></select>
+
             </div>
+
+            
+
+            <div class="filtro-linha-2">
+
+                <select id="filtroMes">
+
+                    <option value="">Mês</option>
+
+                    <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+
+                    <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+
+                    <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+
+                    <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+
+                </select>
+
+                <select id="filtroAno"><option value="">Ano</option></select>
+
+                <button onclick="limparFiltros()">Limpar filtros</button>
+
+            </div>
+
         </fieldset>
 
-        <table id="tabela" style="width:100%"><thead><tr><th>Dados</th></tr></thead><tbody></tbody></table>
+
+
+        <fieldset class="painel-grupo">
+
+            <legend class="titulo-painel">Exportação e Impressão</legend>
+
+            <div class="toolbar-row">
+
+                <button onclick="exportarCSV()">⬇️ CSV</button>
+
+                <button onclick="exportarXLSX()">⬇️ Excel</button>
+
+                <button onclick="exportarJSON()">⬇️ JSON</button>
+
+                <button onclick="exportarXML()">⬇️ XML</button>
+
+                <button class="btn-acao" onclick="imprimirSeguro()">🖨️ Imprimir</button>
+
+                <button class="btn-acao" onclick="iniciarCarregamento()">🔄 Atualizar</button>
+
+            </div>
+
+        </fieldset>
+
+
+
+        <div id="painel-totais" class="painel-totais">
+
+            <div class="total-bloco">
+
+                <span class="total-label">Soma das Diárias (Filtrado)</span>
+
+                <span class="total-valor" id="total-diarias">R$ 0,00</span>
+
+            </div>
+
+            <div class="total-bloco destaque">
+
+                <span class="total-label">Soma de Adiantamentos (Filtrado)</span>
+
+                <span class="total-valor" id="total-adiantamentos">R$ 0,00</span>
+
+            </div>
+
+        </div>
+
+
+
+        <fieldset class="painel-grupo">
+
+            <legend class="titulo-painel">Visualização</legend>
+
+            <div class="dt-custom-header">
+
+                <div id="comprimento-tabela"></div> 
+
+                <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
+
+            </div>
+
+        </fieldset>
+
+
+
+        <table id="tabela" style="width:100%">
+
+            <thead><tr><th>Card</th></tr></thead>
+
+            <tbody></tbody>
+
+        </table>
+
     </main>
+
 </div>
 
-<script>
-    const SHEET_ID_DIARIAS = "1XP67Ojd_HK3S1IPvC_9eY32-lf0_qI3jfBfrLzasvQo";
-    const SHEET_ID_GABINETES = "1GwDig1yn9YIX8FSsHFPHL2iLCtwsZkNnquNjp5D7Oaw"; 
-    let tabela, dadosGlobais = [], listaGabinetes = [], carimboCompleto = "";
 
-    function formatarMoeda(v) {
-        if (!v) return "R$ 0,00";
-        let n = v.replace(/R\$\s?/g, "").trim();
-        return n.includes(",") ? `R$ ${n}` : `R$ ${n},00`;
+
+<script>
+
+    const SHEET_ID_DIARIAS = "1XP67Ojd_HK3S1IPvC_9eY32-lf0_qI3jfBfrLzasvQo";
+
+    const SHEET_ID_GABINETES = "1GwDig1yn9YIX8FSsHFPHL2iLCtwsZkNnquNjp5D7Oaw"; 
+
+
+
+    let tabela;
+
+    let dadosGlobais = [];
+
+    let listaGabinetes = [];
+
+    let carimboCompleto = "";
+
+
+
+    // INFRAESTRUTURA
+
+    function enviarAlturaIframe() {
+
+        setTimeout(() => {
+
+            const wrapper = document.getElementById('wrapper');
+
+            if (wrapper) {
+
+                const h = wrapper.offsetHeight + 40; 
+
+                window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
+
+            }
+
+        }, 200); 
+
     }
 
-    function removerAcentos(s) { return s ? s.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
+
+
+    function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
+
+
+
+    function formatarMoeda(v) {
+
+        if (!v) return "R$ 0,00";
+
+        let n = v.replace(/R\$\s?/g, "").trim();
+
+        return n.includes(",") ? `R$ ${n}` : `R$ ${n},00`;
+
+    }
+
+
+
+    function gerarNomeArquivoBase() {
+
+        let partes = ["diarias"];
+
+        const serv = $('#filtroServidor').val();
+
+        const gab = $('#filtroGabinete').val();
+
+        
+
+        if (serv) partes.push(serv.replace(/\s+/g, '_'));
+
+        else if (gab) partes.push(gab.replace(/\s+/g, '_'));
+
+        
+
+        if ($('#filtroMes').val()) partes.push($('#filtroMes option:selected').text());
+
+        if ($('#filtroAno').val()) partes.push($('#filtroAno').val());
+
+        
+
+        return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '');
+
+    }
+
+
+
+    // CARREGAMENTO E PROCESSAMENTO
 
     function getCsvUrl(id) { return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&t=${Date.now()}`; }
 
+
+
     function csvParaArray(str, isDiarias = false) {
+
+        if (str.startsWith('\ufeff')) str = str.substring(1);
+
         let linhas = str.trim().split("\n");
+
         if (isDiarias) {
-            let match = str.match(/MODIF_REAL:\s*(\d{1,2}\/\d{1,2}\/\d{4}[^\d]+\d{1,2}:\d{2})/i);
-            if (match) carimboCompleto = match[1];
+
+            for (let i = 0; i < linhas.length; i++) {
+
+                if (linhas[i].toUpperCase().includes("MODIF_REAL:")) {
+
+                    let match = linhas[i].match(/MODIF_REAL:\s*(\d{1,2}\/\d{1,2}\/\d{4}[^\d]+\d{1,2}:\d{2})/i);
+
+                    if (match) carimboCompleto = match[1].replace(/\s+/, ' às ');
+
+                    linhas.splice(i, 1); break;
+
+                }
+
+            }
+
         }
-        let cab = linhas[1].split(',').map(c => c.toLowerCase().replace(/"/g, '').trim());
-        return linhas.slice(2).map(l => {
+
+        let cabecalhoLinha = linhas.shift();
+
+        const extrair = (l) => {
+
             let res = [], d = false, v = "";
+
             for (let c of l) { if (c === '"') d = !d; else if (c === ',' && !d) { res.push(v); v = ""; } else v += c; }
-            res.push(v);
-            let o = {};
-            cab.forEach((c, i) => o[c] = (res[i] || "").replace(/"/g, '').trim());
+
+            res.push(v); return res.map(x => x.replace(/^"|"$/g, '').trim());
+
+        };
+
+        const cab = extrair(cabecalhoLinha).map(c => c.toLowerCase());
+
+        return linhas.map(l => {
+
+            let val = extrair(l), o = {};
+
+            cab.forEach((c, i) => o[c] = val[i] || "");
+
+            if(o.servidor) o.servidor = o.servidor.toUpperCase();
+
             return o;
-        }).filter(d => d.servidor);
+
+        }).filter(d => Object.values(d).some(v => v !== ""));
+
     }
+
+
 
     async function iniciarCarregamento() {
+
         $('#loader').show(); $('#main-container').hide();
+
         try {
+
             const [rD, rG] = await Promise.all([fetch(getCsvUrl(SHEET_ID_DIARIAS)), fetch(getCsvUrl(SHEET_ID_GABINETES))]);
+
             dadosGlobais = csvParaArray(await rD.text(), true);
+
             listaGabinetes = csvParaArray(await rG.text(), false);
-            preencherFiltros(); aplicarFiltros();
-            $('#badge-atualizacao').html(`🟢 Atualizado em ${carimboCompleto}`);
-            $('#loader').hide(); $('#main-container').fadeIn();
-        } catch (e) { console.error(e); }
+
+            preencherFiltros(); 
+
+            aplicarFiltros();
+
+            $('#badge-atualizacao').html(carimboCompleto ? `🟢 Atualizado em ${carimboCompleto}` : `🟢 Atualizado hoje`);
+
+            $('#loader').hide(); 
+
+            $('#main-container').fadeIn(400, () => enviarAlturaIframe());
+
+        } catch (e) { 
+
+            console.error(e);
+
+            $('#loader').html('<div style="color:red">Erro ao carregar dados.</div>'); 
+
+        }
+
     }
 
-    function preencherFiltros() {
-        const gabs = [...new Set(listaGabinetes.map(g => Object.values(g)[0].toUpperCase()))].sort();
-        gabs.forEach(g => $('#filtroGabinete').append(new Option(g, g)));
-        const servs = [...new Set(dadosGlobais.map(d => d.servidor))].sort();
-        servs.forEach(s => $('#filtroServidor').append(new Option(s, s)));
-        const anos = [...new Set(dadosGlobais.map(d => d.data_partida.split("/")[2]))].filter(a => a).sort();
-        anos.forEach(a => $('#filtroAno').append(new Option(a, a)));
+
+
+    function preencherFiltros(mudouGabinete = false) {
+
+        const valServ = $('#filtroServidor').val(), valGab = $('#filtroGabinete').val();
+
+        if (!mudouGabinete) {
+
+            const gabs = [...new Set(listaGabinetes.map(g => Object.values(g)[0].toUpperCase()))].sort();
+
+            $('#filtroGabinete').html('<option value="">Gabinete (Todos)</option>');
+
+            gabs.forEach(g => $('#filtroGabinete').append(`<option value="${g}">${g}</option>`));
+
+            $('#filtroGabinete').val(valGab);
+
+        }
+
+        let servs = [];
+
+        if (valGab) {
+
+            const gNorm = removerAcentos(valGab).toLowerCase();
+
+            servs = [...new Set(dadosGlobais.filter(d => removerAcentos(d.servidor).toLowerCase().includes(gNorm) || removerAcentos(d.cargo).toLowerCase().includes(gNorm)).map(d => d.servidor))].sort();
+
+        } else {
+
+            servs = [...new Set(dadosGlobais.map(d => d.servidor))].sort();
+
+        }
+
+        $('#filtroServidor').html('<option value="">Servidor (Todos)</option>');
+
+        servs.forEach(s => $('#filtroServidor').append(`<option value="${s}">${s}</option>`));
+
+        $('#filtroServidor').val(valServ);
+
+        
+
+        if (!mudouGabinete) {
+
+            const anos = [...new Set(dadosGlobais.map(d => (d.data_partida || "").split("/")[2]))].filter(a => a).sort();
+
+            $('#filtroAno').html('<option value="">Ano</option>');
+
+            anos.forEach(a => $('#filtroAno').append(`<option value="${a}">${a}</option>`));
+
+        }
+
     }
+
+
+
+    // LÓGICA DE FILTRO E RENDERIZAÇÃO
 
     function aplicarFiltros() {
-        const n = $('#filtroNome').val().toLowerCase(), g = $('#filtroGabinete').val(), s = $('#filtroServidor').val(), m = $('#filtroMes').val(), a = $('#filtroAno').val();
+
+        const nomeDigitado = removerAcentos($('#filtroNome').val().toLowerCase());
+
+        const serv = $('#filtroServidor').val();
+
+        const mes = $('#filtroMes').val();
+
+        const ano = $('#filtroAno').val();
+
+        const gab = $('#filtroGabinete').val();
+
+
+
         const res = dadosGlobais.filter(d => {
-            const p = d.data_partida.split("/");
-            return (!n || d.servidor.toLowerCase().includes(n)) && (!g || d.servidor.includes(g)) && (!s || d.servidor === s) && (!m || p[1] === m) && (!a || p[2] === a);
+
+            const p = (d.data_partida || "").split("/"), mD = p[1], aD = p[2];
+
+            const mS = !serv || d.servidor === serv;
+
+            const mM = !mes || mD === mes;
+
+            const mA = !ano || aD === ano;
+
+            
+
+            let mG = true;
+
+            if (gab) {
+
+                const gN = removerAcentos(gab).toLowerCase();
+
+                mG = removerAcentos(d.servidor).toLowerCase().includes(gN) || removerAcentos(d.cargo).toLowerCase().includes(gN);
+
+            }
+
+
+
+            let mNome = true;
+
+            if (nomeDigitado) {
+
+                mNome = removerAcentos(d.servidor).toLowerCase().includes(nomeDigitado);
+
+            }
+
+
+
+            return mS && mM && mA && mG && mNome;
+
         });
+
+
+
+        // Ordenar os resultados (Data da Partida mais recente primeiro)
+
+        res.sort((a, b) => {
+
+            const dataA = (a.data_partida || "").split("/");
+
+            const dataB = (b.data_partida || "").split("/");
+
+            const dateA = new Date(dataA[2], dataA[1] - 1, dataA[0] || 1).getTime() || 0;
+
+            const dateB = new Date(dataB[2], dataB[1] - 1, dataB[0] || 1).getTime() || 0;
+
+            return dateB - dateA;
+
+        });
+
+
+
         renderizar(res);
+
     }
+
+
 
     function renderizar(dados) {
-        if (tabela) { tabela.destroy(); $('#comprimento-tabela').empty(); }
+
+        if (tabela) { 
+
+            tabela.destroy(); 
+
+            $('#comprimento-tabela').empty(); 
+
+        }
+
+
+
         tabela = $('#tabela').DataTable({
-            data: dados, pageLength: 10, ordering: false,
+
+            data: dados,
+
+            pageLength: 10,
+
+            ordering: false,
+
+            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
+
             dom: 'lrt<"dt-bottom-controls"ip>',
-            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
+
             columns: [{ 
+
                 data: null,
-                render: (d) => `
-                    <div class="card-info">
-                        <div class="card-header"><span class="nome-principal">${d.servidor}</span><span class="subtitulo-card">${d.cargo || "-"}</span></div>
-                        <div class="card-body-row">
-                            <div class="info-bloco"><div class="info-label">Qtd. Diárias</div><div class="info-valor">${d.qtde_diarias}</div></div>
-                            <div class="info-bloco"><div class="info-label">Partida</div><div class="info-valor">${d.data_partida}</div></div>
-                            <div class="info-bloco"><div class="info-label">Retorno</div><div class="info-valor">${d.data_retorno}</div></div>
-                        </div>
-                        <div class="card-body-row border-top">
-                            <div class="info-bloco"><div class="info-label">Valor Diárias</div><div class="info-valor">${formatarMoeda(d.valor_diarias)}</div></div>
-                            <div class="info-bloco"><div class="info-label">Valor Adiantamento</div><div class="info-valor">${formatarMoeda(d.valor_adiantamento)}</div></div>
-                            <div class="info-bloco"><div class="info-label">Dotação</div><div class="info-valor">${d.dotacao || "-"}</div></div>
-                        </div>
-                        <div class="card-footer-quadro">
-                            <div class="quadro-col"><div class="info-label">Destino</div><div class="info-valor">${d.cidade_destino}</div></div>
-                            <div class="quadro-col-full"><div class="info-label">Motivação</div><div class="info-valor">${d.motivacao_viagem}</div></div>
-                        </div>
-                    </div>`
+
+                render: function(d) {
+
+                    return `
+
+                        <div class="card-info">
+
+                            <div class="card-header">
+
+                                <div class="card-header-texto">
+
+                                    <span class="nome-principal">${d.servidor}</span>
+
+                                    <span class="subtitulo-card">${d.cargo || "-"}</span>
+
+                                </div>
+
+                            </div>
+
+                            <div class="card-body-row">
+
+                                <div class="info-col"><span class="info-label">Qtd. Diárias</span><span class="info-valor">${d.qtde_diarias || "0"}</span></div>
+
+                                <div class="info-col"><span class="info-label">Partida</span><span class="info-valor">${d.data_partida || "-"}</span></div>
+
+                                <div class="info-col"><span class="info-label">Retorno</span><span class="info-valor">${d.data_retorno || "-"}</span></div>
+
+                            </div>
+
+                            <div class="card-body-row border-top">
+
+                                <div class="info-col"><span class="info-label">Vlr. Diárias</span><span class="info-valor">${formatarMoeda(d.valor_diarias)}</span></div>
+
+                                <div class="info-col"><span class="info-label">Vlr. Adiantamento</span><span class="info-valor">${formatarMoeda(d.valor_adiantamento)}</span></div>
+
+                                <div class="info-col"><span class="info-label">Dotação</span><span class="info-valor">${d.dotacao || d["dotação"] || "-"}</span></div>
+
+                            </div>
+
+                            <div class="card-footer-quadro">
+
+                                <div class="quadro-col"><span class="quadro-label">Cidade de Destino</span><span class="quadro-texto">${d.cidade_destino}</span></div>
+
+                                <div class="quadro-col"><span class="quadro-label">Local do Destino</span><span class="quadro-texto">${d.local_destino}</span></div>
+
+                                <div class="quadro-col quadro-col-full"><span class="quadro-label">Motivação da Viagem</span><span class="quadro-texto">${d.motivacao_viagem}</span></div>
+
+                            </div>
+
+                        </div>`;
+
+                }
+
             }],
-            initComplete: function() { $('.dataTables_length').appendTo('#comprimento-tabela'); },
+
+            initComplete: function() { 
+
+                $('.dataTables_length').appendTo('#comprimento-tabela');
+
+            },
+
             drawCallback: function() {
+
+                // Cálculo de Totais (Diárias e Adiantamentos)
+
                 let api = this.api(), tD = 0, tA = 0;
+
                 const parseNum = (v) => parseFloat((v || "0").replace(/R\$\s?|[.]/g, '').replace(',', '.')) || 0;
-                api.rows({ filter: 'applied' }).data().each(d => { tD += parseNum(d.valor_diarias); tA += parseNum(d.valor_adiantamento); });
-                $('#total-diarias').text(new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(tD));
-                $('#total-adiantamentos').text(new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(tA));
-                $('#contagem-registros').html(`<b>${api.rows({ filter: 'applied' }).count()}</b> registros encontrados`);
+
+                
+
+                api.rows({ filter: 'applied' }).data().each(d => { 
+
+                    tD += parseNum(d.valor_diarias); 
+
+                    tA += parseNum(d.valor_adiantamento); 
+
+                });
+
+                
+
+                const fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                $('#total-diarias').text(fmt.format(tD)); 
+
+                $('#total-adiantamentos').text(fmt.format(tA));
+
+
+
+                const totalRegistros = api.rows({ filter: 'applied' }).count();
+
+                $('#contagem-registros').html(`<b>${totalRegistros}</b> registros encontrados`);
+
+
+
+                enviarAlturaIframe();
+
             }
+
         });
+
     }
 
-    function limparFiltros() { $('#filtroNome').val(''); $('select').val(''); aplicarFiltros(); }
+
+
+    // EXPORTAÇÃO (VERSÃO MELHORADA)
+
+    function exportarCSV() {
+
+        const data = tabela.rows({ filter: 'applied' }).data().toArray(); if(!data.length) return;
+
+        let csv = "\ufeff" + Object.keys(data[0]).join(",") + "\n";
+
+        data.forEach(r => csv += Object.values(r).map(v => `"${v}"`).join(",") + "\n");
+
+        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv");
+
+    }
+
+
+
+    function exportarXLSX() {
+
+        const data = tabela.rows({ filter: 'applied' }).data().toArray(); if(!data.length) return;
+
+        const ws = XLSX.utils.json_to_sheet(data);
+
+        const wb = XLSX.utils.book_new();
+
+        XLSX.utils.book_append_sheet(wb, ws, "Diarias");
+
+        XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx");
+
+    }
+
+
+
+    function exportarJSON() {
+
+        const data = tabela.rows({ filter: 'applied' }).data().toArray(); if(!data.length) return;
+
+        downloadFile(JSON.stringify(data, null, 2), gerarNomeArquivoBase() + ".json", "application/json");
+
+    }
+
+
+
+    function exportarXML() {
+
+        const data = tabela.rows({ filter: 'applied' }).data().toArray(); if(!data.length) return;
+
+        let xml = '<?xml version="1.0" encoding="UTF-8"?><diarias>';
+
+        data.forEach(r => {
+
+            xml += '<registro>';
+
+            for (let k in r) xml += `<${k}>${r[k]}</${k}>`;
+
+            xml += '</registro>';
+
+        });
+
+        xml += '</diarias>';
+
+        downloadFile(xml, gerarNomeArquivoBase() + ".xml", "application/xml");
+
+    }
+
+
+
+    function downloadFile(content, fileName, mime) {
+
+        const blob = new Blob([content], { type: mime });
+
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+
+        a.href = url; a.download = fileName; a.click();
+
+    }
+
+
+
+    function imprimirSeguro() {
+
+        if (!tabela) return;
+
+        const len = tabela.page.len();
+
+        tabela.page.len(-1).draw('page');
+
+        setTimeout(() => { window.print(); tabela.page.len(len).draw('page'); }, 500);
+
+    }
+
+
+
+    function limparFiltros() { 
+
+        $('#filtroNome, #filtroServidor, #filtroMes, #filtroAno, #filtroGabinete').val(''); 
+
+        preencherFiltros(); 
+
+        aplicarFiltros(); 
+
+    }
+
+
+
     $('#filtroNome').on('input', aplicarFiltros);
-    $('select').on('change', aplicarFiltros);
+
+    $('#filtroGabinete').on('change', () => { preencherFiltros(true); aplicarFiltros(); });
+
+    $('#filtroServidor, #filtroMes, #filtroAno').on('change', aplicarFiltros);
+
     window.onload = iniciarCarregamento;
+
 </script>
+
 </body>
+
 </html>
