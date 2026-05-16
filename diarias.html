@@ -33,13 +33,9 @@
         /* FILTROS RESPONSIVOS */
         .painel-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
         
-        /* EXPORTAÇÃO RESPONSIVA CORRIGIDA */
+        /* EXPORTAÇÃO RESPONSIVA */
         .painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
-        .painel-exportacao button { 
-            flex: 1; /* Estica para preencher o espaço no computador */
-            min-width: 90px; /* Segura o tamanho mínimo no celular para criar o carrossel */
-            height: 38px; border-radius: 6px; font-size: 12px; padding: 0 10px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; 
-        }
+        .painel-exportacao button { flex: 0 0 auto; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .painel-exportacao button:hover { background: #00274d; }
         .painel-exportacao .btn-acao { background: #0284c7; }
         .painel-exportacao::-webkit-scrollbar { height: 6px; }
@@ -71,7 +67,6 @@
         .item-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 2px;}
         .item-valor { font-size: 13px; font-weight: 700; color: #1e293b;}
         
-        /* RODAPÉ DO CARD */
         .card-footer { background: #f8fafc; padding: 12px 15px; border-top: 1px solid #edf2f7; font-size: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;}
         .quadro-full { grid-column: 1 / -1; border-top: 1px dashed #e2e8f0; padding-top: 10px; margin-top: 2px;}
 
@@ -142,7 +137,7 @@
             <div class="total-box" style="border-left-color:#0284c7;"><label>Soma dos Adiantamentos</label><span id="txt-total-adiantamentos">R$ 0,00</span></div>
         </div>
 
-        <fieldset class="painel" style="padding: 10px 15px;">
+        <fieldset class="painel" id="painel-visualizacao" style="padding: 10px 15px;">
             <legend class="painel-titulo">Visualização</legend>
             <div class="dt-header-flex">
                 <div id="area-length"></div>
@@ -245,6 +240,13 @@
                 $('#count-rows').text(this.api().rows({filter:'applied'}).count());
                 ajustarIframe();
             }
+        });
+
+        // Evento que aciona o scroll automático ao mudar de página
+        grid.on('page.dt', function () {
+            setTimeout(function() {
+                document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
         });
     }
 
