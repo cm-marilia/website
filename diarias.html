@@ -33,19 +33,9 @@
         /* FILTROS RESPONSIVOS */
         .painel-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
         
-        /* EXPORTAÇÃO RESPONSIVA (Mágica do Swipe Lateral no Celular) */
-        .painel-exportacao { 
-            display: flex; 
-            flex-wrap: nowrap; 
-            gap: 8px; 
-            overflow-x: auto; 
-            padding-bottom: 5px; 
-            -webkit-overflow-scrolling: touch; 
-        }
-        .painel-exportacao button { 
-            flex: 0 0 auto; 
-            height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
-        }
+        /* EXPORTAÇÃO RESPONSIVA */
+        .painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
+        .painel-exportacao button { flex: 0 0 auto; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .painel-exportacao button:hover { background: #00274d; }
         .painel-exportacao .btn-acao { background: #0284c7; }
         .painel-exportacao::-webkit-scrollbar { height: 6px; }
@@ -78,17 +68,13 @@
         .item-valor { font-size: 13px; font-weight: 700; }
         .card-footer { background: #f8fafc; padding: 12px 15px; border-top: 1px solid #edf2f7; font-size: 12px; display: grid; grid-template-columns: 1fr; gap: 10px;}
 
-        /* =========================================
-           CORREÇÃO DA PAGINAÇÃO (RODAPÉ DATATABLES)
-           ========================================= */
+        /* PAGINAÇÃO */
         .controles-datatable { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px;}
         .dataTables_wrapper .dataTables_info { padding-top: 0 !important; color: #475569; font-size: 13px; font-weight: 500; margin-bottom: 0 !important; }
-        
         .dataTables_wrapper .dataTables_paginate { display: flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 0 !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 6px 12px !important; border-radius: 6px !important; margin: 0 !important; border: 1px solid transparent !important; color: #475569 !important; font-weight: 600; font-size: 13px; background: transparent !important; cursor: pointer; transition: 0.2s; }
         .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border-color: #003b75 !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #003b75 !important; }
-        .dataTables_wrapper .dataTables_paginate .ellipsis { padding: 0 4px; color: #475569; }
         
         #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; }
         .spinner { border: 4px solid #e2e8f0; border-top: 4px solid #003b75; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px; }
@@ -97,9 +83,7 @@
         @media (max-width: 600px) {
             .topo { flex-direction: column; gap: 10px; text-align: center; }
             .card-body { grid-template-columns: 1fr 1fr; }
-            .dt-header-flex { flex-direction: column; text-align: center; }
-            /* Alinha paginação no celular */
-            .controles-datatable { flex-direction: column; justify-content: center; text-align: center; }
+            .dt-header-flex, .controles-datatable { flex-direction: column; text-align: center; }
             .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
         }
     </style>
@@ -108,13 +92,12 @@
 <div id="wrapper">
     <header class="topo">
         <h1>Diárias e Adiantamentos</h1>
-        <img src="Brasão_de_Marília.png" class="brasao">
+        <img src="Brasão_de_Marília.png" class="brasao" alt="Brasão Câmara">
     </header>
 
     <div id="loader"><div class="spinner"></div><span>Sincronizando dados...</span></div>
 
     <main id="main-content" style="display:none;">
-        
         <fieldset class="painel">
             <legend class="painel-titulo">Filtros de Pesquisa</legend>
             <div id="sync-info" class="badge-sinc">Aguardando...</div>
@@ -235,8 +218,7 @@
                             <div><label class="item-label">Dotação</label><span class="item-valor">${d.dotacao || "-"}</span></div>
                         </div>
                         <div class="card-footer">
-                            <div><label class="item-label">Destino</label><span class="item-valor">${d.cidade_destino}</span></div>
-                            <div class="quadro-full"><label class="item-label">Motivação da Viagem</label><span style="font-size:12px; font-weight:500;">${d.motivacao_viagem}</span></div>
+                            <div><label class="item-label">Destino / Motivação</label><span style="font-size:12px; font-weight:500;"><b>${d.cidade_destino}</b> - ${d.motivacao_viagem}</span></div>
                         </div>
                     </div>`
             }],
@@ -257,10 +239,25 @@
     function ajustarIframe() { window.parent.postMessage({ tipo: 'ajustarAltura', valor: document.getElementById('wrapper').offsetHeight + 40 }, '*'); }
     function resetarFiltros() { $('#buscaNome').val(''); $('select').val(''); filtrar(); }
     
-    function exportarExcel() { const ws = XLSX.utils.json_to_sheet(grid.rows({filter:'applied'}).data().toArray()); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Diarias"); XLSX.writeFile(wb, "diarias.xlsx"); }
-    function exportarCSV() { let csv = "\ufeffServidor,Cargo,Diarias,Partida,Retorno,Valor,Adiantamento\n"; grid.rows({filter:'applied'}).data().each(d => { csv += `"${d.servidor}","${d.cargo}","${d.qtde_diarias}","${d.data_partida}","${d.data_retorno}","${d.valor_diarias}","${d.valor_adiantamento}"\n`; }); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "diarias.csv"; link.click(); }
-    function exportarJSON() { const blob = new Blob([JSON.stringify(grid.rows({filter:'applied'}).data().toArray(), null, 2)], {type: 'application/json'}); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "diarias.json"; link.click(); }
-    function exportarXML() { let xml = '<?xml version="1.0" encoding="UTF-8"?><relatorio>'; grid.rows({filter:'applied'}).data().each(d => { xml += `<registro><servidor>${d.servidor}</servidor><valor>${d.valor_diarias}</valor></registro>`; }); xml += '</relatorio>'; const blob = new Blob([xml], { type: 'application/xml' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "diarias.xml"; link.click(); }
+    // FUNÇÃO DE NOMEAÇÃO DINÂMICA
+    function gerarNomeArquivoBase() {
+        let partes = ["diarias"];
+        const serv = $('#selServidor').val();
+        const gab = $('#selGabinete').val();
+        
+        if (serv) partes.push(serv.replace(/\s+/g, '_'));
+        else if (gab) partes.push(gab.replace(/\s+/g, '_'));
+        
+        if ($('#selMes').val()) partes.push($('#selMes option:selected').text());
+        if ($('#selAno').val()) partes.push($('#selAno').val());
+        
+        return partes.join('_').normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+    }
+    
+    function exportarExcel() { const ws = XLSX.utils.json_to_sheet(grid.rows({filter:'applied'}).data().toArray()); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Diarias"); XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx"); }
+    function exportarCSV() { let csv = "\ufeffServidor,Cargo,Diarias,Partida,Retorno,Valor,Adiantamento\n"; grid.rows({filter:'applied'}).data().each(d => { csv += `"${d.servidor}","${d.cargo}","${d.qtde_diarias}","${d.data_partida}","${d.data_retorno}","${d.valor_diarias}","${d.valor_adiantamento}"\n`; }); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = gerarNomeArquivoBase() + ".csv"; link.click(); }
+    function exportarJSON() { const blob = new Blob([JSON.stringify(grid.rows({filter:'applied'}).data().toArray(), null, 2)], {type: 'application/json'}); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = gerarNomeArquivoBase() + ".json"; link.click(); }
+    function exportarXML() { let xml = '<?xml version="1.0" encoding="UTF-8"?><relatorio>'; grid.rows({filter:'applied'}).data().each(d => { xml += `<registro><servidor>${d.servidor}</servidor><valor>${d.valor_diarias}</valor></registro>`; }); xml += '</relatorio>'; const blob = new Blob([xml], { type: 'application/xml' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = gerarNomeArquivoBase() + ".xml"; link.click(); }
 
     $('#buscaNome').on('input', filtrar);
     $('select').on('change', filtrar);
