@@ -65,8 +65,11 @@
         .card-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); padding: 12px 15px; gap: 10px; }
         .card-body.sep { border-top: 1px dashed #f1f5f9; }
         .item-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 2px;}
-        .item-valor { font-size: 13px; font-weight: 700; }
-        .card-footer { background: #f8fafc; padding: 12px 15px; border-top: 1px solid #edf2f7; font-size: 12px; display: grid; grid-template-columns: 1fr; gap: 10px;}
+        .item-valor { font-size: 13px; font-weight: 700; color: #1e293b;}
+        
+        /* RODAPÉ DO CARD CORRIGIDO */
+        .card-footer { background: #f8fafc; padding: 12px 15px; border-top: 1px solid #edf2f7; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;}
+        .quadro-full { grid-column: 1 / -1; border-top: 1px dashed #e2e8f0; padding-top: 10px; margin-top: 2px;}
 
         /* PAGINAÇÃO */
         .controles-datatable { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px;}
@@ -83,6 +86,7 @@
         @media (max-width: 600px) {
             .topo { flex-direction: column; gap: 10px; text-align: center; }
             .card-body { grid-template-columns: 1fr 1fr; }
+            .card-footer { grid-template-columns: 1fr; } /* Empilha no celular */
             .dt-header-flex, .controles-datatable { flex-direction: column; text-align: center; }
             .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
         }
@@ -218,7 +222,12 @@
                             <div><label class="item-label">Dotação</label><span class="item-valor">${d.dotacao || "-"}</span></div>
                         </div>
                         <div class="card-footer">
-                            <div><label class="item-label">Destino / Motivação</label><span style="font-size:12px; font-weight:500;"><b>${d.cidade_destino}</b> - ${d.motivacao_viagem}</span></div>
+                            <div><label class="item-label">Cidade de Destino</label><span class="item-valor">${d.cidade_destino || "-"}</span></div>
+                            <div><label class="item-label">Local de Destino</label><span class="item-valor">${d.local_destino || "-"}</span></div>
+                            <div class="quadro-full">
+                                <label class="item-label">Motivação da Viagem</label>
+                                <span style="font-size:13px; font-weight:500; color:#334155; display:block; margin-top:4px; line-height:1.4;">${d.motivacao_viagem || "-"}</span>
+                            </div>
                         </div>
                     </div>`
             }],
@@ -239,7 +248,6 @@
     function ajustarIframe() { window.parent.postMessage({ tipo: 'ajustarAltura', valor: document.getElementById('wrapper').offsetHeight + 40 }, '*'); }
     function resetarFiltros() { $('#buscaNome').val(''); $('select').val(''); filtrar(); }
     
-    // FUNÇÃO DE NOMEAÇÃO DINÂMICA
     function gerarNomeArquivoBase() {
         let partes = ["diarias"];
         const serv = $('#selServidor').val();
