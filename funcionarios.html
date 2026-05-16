@@ -143,8 +143,8 @@
             
             <div class="painel-filtros">
                 <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off">
-                <select id="filtroCargo"><option value="">Cargo (Todos)</option></select>
-                <select id="filtroLotacao"><option value="">Lotação (Todas)</option></select>
+                <select id="filtroCargo"><option value="">Cargo</option></select>
+                <select id="filtroLotacao"><option value="">Lotação</option></select>
                 <select id="filtroSituacao">
                     <option value="">Situação</option>
                     <option value="Ativo" selected>Ativos</option>
@@ -269,11 +269,11 @@
 
     function popularFiltrosDynamic() {
         const lotacoes = [...new Set(dadosGlobais.map(d => d.lotacao))].filter(Boolean).sort();
-        $('#filtroLotacao').html('<option value="">Lotação (Todas)</option>');
+        $('#filtroLotacao').html('<option value="">Lotação</option>');
         lotacoes.forEach(l => $('#filtroLotacao').append(`<option value="${l}">${l}</option>`));
 
         const cargos = [...new Set(dadosGlobais.map(d => d.cargo))].filter(Boolean).sort();
-        $('#filtroCargo').html('<option value="">Cargo (Todos)</option>');
+        $('#filtroCargo').html('<option value="">Cargo</option>');
         cargos.forEach(c => $('#filtroCargo').append(`<option value="${c}">${c}</option>`));
 
         let anos = new Set();
