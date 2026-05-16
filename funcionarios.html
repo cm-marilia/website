@@ -11,108 +11,96 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
-        /* BASE IDÊNTICA AO ESTAGIÁRIOS */
+        /* =========================================
+           1. ESTILOS GERAIS E BASE
+           ========================================= */
         body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden;}
-        #wrapper { padding-bottom: 40px; } 
+        #wrapper { padding-bottom: 40px; padding: 15px; } 
 
-        /* Cabeçalho */
-        .topo { background: #003b75; color: white; padding: 20px 35px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin: 15px; gap: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .topo h1 { margin: 0; font-size: 1.8rem; font-weight: 800; letter-spacing: 1px; }
+        .topo { background: #003b75; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .topo h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-        .brasao { height: 60px; width: auto; }
-        .texto-camara { font-size: 10px; color: #cbd5e1; letter-spacing: 3px; font-weight: 500; text-transform: uppercase; white-space: nowrap; }
+        .brasao { height: 50px; width: auto; }
+        .texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
 
-        /* Loader */
-        #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: #003b75; font-weight: bold; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        .painel-grupo { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .titulo-painel { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
+        .badge-atualizacao { position: absolute; top: -10px; right: 20px; font-size: 10px; background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
+
+        /* ELEMENTOS DE FORMULÁRIO */
+        select, input { height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box; width: 100%; }
+        button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; width: 100%; }
+        button.btn-filtro:hover { background: #00274d; }
+
+        /* FILTROS RESPONSIVOS */
+        .painel-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 10px; }
+        .painel-filtros:last-child { margin-bottom: 0; }
+
+        /* EXPORTAÇÃO RESPONSIVA E CARROSSEL */
+        .painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
+        .painel-exportacao button { flex: 1; min-width: 100px; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .painel-exportacao button:hover { background: #00274d; }
+        .painel-exportacao .btn-acao { background: #0284c7; }
+        .painel-exportacao::-webkit-scrollbar { height: 6px; }
+        .painel-exportacao::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        /* CABEÇALHO VISUALIZAÇÃO */
+        .dt-custom-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 5px 0; }
+        .badge-contagem { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid #bae6fd; }
+
+        /* CORREÇÃO DO MENU "EXIBIR X RESULTADOS" */
+        .dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; margin: 0; white-space: nowrap; }
+        .dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
+
+        /* TABELA BASE E CARDS */
+        #tabela thead { display: none !important; }
+        table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
+        
+        .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; display: flex; justify-content: space-between; align-items: center; }
+        .card-header-texto { display: flex; flex-direction: column; gap: 2px; }
+        .nome-principal { font-size: 16px; font-weight: 800; color: #003b75; text-transform: uppercase; }
+        .subtitulo-card { font-size: 12px; color: #64748b; font-weight: 500; text-transform: uppercase; }
+        
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+        .status-ativo { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .status-desligado { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        
+        .card-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); padding: 12px 15px; gap: 10px; }
+        .info-col { display: flex; flex-direction: column; }
+        .info-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
+        .info-valor { font-size: 13px; font-weight: 700; color: #1e293b; }
+
+        /* PAGINAÇÃO */
+        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px;}
+        .dataTables_wrapper .dataTables_info { padding-top: 0 !important; color: #475569; font-size: 13px; font-weight: 500; margin-bottom: 0 !important; }
+        .dataTables_wrapper .dataTables_paginate { display: flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 0 !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 6px 12px !important; border-radius: 6px !important; margin: 0 !important; border: 1px solid transparent !important; color: #475569 !important; font-weight: 600; font-size: 13px; background: transparent !important; cursor: pointer; transition: 0.2s; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border-color: #003b75 !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #003b75 !important; }
+
+        #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #003b75; font-weight: bold; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Containers Principais */
-        .container { margin: 0 15px 15px 15px; display: none; }
-        fieldset.painel-grupo { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: relative; }
-        legend.titulo-painel { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; letter-spacing: 1px; }
-        .badge-atualizacao { position: absolute; top: -12px; right: 20px; font-size: 11px; color: #065f46; background: #d1fae5; padding: 5px 12px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
-
-        /* Grades de Layout - Ajustado para Funcionários */
-        .filtro-linha-1 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
-        .filtro-linha-2 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-        .painel-exportacao .toolbar-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
-
-        select, input, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; box-sizing: border-box; width: 100%; height: 42px;}
-        button { background: #003b75; color: white; border: none; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
-        button:hover { background: #00274d; transform: translateY(-1px); }
-        .btn-acao { background: #0284c7 !important; }
-
-        /* Exportação */
-        .painel-exportacao .toolbar-row button { font-size: 16px; padding: 10px 8px; }
-
-        /* Visualização (Idêntico ao Estagiários) */
-        .dt-custom-header { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .dataTables_length { display: flex !important; align-items: center; font-size: 14px; color: #475569; font-weight: 500; margin-bottom: 0; }
-        .dataTables_length label { display: flex; align-items: center; gap: 8px; margin: 0; }
-        .dataTables_length select { width: auto !important; padding: 5px 10px !important; border-radius: 6px; height: auto; }
-        .badge-contagem { background: #e0f2fe; color: #0369a1; padding: 10px 25px; border-radius: 10px; font-weight: 700; border: 1px solid #bae6fd; }
-
-        /* Cards de Dados */
-        #tabela thead { display: none; }
-        table.dataTable { border: none !important; }
-        .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        
-        /* Ajuste do Header do Card para comportar Nome e Cargo */
-        .card-header { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; }
-        .card-header-texto { display: flex; flex-direction: column; gap: 2px; }
-        .nome-principal { font-size: 17px; font-weight: 800; color: #003b75; text-transform: uppercase; }
-        .subtitulo-card { font-size: 13px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-
-        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
-        .status-ativo { background: #d1fae5; color: #065f46; }
-        .status-desligado { background: #fee2e2; color: #991b1b; }
-        
-        .card-body { display: grid; grid-template-columns: repeat(4, 1fr); padding: 20px 25px; gap: 15px; }
-        .info-col { display: flex; flex-direction: column; }
-        .info-label { font-size: 10px; color: #94a3b8; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 4px; }
-        .info-valor { font-size: 14px; font-weight: 700; color: #1e293b; }
-
-        /* Paginação Responsiva (Idêntico ao Estagiários) */
-        .dt-bottom-controls { 
-            display: flex; justify-content: space-between; align-items: center; background: white; 
-            padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px; 
-            margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); flex-wrap: wrap; 
-            gap: 15px; box-sizing: border-box; width: 100%; 
-        }
-        .dataTables_wrapper .dataTables_info { padding-top: 0 !important; font-size: 15px; color: #475569; font-weight: 500; }
-        
-        .dataTables_wrapper .dataTables_paginate { padding-top: 0 !important; margin-top: 0 !important; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px; }
-        .dataTables_wrapper .dataTables_paginate span { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
-        
-        .dataTables_wrapper .dataTables_paginate .paginate_button { 
-            border-radius: 6px !important; padding: 6px 12px !important; border: 1px solid transparent !important; 
-            font-size: 15px; font-weight: 600; color: #475569 !important; margin: 0 !important; background: transparent !important; height: auto; 
-        }
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border: 1px solid #003b75 !important; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button:hover { background: #e2e8f0 !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; }
-
-        /* Cabeçalho Impressão */
         #cabecalho-impressao { display: none; }
 
-        /* Responsividade */
-        @media (max-width: 850px) {
+        /* =========================================
+           RESPONSIVIDADE CELULAR E IFRAME
+           ========================================= */
+        @media (max-width: 600px) {
+            .topo { flex-direction: column; gap: 10px; text-align: center; }
+            .card-header { flex-direction: column; text-align: center; gap: 10px; }
             .card-body { grid-template-columns: 1fr 1fr; }
-            .painel-exportacao .toolbar-row button { font-size: 13px; padding: 10px 4px; gap: 4px; }
-            .dt-bottom-controls { flex-direction: column; justify-content: center; text-align: center; padding: 15px 10px; }
-            .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 4px 8px !important; font-size: 13px; }
-            .filtro-linha-2 { grid-template-columns: repeat(2, 1fr); }
-            #filtroSituacao { grid-column: span 2; }
-            .filtro-linha-1 { grid-template-columns: 1fr; }
+            .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
+            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
         }
 
         @media print {
-            @page { size: portrait; margin: 15mm; @bottom-right { content: "Página " counter(page); } }
-            body { background: white; }
             .topo, fieldset, .dt-bottom-controls { display: none !important; }
             #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
             .card-info { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; }
-            .container { display: block !important; margin: 0; }
+            #main-container { display: block !important; margin: 0; }
         }
     </style>
 </head>
@@ -123,7 +111,7 @@
         <h1>Relatório de Funcionários</h1>
         <div class="logo-container">
             <img src="Brasão_de_Marília.png" alt="Brasão de Marília" class="brasao">
-            <span class="texto-camara">Câmara Municipal de Marília</span>
+            <span class="texto-camara">Câmara Municipal</span>
         </div>
     </header>
 
@@ -140,19 +128,19 @@
         <span>Carregando base de dados...</span>
     </div>
 
-    <main class="container" id="main-container">
+    <main id="main-container" style="display:none;">
         
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
             <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
             
-            <div class="filtro-linha-1">
+            <div class="painel-filtros">
                 <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off">
-                <select id="filtroCargo"><option value="">Cargo</option></select>
-                <select id="filtroLotacao"><option value="">Lotação</option></select>
+                <select id="filtroCargo"><option value="">Cargo (Todos)</option></select>
+                <select id="filtroLotacao"><option value="">Lotação (Todas)</option></select>
             </div>
             
-            <div class="filtro-linha-2">
+            <div class="painel-filtros">
                 <select id="filtroSituacao">
                     <option value="">Situação</option>
                     <option value="Ativo" selected>Ativos</option>
@@ -171,13 +159,13 @@
                     <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
                 </select>
                 <select id="filtroAno"><option value="">Ano</option></select>
-                <button onclick="limparFiltros()">Limpar filtros</button>
+                <button class="btn-filtro" onclick="limparFiltros()">Limpar filtros</button>
             </div>
         </fieldset>
 
-        <fieldset class="painel-grupo painel-exportacao">
+        <fieldset class="painel-grupo">
             <legend class="titulo-painel">Exportação e Impressão</legend>
-            <div class="toolbar-row">
+            <div class="painel-exportacao">
                 <button onclick="exportarCSV()">⬇️ CSV</button>
                 <button onclick="exportarXLSX()">⬇️ Excel</button>
                 <button onclick="exportarJSON()">⬇️ JSON</button>
@@ -187,7 +175,7 @@
             </div>
         </fieldset>
 
-        <fieldset class="painel-grupo">
+        <fieldset class="painel-grupo" id="painel-visualizacao" style="padding: 10px 15px;">
             <legend class="titulo-painel">Visualização</legend>
             <div class="dt-custom-header">
                 <div id="comprimento-tabela"></div> 
@@ -227,28 +215,6 @@
         return new Date(p[2], p[1] - 1, p[0]);
     }
 
-    function gerarNomeArquivoBase() {
-        let partes = [];
-        const nome = $('#filtroNome').val().trim();
-        if (nome) partes.push(nome.replace(/\s+/g, '_'));
-        if ($('#filtroCargo').val()) partes.push($('#filtroCargo option:selected').text().replace(/\s+/g, '_'));
-        if ($('#filtroLotacao').val()) partes.push($('#filtroLotacao option:selected').text().replace(/\s+/g, '_'));
-        if ($('#filtroSituacao').val()) partes.push($('#filtroSituacao option:selected').text().replace(/\s+/g, '_'));
-        if ($('#filtroTipoData').val()) partes.push($('#filtroTipoData option:selected').text().replace(/\s+/g, '_'));
-        if ($('#filtroMes').val()) partes.push($('#filtroMes option:selected').text().replace(/\s+/g, '_'));
-        if ($('#filtroAno').val()) partes.push($('#filtroAno option:selected').text().replace(/\s+/g, '_'));
-        if (partes.length === 0) return "funcionarios_completo";
-        let nomeFinal = "funcionarios_" + partes.join('_');
-        return removerAcentos(nomeFinal).replace(/[^a-zA-Z0-9_]/g, '');
-    }
-
-    function imprimirSeguro() {
-        if(!tabela) return;
-        const len = tabela.page.len();
-        tabela.page.len(-1).draw('page'); 
-        setTimeout(() => { window.print(); tabela.page.len(len).draw('page'); }, 500);
-    }
-
     function processarCSV(csvText) {
         const linhas = csvText.split(/\r?\n/);
         let textoPrimeiraLinha = linhas[0].replace(/"/g, '');
@@ -276,17 +242,6 @@
         return lista;
     }
 
-    function ordenarFuncionarios(lista) {
-        return lista.sort((a, b) => {
-            if (a.situacao !== b.situacao) return a.situacao === "Ativo" ? -1 : 1;
-            const dataA_adm = parseDataBR(a.data_admissao) || 0;
-            const dataB_adm = parseDataBR(b.data_admissao) || 0;
-            const dataA_dem = parseDataBR(a.data_demissao) || 0;
-            const dataB_dem = parseDataBR(b.data_demissao) || 0;
-            return a.situacao === "Ativo" ? dataA_adm - dataB_adm : dataB_dem - dataA_dem;
-        });
-    }
-
     async function carregarDados() {
         $('#loader').show();
         $('#main-container').hide();
@@ -298,10 +253,7 @@
             aplicarFiltros();
             $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
             $('#loader').hide();
-            
-            $('#main-container').fadeIn(400, () => {
-                enviarAlturaIframe();
-            });
+            $('#main-container').fadeIn(400, () => enviarAlturaIframe());
         } catch (error) {
             console.error(error);
             $('#loader').html('<b style="color:red">Erro ao carregar dados.</b>');
@@ -310,11 +262,11 @@
 
     function popularFiltrosDynamic() {
         const lotacoes = [...new Set(dadosGlobais.map(d => d.lotacao))].filter(Boolean).sort();
-        $('#filtroLotacao').html('<option value="">Lotação</option>');
+        $('#filtroLotacao').html('<option value="">Lotação (Todas)</option>');
         lotacoes.forEach(l => $('#filtroLotacao').append(`<option value="${l}">${l}</option>`));
 
         const cargos = [...new Set(dadosGlobais.map(d => d.cargo))].filter(Boolean).sort();
-        $('#filtroCargo').html('<option value="">Cargo</option>');
+        $('#filtroCargo').html('<option value="">Cargo (Todos)</option>');
         cargos.forEach(c => $('#filtroCargo').append(`<option value="${c}">${c}</option>`));
 
         let anos = new Set();
@@ -325,6 +277,19 @@
         anos = [...anos].filter(a => a && a.length === 4).sort((a, b) => b - a);
         $('#filtroAno').html('<option value="">Ano</option>');
         anos.forEach(a => $('#filtroAno').append(`<option value="${a}">${a}</option>`));
+        
+        // Mantém o campo Ano livre/vazio por padrão
+    }
+
+    function ordenarFuncionarios(lista) {
+        return lista.sort((a, b) => {
+            if (a.situacao !== b.situacao) return a.situacao === "Ativo" ? -1 : 1;
+            const dataA_adm = parseDataBR(a.data_admissao) || 0;
+            const dataB_adm = parseDataBR(b.data_admissao) || 0;
+            const dataA_dem = parseDataBR(a.data_demissao) || 0;
+            const dataB_dem = parseDataBR(b.data_demissao) || 0;
+            return a.situacao === "Ativo" ? dataB_adm - dataA_adm : dataB_dem - dataA_dem;
+        });
     }
 
     function aplicarFiltros() {
@@ -357,7 +322,6 @@
                     matchData = (!!d.data_admissao && mAdm) || (!!d.data_demissao && mDem);
                 }
             }
-
             return matchNome && matchCargo && matchLot && matchSit && matchData;
         });
 
@@ -365,19 +329,13 @@
     }
 
     function renderizarTabela(dados) {
-        if (tabela) {
-            tabela.destroy();
-            $('#comprimento-tabela').empty();
-        }
+        if (tabela) { tabela.destroy(); $('#comprimento-tabela').empty(); }
 
         tabela = $('#tabela').DataTable({
             data: dados,
             pageLength: 10,
             ordering: false,
-            language: { 
-                url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json',
-                lengthMenu: "Exibir _MENU_ resultados por página"
-            },
+            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
             dom: 'lrt<"dt-bottom-controls"ip>',
             columns: [{
                 data: null,
@@ -402,22 +360,40 @@
                     `;
                 }
             }],
-            initComplete: function() {
-                $('.dataTables_length').appendTo('#comprimento-tabela');
-                enviarAlturaIframe();
-            },
+            initComplete: function() { $('.dataTables_length').appendTo('#comprimento-tabela'); enviarAlturaIframe(); },
             drawCallback: function() {
                 const totalFiltrado = this.api().rows({ filter: 'applied' }).count();
                 $('#contagem-registros').html(`<b>${totalFiltrado}</b> registros encontrados`);
                 enviarAlturaIframe();
             }
         });
+
+        // Evento que aciona o scroll automático ao mudar de página
+        tabela.on('page.dt', function () {
+            setTimeout(function() {
+                document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        });
     }
 
+    // EXPORTAÇÃO E CONTROLES
     function limparFiltros() {
         $('#filtroNome, #filtroCargo, #filtroLotacao, #filtroTipoData, #filtroMes, #filtroAno').val('');
         $('#filtroSituacao').val('Ativo');
         aplicarFiltros();
+    }
+
+    function gerarNomeArquivoBase() {
+        let partes = ["funcionarios"];
+        const nome = $('#filtroNome').val().trim();
+        if (nome) partes.push(nome.replace(/\s+/g, '_'));
+        if ($('#filtroCargo').val()) partes.push($('#filtroCargo option:selected').text().replace(/\s+/g, '_'));
+        if ($('#filtroLotacao').val()) partes.push($('#filtroLotacao option:selected').text().replace(/\s+/g, '_'));
+        if ($('#filtroSituacao').val()) partes.push($('#filtroSituacao option:selected').text().replace(/\s+/g, '_'));
+        if ($('#filtroMes').val()) partes.push($('#filtroMes option:selected').text().replace(/\s+/g, '_'));
+        if ($('#filtroAno').val()) partes.push($('#filtroAno option:selected').text().replace(/\s+/g, '_'));
+        
+        return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
     }
 
     function exportarCSV() {
@@ -456,9 +432,14 @@
         const blob = new Blob([content], { type: mime });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url;
-        a.download = fileName;
-        a.click();
+        a.href = url; a.download = fileName; a.click();
+    }
+
+    function imprimirSeguro() {
+        if(!tabela) return;
+        const len = tabela.page.len();
+        tabela.page.len(-1).draw('page'); 
+        setTimeout(() => { window.print(); tabela.page.len(len).draw('page'); }, 500);
     }
 
     $('select').on('change', aplicarFiltros);
