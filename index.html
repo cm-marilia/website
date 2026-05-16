@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Relatório de Diárias e Adiantamentos</title>
+    
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <link rel="stylesheet" href="style.css" />
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" defer></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+    <script src="script.js" defer></script>
+</head>
+<body>
+<div id="wrapper">
+    <header class="topo">
+        <h1>Diárias e Adiantamentos</h1>
+        <div class="logo-container">
+            <img src="Brasão_de_Marília.png" alt="Brasão de Marília" width="45" height="50" class="brasao">
+            <span class="texto-camara">Câmara Municipal de Marília</span>
+        </div>
+    </header>
+
+    <div id="cabecalho-impressao">
+        <img src="Brasão_de_Marília.png" width="63" height="70" alt="Brasão Câmara">
+        <div>
+            <h1 style="margin:0; color:#003b75;">Diárias e Adiantamentos</h1>
+            <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
+        </div>
+    </div>
+
+    <div id="loader"><div class="spinner"></div><span>Sincronizando dados...</span></div>
+
+    <main id="main-content" style="display:none;">
+        <fieldset class="painel">
+            <legend class="painel-titulo">Filtros de Pesquisa</legend>
+            <div id="sync-info" class="badge-sinc">Aguardando...</div>
+            <div class="painel-filtros" style="margin-bottom: 10px;">
+                <input type="text" id="buscaNome" placeholder="Pesquisar por nome..." aria-label="Pesquisar por nome">
+                <select id="selGabinete" aria-label="Filtrar por Gabinete"><option value="">Gabinete</option></select>
+                <select id="selServidor" aria-label="Filtrar por Servidor"><option value="">Servidor</option></select>
+            </div>
+            <div class="painel-filtros">
+                <select id="selMes" aria-label="Filtrar por Mês">
+                    <option value="">Mês</option>
+                    <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+                    <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+                    <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+                    <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                </select>
+                <select id="selAno" aria-label="Filtrar por Ano"><option value="">Ano</option></select>
+                <button class="btn-filtro" onclick="resetarFiltros()">Limpar Filtros</button>
+            </div>
+        </fieldset>
+
+        <fieldset class="painel">
+            <legend class="painel-titulo">Exportação e Ações</legend>
+            <div class="painel-exportacao">
+                <button onclick="exportarCSV()">⬇️ CSV</button>
+                <button onclick="exportarExcel()">⬇️ Excel</button>
+                <button onclick="exportarJSON()">⬇️ JSON</button>
+                <button onclick="exportarXML()">⬇️ XML</button>
+                <button class="btn-acao" onclick="imprimirSeguro()">🖨️ Imprimir</button>
+                <button class="btn-acao" onclick="carregarDados()">🔄 Atualizar</button>
+            </div>
+        </fieldset>
+
+        <div class="totais-container">
+            <div class="total-box"><label>Soma das Diárias Filtradas</label><span id="txt-total-diarias">R$ 0,00</span></div>
+            <div class="total-box" style="border-left-color:#0284c7;"><label>Soma dos Adiantamentos Filtrados</label><span id="txt-total-adiantamentos">R$ 0,00</span></div>
+        </div>
+
+        <fieldset class="painel" id="painel-visualizacao" style="padding: 10px 15px;">
+            <legend class="painel-titulo">Visualização</legend>
+            <div class="dt-header-flex">
+                <div id="area-length"></div>
+                <div class="badge-count"><span id="count-rows">0</span> registros encontrados</div>
+            </div>
+        </fieldset>
+
+        <table id="tabela-base" style="width:100%" role="presentation"><thead><tr><th>Dados</th></tr></thead><tbody></tbody></table>
+    </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,98 @@
+/* =========================================
+   1. ESTILOS GERAIS E BASE
+   ========================================= */
+body { font-family: 'Inter', sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; }
+#wrapper { padding: 15px; padding-bottom: 40px; }
+
+/* CABEÇALHO PADRONIZADO */
+.topo { background: #003b75; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); gap: 20px; }
+.topo h1 { margin: 0; font-size: 1.5rem; font-weight: 800; letter-spacing: 1px; }
+.logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
+
+.painel { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.painel-titulo { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
+.badge-sinc { position: absolute; top: -10px; right: 20px; font-size: 10px; background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
+
+/* ELEMENTOS DE FORMULÁRIO */
+select, input { height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box; width: 100%; }
+button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; width: 100%; }
+button.btn-filtro:hover { background: #00274d; }
+
+/* FILTROS RESPONSIVOS */
+.painel-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+
+/* EXPORTAÇÃO RESPONSIVA */
+.painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
+.painel-exportacao button { 
+    flex: 1; min-width: 100px; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; 
+}
+.painel-exportacao button:hover { background: #00274d; }
+.painel-exportacao .btn-acao { background: #0284c7; }
+.painel-exportacao::-webkit-scrollbar { height: 6px; }
+.painel-exportacao::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+/* TOTAIS E VISUALIZAÇÃO */
+.totais-container { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+.total-box { flex: 1 1 250px; background: white; border: 1px solid #e2e8f0; border-left: 4px solid #003b75; border-radius: 10px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+.total-box label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; display: block; }
+.total-box span { font-size: 18px; font-weight: 800; }
+
+.dt-header-flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 5px 0; }
+.badge-count { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid #bae6fd; }
+
+/* CORREÇÃO DO MENU "EXIBIR X RESULTADOS" */
+.dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; margin: 0; white-space: nowrap; }
+.dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
+
+/* TABELA BASE E CARDS */
+#tabela-base thead { display: none !important; }
+table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
+
+.card-diaria { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+.card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; }
+.card-nome { font-size: 16px; font-weight: 800; color: #003b75; text-transform: uppercase; }
+.card-cargo { font-size: 12px; color: #64748b; text-transform: uppercase; display: block; margin-top: 2px;}
+.card-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); padding: 12px 15px; gap: 10px; }
+.card-body.sep { border-top: 1px dashed #f1f5f9; }
+.item-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 2px;}
+.item-valor { font-size: 13px; font-weight: 700; color: #1e293b;}
+
+/* RODAPÉ DO CARD */
+.card-footer { background: #f8fafc; padding: 12px 15px; border-top: 1px solid #edf2f7; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;}
+.quadro-full { grid-column: 1 / -1; border-top: 1px dashed #e2e8f0; padding-top: 10px; margin-top: 2px;}
+
+/* PAGINAÇÃO */
+.controles-datatable { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px;}
+.dataTables_wrapper .dataTables_info { padding-top: 0 !important; color: #475569; font-size: 13px; font-weight: 500; margin-bottom: 0 !important; }
+.dataTables_wrapper .dataTables_paginate { display: flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 0 !important; }
+.dataTables_wrapper .dataTables_paginate .paginate_button { padding: 6px 12px !important; border-radius: 6px !important; margin: 0 !important; border: 1px solid transparent !important; color: #475569 !important; font-weight: 600; font-size: 13px; background: transparent !important; cursor: pointer; transition: 0.2s; }
+.dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border-color: #003b75 !important; }
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #003b75 !important; }
+
+#loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #003b75; font-weight: bold; }
+.spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* CABEÇALHO IMPRESSÃO */
+#cabecalho-impressao { display: none; }
+
+/* =========================================
+   RESPONSIVIDADE CELULAR E IMPRESSÃO
+   ========================================= */
+@media (max-width: 600px) {
+    .topo { flex-direction: column; gap: 10px; text-align: center; }
+    .card-body { grid-template-columns: 1fr 1fr; }
+    .card-footer { grid-template-columns: 1fr; }
+    .dt-header-flex, .controles-datatable { flex-direction: column; text-align: center; }
+    .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
+}
+
+@media print {
+    .topo, fieldset, .dt-bottom-controls { display: none !important; }
+    #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
+    .totais-container { display: flex !important; flex-direction: row !important; gap: 10px !important; margin-bottom: 20px !important; page-break-inside: avoid; }
+    .total-box { border: 1px solid #cbd5e1 !important; border-left: 4px solid #003b75 !important; background: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .card-diaria { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; }
+    #main-content { display: block !important; margin: 0; }
+}
