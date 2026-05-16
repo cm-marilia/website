@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Relatório de Diárias CMC</title>
+    <title>Relatório de Diárias e Adiantamentos</title>
     
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -125,7 +125,7 @@
         <h1>Diárias e Adiantamentos</h1>
         <div class="logo-container">
             <img src="Brasão_de_Marília.png" alt="Brasão de Marília" class="brasao">
-            <span class="texto-camara">Câmara Municipal</span>
+            <span class="texto-camara">Câmara Municipal de Marília</span>
         </div>
     </header>
 
@@ -145,18 +145,18 @@
             <div id="sync-info" class="badge-sinc">Aguardando...</div>
             <div class="painel-filtros" style="margin-bottom: 10px;">
                 <input type="text" id="buscaNome" placeholder="Pesquisar por nome...">
-                <select id="selGabinete"><option value="">Gabinete (Todos)</option></select>
-                <select id="selServidor"><option value="">Servidor (Todos)</option></select>
+                <select id="selGabinete"><option value="">Gabinete</option></select>
+                <select id="selServidor"><option value="">Servidor</option></select>
             </div>
             <div class="painel-filtros">
                 <select id="selMes">
-                    <option value="">Mês (Todos)</option>
+                    <option value="">Mês</option>
                     <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
                     <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
                     <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
                     <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
                 </select>
-                <select id="selAno"><option value="">Ano (Todos)</option></select>
+                <select id="selAno"><option value="">Ano</option></select>
                 <button class="btn-filtro" onclick="resetarFiltros()">Limpar Filtros</button>
             </div>
         </fieldset>
@@ -220,14 +220,14 @@
     }
 
     function popularSelects() {
-        $('#selGabinete').html('<option value="">Gabinete (Todos)</option>');
+        $('#selGabinete').html('<option value="">Gabinete</option>');
         [...new Set(listaGabinetes)].sort().forEach(g => $('#selGabinete').append(new Option(g, g)));
         
-        $('#selServidor').html('<option value="">Servidor (Todos)</option>');
+        $('#selServidor').html('<option value="">Servidor</option>');
         [...new Set(dadosBrutos.map(d => d.servidor))].sort().forEach(s => $('#selServidor').append(new Option(s, s)));
         
         const anos = [...new Set(dadosBrutos.map(d => d.data_partida.split('/')[2]))].filter(a => a).sort((a,b)=>b-a);
-        $('#selAno').html('<option value="">Ano (Todos)</option>');
+        $('#selAno').html('<option value="">Ano</option>');
         anos.forEach(a => $('#selAno').append(new Option(a, a)));
 
         if(anos.length > 0) {
