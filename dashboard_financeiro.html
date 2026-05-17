@@ -6,6 +6,7 @@
     <title>Painel Orçamentário - Câmara Municipal de Marília</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6; color: #1f2937; }
         
@@ -44,14 +45,53 @@
             transition: border-color 0.2s;
         }
 
-        .filtro-grupo select:focus {
-            border-color: #5470C6;
+        .filtro-grupo select:focus { border-color: #5470C6; }
+
+        /* NOVA BARRA: Botões de Exportação */
+        .painel-exportacao {
+            max-width: 1200px;
+            margin: 15px auto 0 auto;
+            padding: 0 15px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            box-sizing: border-box;
         }
+
+        .painel-exportacao span {
+            font-size: 13px;
+            font-weight: bold;
+            color: #6b7280;
+            margin-right: 5px;
+            text-transform: uppercase;
+        }
+
+        .btn-export {
+            background-color: #ffffff;
+            border: 1px solid #d1d5db;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-export:hover {
+            background-color: #f3f4f6;
+            border-color: #9ca3af;
+        }
+        
+        /* Destaque para o Excel e CSV, que são os mais usados */
+        .btn-export.excel:hover { border-color: #16a34a; color: #16a34a; }
+        .btn-export.csv:hover { border-color: #2563eb; color: #2563eb; }
 
         /* CSS Grid para manter 5 colunas iguais */
         .container-cards {
             max-width: 1200px;
-            margin: 20px auto 10px auto;
+            margin: 15px auto 10px auto;
             padding: 0 15px;
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -69,7 +109,7 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
-            align-items: center; /* Centraliza os itens no card */
+            align-items: center;
             height: 100%;
             box-sizing: border-box;
         }
@@ -95,7 +135,6 @@
             word-wrap: break-word; 
         }
 
-        /* NOVAS CLASSES: Estilização dos Selos de Porcentagem */
         .card-perc {
             font-size: 10px;
             margin-top: 6px;
@@ -105,7 +144,6 @@
             font-weight: bold;
         }
         
-        /* Cores dos selos combinando com as barras do gráfico */
         .perc-empenhado { background-color: rgba(84, 112, 198, 0.15); color: #3730a3; } 
         .perc-liquidado { background-color: rgba(145, 204, 117, 0.2); color: #166534; } 
         .perc-pago      { background-color: rgba(250, 200, 88, 0.25); color: #92400e; } 
@@ -146,11 +184,19 @@
         </div>
     </div>
 
+    <div class="painel-exportacao">
+        <span>Baixar Dados (Open Data):</span>
+        <button class="btn-export csv" onclick="exportarCSV()" title="Baixar planilha compatível com qualquer sistema">CSV</button>
+        <button class="btn-export excel" onclick="exportarXLSX()" title="Baixar planilha para Excel">XLSX</button>
+        <button class="btn-export" onclick="exportarJSON()" title="Baixar formato para programadores">JSON</button>
+        <button class="btn-export" onclick="exportarXML()" title="Baixar formato de sistema">XML</button>
+    </div>
+
     <div class="container-cards">
         <div class="card duodecimo">
             <div class="card-titulo">Total Duodécimo</div>
             <div class="card-valor" id="kpiDuodecimo">R$ 0,00</div>
-            </div>
+        </div>
         <div class="card empenhado">
             <div class="card-titulo">Total Empenhado</div>
             <div class="card-valor" id="kpiEmpenhado">R$ 0,00</div>
@@ -167,7 +213,7 @@
             <span class="card-perc perc-pago" id="percPago">0%</span>
         </div>
         <div class="card resultado">
-            <div class="card-titulo">Saldo Orçamentário Disponível</div>
+            <div class="card-titulo">Saldo Orçamentário</div>
             <div class="card-valor" id="kpiResultado">R$ 0,00</div>
             <span class="card-perc perc-resultado" id="percResultado">0%</span>
         </div>
@@ -191,14 +237,15 @@
             return parseFloat(textoLimpo.replace(',', '.')) || 0;
         };
 
-        // Função utilitária para calcular a porcentagem
         const calcularPercentual = (valor, total) => {
             if (total === 0) return '0,0%';
             return ((valor / total) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
         };
 
         const myChart = echarts.init(document.getElementById('meuGrafico'));
+        
         let dadosOriginais = [];
+        let dadosVisiveis = []; // Nova variável: guarda os dados atualmente filtrados na tela
 
         Papa.parse(csvUrl, {
             download: true,
@@ -277,6 +324,7 @@
                 dadosFiltrados = dadosFiltrados.filter(linha => linha.mes.toUpperCase() === mesSelecionado.toUpperCase());
             }
 
+            dadosVisiveis = dadosFiltrados; // Salva o que está na tela para o download usar
             atualizarPainel(dadosFiltrados, anoSelecionado, mesSelecionado);
         }
 
@@ -291,18 +339,16 @@
                 totalResultado += limparNumeroBR(linha['resultado']);
             });
 
-            // Atualiza os Valores em R$
             document.getElementById('kpiDuodecimo').textContent = formatarMoeda(totalDuodecimo);
             document.getElementById('kpiEmpenhado').textContent = formatarMoeda(totalEmpenhado);
             document.getElementById('kpiLiquidado').textContent = formatarMoeda(totalLiquidado);
             document.getElementById('kpiPago').textContent = formatarMoeda(totalPago);
             document.getElementById('kpiResultado').textContent = formatarMoeda(totalResultado);
 
-            // Calcula e atualiza os Selos de Porcentagem
             document.getElementById('percEmpenhado').textContent = calcularPercentual(totalEmpenhado, totalDuodecimo) + ' do Duodécimo';
             document.getElementById('percLiquidado').textContent = calcularPercentual(totalLiquidado, totalDuodecimo) + ' do Duodécimo';
             document.getElementById('percPago').textContent      = calcularPercentual(totalPago, totalDuodecimo) + ' do Duodécimo';
-            document.getElementById('percResultado').textContent = calcularPercentual(totalResultado, totalDuodecimo) + ' em Caixa';
+            document.getElementById('percResultado').textContent = calcularPercentual(totalResultado, totalDuodecimo) + ' Livre';
 
             let tituloDinamico = 'Acompanhamento Orçamentário';
             if (ano !== 'Todos' && mes !== 'Todos') {
@@ -325,11 +371,7 @@
             const serieResultado = dados.map(linha => limparNumeroBR(linha['resultado']));
 
             const option = {
-                title: {
-                    text: titulo,
-                    left: 'center',
-                    textStyle: { fontSize: 16, color: '#111827' }
-                },
+                title: { text: titulo, left: 'center', textStyle: { fontSize: 16, color: '#111827' } },
                 toolbox: {
                     feature: {
                         dataView: { 
@@ -340,24 +382,12 @@
                             optionToContent: function (opt) {
                                 let axisData = opt.xAxis[0].data;
                                 let series = opt.series;
-                                
-                                let table = '<div style="width:100%; overflow-y:auto; height:100%;">';
-                                table += '<table style="width:100%; border-collapse:collapse; text-align:center; font-family:Arial, sans-serif; font-size:14px;">';
-                                table += '<thead style="background-color:#f3f4f6; position:sticky; top:0;"><tr>';
-                                table += '<th style="padding:10px; border-bottom:2px solid #d1d5db; color:#374151;">Período</th>';
-                                
-                                for (let i = 0; i < series.length; i++) {
-                                    table += '<th style="padding:10px; border-bottom:2px solid #d1d5db; color:#374151;">' + series[i].name + '</th>';
-                                }
+                                let table = '<div style="width:100%; overflow-y:auto; height:100%;"><table style="width:100%; border-collapse:collapse; text-align:center; font-family:Arial, sans-serif; font-size:14px;"><thead style="background-color:#f3f4f6; position:sticky; top:0;"><tr><th style="padding:10px; border-bottom:2px solid #d1d5db; color:#374151;">Período</th>';
+                                for (let i = 0; i < series.length; i++) table += '<th style="padding:10px; border-bottom:2px solid #d1d5db; color:#374151;">' + series[i].name + '</th>';
                                 table += '</tr></thead><tbody>';
-                                
                                 for (let i = 0, l = axisData.length; i < l; i++) {
-                                    table += '<tr style="border-bottom:1px solid #e5e7eb;">';
-                                    table += '<td style="padding:10px; font-weight:bold; color:#4b5563;">' + axisData[i] + '</td>';
-                                    for (let j = 0; j < series.length; j++) {
-                                        let valorMoeda = formatarMoeda(series[j].data[i]);
-                                        table += '<td style="padding:10px; color:#1f2937;">' + valorMoeda + '</td>';
-                                    }
+                                    table += '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px; font-weight:bold; color:#4b5563;">' + axisData[i] + '</td>';
+                                    for (let j = 0; j < series.length; j++) table += '<td style="padding:10px; color:#1f2937;">' + formatarMoeda(series[j].data[i]) + '</td>';
                                     table += '</tr>';
                                 }
                                 table += '</tbody></table></div>';
@@ -366,49 +396,14 @@
                         },
                         saveAsImage: { show: true, title: 'Baixar Imagem' }
                     },
-                    right: 20,
-                    top: 0
+                    right: 20, top: 0
                 },
-                tooltip: {
-                    trigger: 'axis',
-                    valueFormatter: (value) => formatarMoeda(value)
-                },
-                legend: {
-                    data: ['Duodécimo', 'Empenhado', 'Liquidado', 'Pago', 'Resultado'],
-                    bottom: 0
-                },
-                grid: {
-                    top: '12%',
-                    left: '3%',
-                    right: '4%',
-                    bottom: '15%',
-                    containLabel: true
-                },
-                xAxis: {
-                    type: 'category',
-                    data: eixoX,
-                    axisLabel: { rotate: 45 }
-                },
-                yAxis: {
-                    type: 'value',
-                    axisLabel: {
-                        formatter: (value) => {
-                            if (value >= 1000000) return (value / 1000000) + 'M';
-                            if (value >= 1000) return (value / 1000) + 'k';
-                            return value;
-                        }
-                    }
-                },
-                dataZoom: [
-                    {
-                        type: 'slider',
-                        show: eixoX.length > 1, 
-                        start: 0,
-                        end: 100,
-                        bottom: 30,
-                        height: 20
-                    }
-                ],
+                tooltip: { trigger: 'axis', valueFormatter: (value) => formatarMoeda(value) },
+                legend: { data: ['Duodécimo', 'Empenhado', 'Liquidado', 'Pago', 'Resultado'], bottom: 0 },
+                grid: { top: '12%', left: '3%', right: '4%', bottom: '15%', containLabel: true },
+                xAxis: { type: 'category', data: eixoX, axisLabel: { rotate: 45 } },
+                yAxis: { type: 'value', axisLabel: { formatter: (value) => { if (value >= 1000000) return (value / 1000000) + 'M'; if (value >= 1000) return (value / 1000) + 'k'; return value; } } },
+                dataZoom: [{ type: 'slider', show: eixoX.length > 6, start: 0, end: 100, bottom: 30, height: 20 }],
                 series: [
                     { name: 'Duodécimo', type: 'line', smooth: true, data: serieDuodecimo, itemStyle: { color: '#000000' } },
                     { name: 'Empenhado', type: 'bar', data: serieEmpenhado, itemStyle: { color: '#5470C6' } },
@@ -421,9 +416,73 @@
             myChart.setOption(option, true);
         }
 
-        window.addEventListener('resize', function() {
-            myChart.resize();
-        });
+        window.addEventListener('resize', function() { myChart.resize(); });
+
+        /* =========================================================================
+           SISTEMA DE EXPORTAÇÃO DE DADOS ABERTOS (OPEN DATA)
+           ========================================================================= */
+
+        // Função que prepara os dados visualmente bonitos (números puros para análise)
+        function prepararDadosExportacao() {
+            return dadosVisiveis.map(linha => ({
+                "Ano": linha.ano,
+                "Mês": linha.mes.toUpperCase(),
+                "Duodécimo (R$)": limparNumeroBR(linha.duodecimo),
+                "Empenhado (R$)": limparNumeroBR(linha.empenhado),
+                "Liquidado (R$)": limparNumeroBR(linha.liquidado),
+                "Pago (R$)": limparNumeroBR(linha.pago),
+                "Resultado (R$)": limparNumeroBR(linha.resultado)
+            }));
+        }
+
+        // Helper para baixar os arquivos dinamicamente
+        function criarDownload(conteudo, nomeArquivo, tipoMime) {
+            const blob = new Blob([conteudo], { type: tipoMime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nomeArquivo;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function exportarCSV() {
+            const dadosTratados = prepararDadosExportacao();
+            const csv = Papa.unparse(dadosTratados, { delimiter: ";" }); // Padrão Brasil
+            criarDownload("\uFEFF" + csv, "orcamento_marilia.csv", "text/csv;charset=utf-8;");
+        }
+
+        function exportarXLSX() {
+            const dadosTratados = prepararDadosExportacao();
+            const ws = XLSX.utils.json_to_sheet(dadosTratados);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Orçamento");
+            XLSX.writeFile(wb, "orcamento_marilia.xlsx");
+        }
+
+        function exportarJSON() {
+            const dadosTratados = prepararDadosExportacao();
+            const json = JSON.stringify(dadosTratados, null, 2);
+            criarDownload(json, "orcamento_marilia.json", "application/json");
+        }
+
+        function exportarXML() {
+            const dadosTratados = prepararDadosExportacao();
+            let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<orcamento>\n';
+            dadosTratados.forEach(linha => {
+                xml += '  <registro>\n';
+                for (let key in linha) {
+                    // Remove espaços e parênteses do nome das chaves XML
+                    let chaveXml = key.replace(/[\s\(\)\$]/g, "").toLowerCase();
+                    xml += `    <${chaveXml}>${linha[key]}</${chaveXml}>\n`;
+                }
+                xml += '  </registro>\n';
+            });
+            xml += '</orcamento>';
+            criarDownload(xml, "orcamento_marilia.xml", "application/xml");
+        }
     </script>
 </body>
 </html>
