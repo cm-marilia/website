@@ -3,21 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Financeiro</title>
+    <title>Dashboard Financeiro Interativo</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-        #meuGrafico { width: 100%; height: 600px; }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f9fafb; }
+        
+        /* Estilo da barra de filtros */
+        .painel-filtros {
+            background: #ffffff;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .filtro-grupo label {
+            font-weight: bold;
+            color: #374151;
+            margin-right: 8px;
+            font-size: 14px;
+        }
+
+        .filtro-grupo select {
+            padding: 6px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #1f2937;
+            background-color: #fff;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .filtro-grupo select:focus {
+            border-color: #5470C6;
+            box-shadow: 0 0 0 2px rgba(84, 112, 198, 0.2);
+        }
+
+        #meuGrafico { width: 100%; height: 550px; background: #ffffff; }
     </style>
 </head>
 <body>
 
+    <div class="painel-filtros">
+        <div class="filtro-grupo">
+            <label for="filtroAno">Ano de Exercício:</label>
+            <select id="filtroAno">
+                <option value="Todos">Todos os Anos</option>
+            </select>
+        </div>
+        <div class="filtro-grupo">
+            <label for="filtroMes">Mês:</label>
+            <select id="filtroMes">
+                <option value="Todos">Todos os Meses</option>
+            </select>
+        </div>
+    </div>
+
     <div id="meuGrafico"></div>
 
     <script>
-        // MÁGICA 1: Adicionamos um código de tempo no final da URL para quebrar o cache do Google Sheets.
-        // Assim, toda vez que a página abre, ele puxa a versão mais atualizada na hora!
+        // URL da planilha quebrando o cache
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSeiEl6tsmsHfu5qECIgTNFJtSLOHJWPUD334BxUtITfI-YKaWwH-vvVM5IBTO5WDypR_r3p_AjcxZL/pub?output=csv&t=' + new Date().getTime();
 
         const formatarMoeda = (valor) => {
@@ -31,14 +82,18 @@
             return parseFloat(textoLimpo.replace(',', '.')) || 0;
         };
 
+        // Instancia o gráfico
+        const myChart = echarts.init(document.getElementById('meuGrafico'));
+
+        // Mantém os dados originais salvos na memória
+        let dadosOriginais = [];
+
         Papa.parse(csvUrl, {
             download: true,
             header: true,
-            skipEmptyLines: true, // Ignora automaticamente as linhas vazias no final da planilha
+            skipEmptyLines: true,
             complete: function(results) {
-                
-                // MÁGICA 2: Pega os cabeçalhos que vieram do Google Sheets e força a limpeza.
-                // Não importa se veio "Mês", "mes " ou "Mes", ele converte tudo certinho para o código ler.
+                // Limpeza dos cabeçalhos (Código Blindado)
                 const dadosLimpos = results.data.map(linha => {
                     let linhaLimpa = {};
                     for (let chave in linha) {
@@ -50,95 +105,119 @@
                     return linhaLimpa;
                 });
 
-                // Filtra para garantir que só linhas com dados passem
-                const dados = dadosLimpos.filter(linha => linha['mes'] && linha['ano']);
+                // Salva os dados globais filtrando apenas os que tem mes e ano preenchidos
+                dadosOriginais = dadosLimpos.filter(linha => linha['mes'] && linha['ano']);
 
-                // Monta os dados do gráfico buscando sempre pelas chaves convertidas em minúsculo
-                const eixoX = dados.map(linha => linha['mes'].toUpperCase() + '/' + linha['ano']);
-                const serieDuodecimo = dados.map(linha => limparNumeroBR(linha['duodecimo']));
-                const serieEmpenhado = dados.map(linha => limparNumeroBR(linha['empenhado']));
-                const serieLiquidado = dados.map(linha => limparNumeroBR(linha['liquidado'])); 
-                const seriePago = dados.map(linha => limparNumeroBR(linha['pago']));
-                const serieResultado = dados.map(linha => limparNumeroBR(linha['resultado']));
+                // Preenche os selects (botões) dinamicamente baseados no que existe na planilha
+                popularFiltros(dadosOriginais);
 
-                const myChart = echarts.init(document.getElementById('meuGrafico'));
-                
-                const option = {
-                    title: {
-                        text: 'Acompanhamento Orçamentário',
-                        left: 'center'
-                    },
-                    tooltip: {
-                        trigger: 'axis',
-                        valueFormatter: (value) => formatarMoeda(value)
-                    },
-                    legend: {
-                        data: ['Duodécimo', 'Empenhado', 'Liquidado', 'Pago', 'Resultado'],
-                        bottom: 0
-                    },
-                    grid: {
-                        left: '3%',
-                        right: '4%',
-                        bottom: '10%',
-                        containLabel: true
-                    },
-                    xAxis: {
-                        type: 'category',
-                        data: eixoX,
-                        axisLabel: { rotate: 45 }
-                    },
-                    yAxis: {
-                        type: 'value',
-                        axisLabel: {
-                            formatter: (value) => {
-                                if (value >= 1000000) return (value / 1000000) + 'M';
-                                if (value >= 1000) return (value / 1000) + 'k';
-                                return value;
-                            }
-                        }
-                    },
-                    series: [
-                        {
-                            name: 'Duodécimo',
-                            type: 'line',
-                            smooth: true,
-                            data: serieDuodecimo,
-                            itemStyle: { color: '#000000' } 
-                        },
-                        {
-                            name: 'Empenhado',
-                            type: 'bar',
-                            data: serieEmpenhado,
-                            itemStyle: { color: '#5470C6' } 
-                        },
-                        {
-                            name: 'Liquidado',
-                            type: 'bar',
-                            data: serieLiquidado,
-                            itemStyle: { color: '#91CC75' } 
-                        },
-                        {
-                            name: 'Pago',
-                            type: 'bar',
-                            data: seriePago,
-                            itemStyle: { color: '#FAC858' } 
-                        },
-                        {
-                            name: 'Resultado',
-                            type: 'line',
-                            smooth: true,
-                            data: serieResultado,
-                            itemStyle: { color: '#EE6666' } 
-                        }
-                    ]
-                };
-
-                myChart.setOption(option);
-
-                window.addEventListener('resize', function() {
-                    myChart.resize();
-                });
+                // Renderiza o gráfico pela primeira vez com todos os dados
+                renderizarGrafico(dadosOriginais);
             }
+        });
+
+        // Função para preencher os menus de seleção
+        function popularFiltros(dados) {
+            const selectAno = document.getElementById('filtroAno');
+            const selectMes = document.getElementById('filtroMes');
+
+            // Extrai anos e meses únicos e na ordem
+            const anosUnicos = [...new Set(dados.map(item => item.ano))];
+            const mesesUnicos = [...new Set(dados.map(item => item.mes.toUpperCase()))];
+
+            anosUnicos.forEach(ano => {
+                let option = document.createElement('option');
+                option.value = ano;
+                option.textContent = ano;
+                selectAno.appendChild(option);
+            });
+
+            mesesUnicos.forEach(mes => {
+                let option = document.createElement('option');
+                option.value = mes;
+                option.textContent = mes;
+                selectMes.appendChild(option);
+            });
+
+            // Adiciona a inteligência de atualizar o gráfico ao mudar o botão
+            selectAno.addEventListener('change', aplicarFiltros);
+            selectMes.addEventListener('change', aplicarFiltros);
+        }
+
+        // Função que lê os botões e filtra os dados
+        function aplicarFiltros() {
+            const anoSelecionado = document.getElementById('filtroAno').value;
+            const mesSelecionado = document.getElementById('filtroMes').value;
+
+            let dadosFiltrados = dadosOriginais;
+
+            if (anoSelecionado !== 'Todos') {
+                dadosFiltrados = dadosFiltrados.filter(linha => linha.ano === anoSelecionado);
+            }
+
+            if (mesSelecionado !== 'Todos') {
+                dadosFiltrados = dadosFiltrados.filter(linha => linha.mes.toUpperCase() === mesSelecionado.toUpperCase());
+            }
+
+            // Manda desenhar o gráfico com os dados novos
+            renderizarGrafico(dadosFiltrados);
+        }
+
+        // Função que desenha as barras e linhas (Agora aceitando dados dinâmicos)
+        function renderizarGrafico(dados) {
+            const eixoX = dados.map(linha => linha['mes'].toUpperCase() + '/' + linha['ano']);
+            const serieDuodecimo = dados.map(linha => limparNumeroBR(linha['duodecimo']));
+            const serieEmpenhado = dados.map(linha => limparNumeroBR(linha['empenhado']));
+            const serieLiquidado = dados.map(linha => limparNumeroBR(linha['liquidado'])); 
+            const seriePago = dados.map(linha => limparNumeroBR(linha['pago']));
+            const serieResultado = dados.map(linha => limparNumeroBR(linha['resultado']));
+
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    valueFormatter: (value) => formatarMoeda(value)
+                },
+                legend: {
+                    data: ['Duodécimo', 'Empenhado', 'Liquidado', 'Pago', 'Resultado'],
+                    bottom: 0
+                },
+                grid: {
+                    top: '8%',
+                    left: '3%',
+                    right: '4%',
+                    bottom: '10%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: eixoX,
+                    axisLabel: { rotate: 45 }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        formatter: (value) => {
+                            if (value >= 1000000) return (value / 1000000) + 'M';
+                            if (value >= 1000) return (value / 1000) + 'k';
+                            return value;
+                        }
+                    }
+                },
+                series: [
+                    { name: 'Duodécimo', type: 'line', smooth: true, data: serieDuodecimo, itemStyle: { color: '#000000' } },
+                    { name: 'Empenhado', type: 'bar', data: serieEmpenhado, itemStyle: { color: '#5470C6' } },
+                    { name: 'Liquidado', type: 'bar', data: serieLiquidado, itemStyle: { color: '#91CC75' } },
+                    { name: 'Pago', type: 'bar', data: seriePago, itemStyle: { color: '#FAC858' } },
+                    { name: 'Resultado', type: 'line', smooth: true, data: serieResultado, itemStyle: { color: '#EE6666' } }
+                ]
+            };
+
+            // Limpa o gráfico atual e insere as novas configurações (animação automática)
+            myChart.setOption(option, true);
+        }
+
+        window.addEventListener('resize', function() {
+            myChart.resize();
         });
     </script>
 </body>
