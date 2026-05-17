@@ -9,14 +9,15 @@
     <style>
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6; color: #1f2937; }
         
-        /* Estilo da barra superior de filtros */
+        /* Barra superior de filtros - Agora com flex-wrap para telas menores */
         .painel-filtros {
             background: #ffffff;
             padding: 15px 20px;
             display: flex;
+            flex-wrap: wrap; /* Permite que os botões quebrem de linha se faltar espaço */
             justify-content: center;
             align-items: center;
-            gap: 25px;
+            gap: 20px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             border-bottom: 1px solid #e5e7eb;
         }
@@ -28,12 +29,11 @@
             font-size: 14px;
         }
 
-        /* AQUI: Botões padronizados com o mesmo tamanho */
         .filtro-grupo select {
-            width: 200px;         /* Largura fixa para todos */
-            height: 40px;         /* Altura fixa para todos */
+            width: 200px;
+            height: 40px;
             padding: 0 12px;
-            box-sizing: border-box; /* Garante que o tamanho não passe dos 200px */
+            box-sizing: border-box;
             border: 1px solid #d1d5db;
             border-radius: 6px;
             font-size: 14px;
@@ -48,20 +48,20 @@
             border-color: #5470C6;
         }
 
-        /* Container dos Cards de Resumo */
+        /* Container dos Cards - Agora responsivo com Flexbox */
         .container-cards {
             max-width: 1200px;
             margin: 20px auto 10px auto;
             padding: 0 15px;
-            display: table;
-            width: 100%;
+            display: flex;
+            flex-wrap: wrap; /* Magia responsiva: quebra a linha se não couber */
+            gap: 15px;
             box-sizing: border-box;
         }
 
         .card-coluna {
-            display: table-cell;
-            width: 20%;
-            padding: 0 8px;
+            flex: 1 1 18%; /* Cresce e encolhe proporcionalmente */
+            min-width: 160px; /* Se a tela for menor que isso, ele joga o card pra baixo */
             box-sizing: border-box;
         }
 
@@ -72,6 +72,7 @@
             text-align: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.04);
             border-left: 4px solid #9ca3af;
+            height: 100%;
         }
 
         .card.duodecimo { border-left-color: #000000; }
@@ -200,7 +201,19 @@
                     return linhaLimpa;
                 });
 
-                dadosOriginais = dadosLimpos.filter(linha => linha['mes'] && linha['ano']);
+                // MÁGICA DOS MESES VAZIOS: Só entra na lista se tiver pelo menos 1 centavo registrado em alguma coluna
+                dadosOriginais = dadosLimpos.filter(linha => {
+                    if (!linha['mes'] || !linha['ano']) return false;
+                    
+                    let d = limparNumeroBR(linha['duodecimo']);
+                    let e = limparNumeroBR(linha['empenhado']);
+                    let l = limparNumeroBR(linha['liquidado']);
+                    let p = limparNumeroBR(linha['pago']);
+                    let r = limparNumeroBR(linha['resultado']);
+                    
+                    // Se for tudo 0, ignora essa linha (esconde do gráfico)
+                    return (d !== 0 || e !== 0 || l !== 0 || p !== 0 || r !== 0);
+                });
                 
                 popularFiltros(dadosOriginais);
                 aplicarFiltros();
