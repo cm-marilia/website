@@ -68,7 +68,6 @@
     <div id="meuGrafico"></div>
 
     <script>
-        // URL da planilha quebrando o cache
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSeiEl6tsmsHfu5qECIgTNFJtSLOHJWPUD334BxUtITfI-YKaWwH-vvVM5IBTO5WDypR_r3p_AjcxZL/pub?output=csv&t=' + new Date().getTime();
 
         const formatarMoeda = (valor) => {
@@ -82,10 +81,7 @@
             return parseFloat(textoLimpo.replace(',', '.')) || 0;
         };
 
-        // Instancia o gráfico
         const myChart = echarts.init(document.getElementById('meuGrafico'));
-
-        // Mantém os dados originais salvos na memória
         let dadosOriginais = [];
 
         Papa.parse(csvUrl, {
@@ -93,7 +89,6 @@
             header: true,
             skipEmptyLines: true,
             complete: function(results) {
-                // Limpeza dos cabeçalhos (Código Blindado)
                 const dadosLimpos = results.data.map(linha => {
                     let linhaLimpa = {};
                     for (let chave in linha) {
@@ -105,24 +100,18 @@
                     return linhaLimpa;
                 });
 
-                // Salva os dados globais filtrando apenas os que tem mes e ano preenchidos
                 dadosOriginais = dadosLimpos.filter(linha => linha['mes'] && linha['ano']);
-
-                // Preenche os selects (botões) dinamicamente baseados no que existe na planilha
                 popularFiltros(dadosOriginais);
-
-                // Renderiza o gráfico pela primeira vez com todos os dados
                 renderizarGrafico(dadosOriginais);
             }
         });
 
-        // Função para preencher os menus de seleção
         function popularFiltros(dados) {
             const selectAno = document.getElementById('filtroAno');
             const selectMes = document.getElementById('filtroMes');
 
-            // Extrai anos e meses únicos e na ordem
-            const anosUnicos = [...new Set(dados.map(item => item.ano))];
+            // AQUI ESTÁ A MÁGICA: Adicionamos o ".sort((a, b) => b - a)" para inverter a ordem dos anos!
+            const anosUnicos = [...new Set(dados.map(item => item.ano))].sort((a, b) => b - a);
             const mesesUnicos = [...new Set(dados.map(item => item.mes.toUpperCase()))];
 
             anosUnicos.forEach(ano => {
@@ -139,12 +128,10 @@
                 selectMes.appendChild(option);
             });
 
-            // Adiciona a inteligência de atualizar o gráfico ao mudar o botão
             selectAno.addEventListener('change', aplicarFiltros);
             selectMes.addEventListener('change', aplicarFiltros);
         }
 
-        // Função que lê os botões e filtra os dados
         function aplicarFiltros() {
             const anoSelecionado = document.getElementById('filtroAno').value;
             const mesSelecionado = document.getElementById('filtroMes').value;
@@ -159,11 +146,9 @@
                 dadosFiltrados = dadosFiltrados.filter(linha => linha.mes.toUpperCase() === mesSelecionado.toUpperCase());
             }
 
-            // Manda desenhar o gráfico com os dados novos
             renderizarGrafico(dadosFiltrados);
         }
 
-        // Função que desenha as barras e linhas (Agora aceitando dados dinâmicos)
         function renderizarGrafico(dados) {
             const eixoX = dados.map(linha => linha['mes'].toUpperCase() + '/' + linha['ano']);
             const serieDuodecimo = dados.map(linha => limparNumeroBR(linha['duodecimo']));
@@ -212,7 +197,6 @@
                 ]
             };
 
-            // Limpa o gráfico atual e insere as novas configurações (animação automática)
             myChart.setOption(option, true);
         }
 
