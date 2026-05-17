@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Financeiro</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #meuGrafico { width: 100%; height: 600px; }
+    </style>
+</head>
+<body>
+
+    <div id="meuGrafico"></div>
+
+    <script>
+        // Link público do seu Google Sheets em formato CSV
+        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSeiEl6tsmsHfu5qECIgTNFJtSLOHJWPUD334BxUtITfI-YKaWwH-vvVM5IBTO5WDypR_r3p_AjcxZL/pub?output=csv';
+
+        // Função para formatar os valores para R$ no tooltip (caixa que aparece ao passar o mouse)
+        const formatarMoeda = (valor) => {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+        };
+
+        // Função para limpar números no formato brasileiro (ex: 1.000,50 -> 1000.50)
+        const limparNumeroBR = (valor) => {
+            if (!valor) return 0;
+            if (typeof valor === 'number') return valor;
+            return parseFloat(valor.replace(/\./g, '').replace(',', '.')) || 0;
+        };
+
+        // Lendo os dados do Google Sheets
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                // Filtra possíveis linhas vazias no final da planilha
+                const dados = results.data.filter(linha => linha['Mês'] && linha['Ano']);
+
+                // Extraindo os eixos e as séries
+                const eixoX = dados.map(linha => linha['Mês'] + '/' + linha['Ano']);
+                const serieDuodecimo = dados.map(linha => limparNumeroBR(linha['Duodécimo']));
+                const serieEmpenhado = dados.map(linha => limparNumeroBR(linha['Empenhado']));
+                const serieLiquidado = dados.map(linha => limparNumeroBR(linha['Liquidado']));
+                const seriePago = dados.map(linha => limparNumeroBR(linha['Pago']));
+                const serieResultado = dados.map(linha => limparNumeroBR(linha['Resultado']));
+
+                // Configurando e renderizando o gráfico ECharts
+                const myChart = echarts.init(document.getElementById('meuGrafico'));
+                
+                const option = {
+                    title: {
+                        text: 'Acompanhamento Orçamentário',
+                        left: 'center'
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        valueFormatter: (value) => formatarMoeda(value)
+                    },
+                    legend: {
+                        data: ['Duodécimo', 'Empenhado', 'Liquidado', 'Pago', 'Resultado'],
+                        bottom: 0
+                    },
+                    grid: {
+                        left: '3%',
+                        right: '4%',
+                        bottom: '10%',
+                        containLabel: true
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: eixoX,
+                        axisLabel: { rotate: 45 } // Rotaciona os meses para não encavalar
+                    },
+                    yAxis: {
+                        type: 'value',
+                        axisLabel: {
+                            formatter: (value) => {
+                                // Mostra os valores no eixo Y de forma abreviada (ex: 1M, 500k)
+                                if (value >= 1000000) return (value / 1000000) + 'M';
+                                if (value >= 1000) return (value / 1000) + 'k';
+                                return value;
+                            }
+                        }
+                    },
+                    series: [
+                        {
+                            name: 'Duodécimo',
+                            type: 'line',
+                            smooth: true,
+                            data: serieDuodecimo,
+                            itemStyle: { color: '#000000' } // Linha preta
+                        },
+                        {
+                            name: 'Empenhado',
+                            type: 'bar',
+                            data: serieEmpenhado,
+                            itemStyle: { color: '#5470C6' } // Azul
+                        },
+                        {
+                            name: 'Liquidado',
+                            type: 'bar',
+                            data: serieLiquidado,
+                            itemStyle: { color: '#91CC75' } // Verde
+                        },
+                        {
+                            name: 'Pago',
+                            type: 'bar',
+                            data: seriePago,
+                            itemStyle: { color: '#FAC858' } // Amarelo
+                        },
+                        {
+                            name: 'Resultado',
+                            type: 'line',
+                            smooth: true,
+                            data: serieResultado,
+                            itemStyle: { color: '#EE6666' } // Linha vermelha
+                        }
+                    ]
+                };
+
+                myChart.setOption(option);
+
+                // Torna o gráfico responsivo
+                window.addEventListener('resize', function() {
+                    myChart.resize();
+                });
+            }
+        });
+    </script>
+</body>
+</html>
