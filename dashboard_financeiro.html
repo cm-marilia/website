@@ -16,7 +16,9 @@
     <div id="meuGrafico"></div>
 
     <script>
-        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSeiEl6tsmsHfu5qECIgTNFJtSLOHJWPUD334BxUtITfI-YKaWwH-vvVM5IBTO5WDypR_r3p_AjcxZL/pub?output=csv';
+        // MÁGICA 1: Adicionamos um código de tempo no final da URL para quebrar o cache do Google Sheets.
+        // Assim, toda vez que a página abre, ele puxa a versão mais atualizada na hora!
+        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSeiEl6tsmsHfu5qECIgTNFJtSLOHJWPUD334BxUtITfI-YKaWwH-vvVM5IBTO5WDypR_r3p_AjcxZL/pub?output=csv&t=' + new Date().getTime();
 
         const formatarMoeda = (valor) => {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
@@ -32,21 +34,32 @@
         Papa.parse(csvUrl, {
             download: true,
             header: true,
-            // MÁGICA AQUI: Limpa os cabeçalhos do CSV automaticamente (tira acentos e espaços)
-            transformHeader: function(header) {
-                return header.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-            },
+            skipEmptyLines: true, // Ignora automaticamente as linhas vazias no final da planilha
             complete: function(results) {
-                // Filtra as linhas vazias usando as chaves limpas
-                const dados = results.data.filter(linha => linha['Mes'] && linha['Ano']);
+                
+                // MÁGICA 2: Pega os cabeçalhos que vieram do Google Sheets e força a limpeza.
+                // Não importa se veio "Mês", "mes " ou "Mes", ele converte tudo certinho para o código ler.
+                const dadosLimpos = results.data.map(linha => {
+                    let linhaLimpa = {};
+                    for (let chave in linha) {
+                        if (chave) {
+                            let chaveLimpa = chave.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+                            linhaLimpa[chaveLimpa] = linha[chave];
+                        }
+                    }
+                    return linhaLimpa;
+                });
 
-                // Monta os dados do gráfico
-                const eixoX = dados.map(linha => linha['Mes'] + '/' + linha['Ano']);
-                const serieDuodecimo = dados.map(linha => limparNumeroBR(linha['Duodecimo']));
-                const serieEmpenhado = dados.map(linha => limparNumeroBR(linha['Empenhado']));
-                const serieLiquidado = dados.map(linha => limparNumeroBR(linha['Liquidado'])); 
-                const seriePago = dados.map(linha => limparNumeroBR(linha['Pago']));
-                const serieResultado = dados.map(linha => limparNumeroBR(linha['Resultado']));
+                // Filtra para garantir que só linhas com dados passem
+                const dados = dadosLimpos.filter(linha => linha['mes'] && linha['ano']);
+
+                // Monta os dados do gráfico buscando sempre pelas chaves convertidas em minúsculo
+                const eixoX = dados.map(linha => linha['mes'].toUpperCase() + '/' + linha['ano']);
+                const serieDuodecimo = dados.map(linha => limparNumeroBR(linha['duodecimo']));
+                const serieEmpenhado = dados.map(linha => limparNumeroBR(linha['empenhado']));
+                const serieLiquidado = dados.map(linha => limparNumeroBR(linha['liquidado'])); 
+                const seriePago = dados.map(linha => limparNumeroBR(linha['pago']));
+                const serieResultado = dados.map(linha => limparNumeroBR(linha['resultado']));
 
                 const myChart = echarts.init(document.getElementById('meuGrafico'));
                 
