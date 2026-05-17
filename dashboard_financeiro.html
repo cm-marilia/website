@@ -9,12 +9,12 @@
     <style>
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6; color: #1f2937; }
         
-        /* Barra superior de filtros - Agora com flex-wrap para telas menores */
+        /* Barra superior de filtros */
         .painel-filtros {
             background: #ffffff;
             padding: 15px 20px;
             display: flex;
-            flex-wrap: wrap; /* Permite que os botões quebrem de linha se faltar espaço */
+            flex-wrap: wrap;
             justify-content: center;
             align-items: center;
             gap: 20px;
@@ -29,6 +29,7 @@
             font-size: 14px;
         }
 
+        /* Botões com tamanho idêntico */
         .filtro-grupo select {
             width: 200px;
             height: 40px;
@@ -48,31 +49,30 @@
             border-color: #5470C6;
         }
 
-        /* Container dos Cards - Agora responsivo com Flexbox */
+        /* NOVA SOLUÇÃO: CSS Grid para manter 5 colunas iguais e com a mesma altura */
         .container-cards {
             max-width: 1200px;
             margin: 20px auto 10px auto;
             padding: 0 15px;
-            display: flex;
-            flex-wrap: wrap; /* Magia responsiva: quebra a linha se não couber */
-            gap: 15px;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr); /* Força 5 colunas idênticas lado a lado */
+            gap: 10px; /* Espaço entre os cards */
             box-sizing: border-box;
         }
 
-        .card-coluna {
-            flex: 1 1 18%; /* Cresce e encolhe proporcionalmente */
-            min-width: 160px; /* Se a tela for menor que isso, ele joga o card pra baixo */
-            box-sizing: border-box;
-        }
-
+        /* O card agora se ajusta automaticamente à altura máxima da linha */
         .card {
             background: #ffffff;
-            padding: 15px;
+            padding: 12px 5px; /* Padding levemente reduzido para caber melhor no iframe */
             border-radius: 8px;
             text-align: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.04);
             border-left: 4px solid #9ca3af;
-            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Centraliza o texto verticalmente se o card esticar */
+            height: 100%; /* Faz todos terem a mesma altura */
+            box-sizing: border-box;
         }
 
         .card.duodecimo { border-left-color: #000000; }
@@ -82,7 +82,7 @@
         .card.resultado { border-left-color: #EE6666; }
 
         .card-titulo {
-            font-size: 12px;
+            font-size: 11px; /* Fonte levemente menor para evitar quebras desnecessárias */
             text-transform: uppercase;
             color: #6b7280;
             font-weight: bold;
@@ -90,10 +90,11 @@
         }
 
         .card-valor {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: bold;
             color: #111827;
-            white-space: nowrap;
+            /* Permite que o texto do valor quebre de linha se o espaço for muito estreito, sem estourar o layout */
+            word-wrap: break-word; 
         }
 
         /* Área do Gráfico */
@@ -132,35 +133,25 @@
     </div>
 
     <div class="container-cards">
-        <div class="card-coluna">
-            <div class="card duodecimo">
-                <div class="card-titulo">Total Duodécimo</div>
-                <div class="card-valor" id="kpiDuodecimo">R$ 0,00</div>
-            </div>
+        <div class="card duodecimo">
+            <div class="card-titulo">Total Duodécimo</div>
+            <div class="card-valor" id="kpiDuodecimo">R$ 0,00</div>
         </div>
-        <div class="card-coluna">
-            <div class="card empenhado">
-                <div class="card-titulo">Total Empenhado</div>
-                <div class="card-valor" id="kpiEmpenhado">R$ 0,00</div>
-            </div>
+        <div class="card empenhado">
+            <div class="card-titulo">Total Empenhado</div>
+            <div class="card-valor" id="kpiEmpenhado">R$ 0,00</div>
         </div>
-        <div class="card-coluna">
-            <div class="card liquidado">
-                <div class="card-titulo">Total Liquidado</div>
-                <div class="card-valor" id="kpiLiquidado">R$ 0,00</div>
-            </div>
+        <div class="card liquidado">
+            <div class="card-titulo">Total Liquidado</div>
+            <div class="card-valor" id="kpiLiquidado">R$ 0,00</div>
         </div>
-        <div class="card-coluna">
-            <div class="card pago">
-                <div class="card-titulo">Total Pago</div>
-                <div class="card-valor" id="kpiPago">R$ 0,00</div>
-            </div>
+        <div class="card pago">
+            <div class="card-titulo">Total Pago</div>
+            <div class="card-valor" id="kpiPago">R$ 0,00</div>
         </div>
-        <div class="card-coluna">
-            <div class="card resultado">
-                <div class="card-titulo">Saldo / Resultado</div>
-                <div class="card-valor" id="kpiResultado">R$ 0,00</div>
-            </div>
+        <div class="card resultado">
+            <div class="card-titulo">Saldo / Resultado</div>
+            <div class="card-valor" id="kpiResultado">R$ 0,00</div>
         </div>
     </div>
 
@@ -201,7 +192,7 @@
                     return linhaLimpa;
                 });
 
-                // MÁGICA DOS MESES VAZIOS: Só entra na lista se tiver pelo menos 1 centavo registrado em alguma coluna
+                // MÁGICA DOS MESES VAZIOS (Esconde meses futuros que não têm valores)
                 dadosOriginais = dadosLimpos.filter(linha => {
                     if (!linha['mes'] || !linha['ano']) return false;
                     
@@ -211,7 +202,6 @@
                     let p = limparNumeroBR(linha['pago']);
                     let r = limparNumeroBR(linha['resultado']);
                     
-                    // Se for tudo 0, ignora essa linha (esconde do gráfico)
                     return (d !== 0 || e !== 0 || l !== 0 || p !== 0 || r !== 0);
                 });
                 
