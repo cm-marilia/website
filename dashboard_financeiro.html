@@ -29,7 +29,6 @@
             font-size: 14px;
         }
 
-        /* Botões com tamanho idêntico */
         .filtro-grupo select {
             width: 200px;
             height: 40px;
@@ -49,7 +48,7 @@
             border-color: #5470C6;
         }
 
-        /* CSS Grid para manter 5 colunas iguais e com a mesma altura */
+        /* CSS Grid para manter 5 colunas iguais */
         .container-cards {
             max-width: 1200px;
             margin: 20px auto 10px auto;
@@ -70,6 +69,7 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
+            align-items: center; /* Centraliza os itens no card */
             height: 100%;
             box-sizing: border-box;
         }
@@ -94,6 +94,22 @@
             color: #111827;
             word-wrap: break-word; 
         }
+
+        /* NOVAS CLASSES: Estilização dos Selos de Porcentagem */
+        .card-perc {
+            font-size: 10px;
+            margin-top: 6px;
+            padding: 3px 6px;
+            border-radius: 4px;
+            display: inline-block;
+            font-weight: bold;
+        }
+        
+        /* Cores dos selos combinando com as barras do gráfico */
+        .perc-empenhado { background-color: rgba(84, 112, 198, 0.15); color: #3730a3; } 
+        .perc-liquidado { background-color: rgba(145, 204, 117, 0.2); color: #166534; } 
+        .perc-pago      { background-color: rgba(250, 200, 88, 0.25); color: #92400e; } 
+        .perc-resultado { background-color: rgba(238, 102, 102, 0.15); color: #991b1b; }
 
         /* Área do Gráfico */
         .container-grafico {
@@ -134,22 +150,26 @@
         <div class="card duodecimo">
             <div class="card-titulo">Total Duodécimo</div>
             <div class="card-valor" id="kpiDuodecimo">R$ 0,00</div>
-        </div>
+            </div>
         <div class="card empenhado">
             <div class="card-titulo">Total Empenhado</div>
             <div class="card-valor" id="kpiEmpenhado">R$ 0,00</div>
+            <span class="card-perc perc-empenhado" id="percEmpenhado">0%</span>
         </div>
         <div class="card liquidado">
             <div class="card-titulo">Total Liquidado</div>
             <div class="card-valor" id="kpiLiquidado">R$ 0,00</div>
+            <span class="card-perc perc-liquidado" id="percLiquidado">0%</span>
         </div>
         <div class="card pago">
             <div class="card-titulo">Total Pago</div>
             <div class="card-valor" id="kpiPago">R$ 0,00</div>
+            <span class="card-perc perc-pago" id="percPago">0%</span>
         </div>
         <div class="card resultado">
             <div class="card-titulo">Saldo / Resultado</div>
             <div class="card-valor" id="kpiResultado">R$ 0,00</div>
+            <span class="card-perc perc-resultado" id="percResultado">0%</span>
         </div>
     </div>
 
@@ -171,6 +191,12 @@
             return parseFloat(textoLimpo.replace(',', '.')) || 0;
         };
 
+        // Função utilitária para calcular a porcentagem
+        const calcularPercentual = (valor, total) => {
+            if (total === 0) return '0,0%';
+            return ((valor / total) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+        };
+
         const myChart = echarts.init(document.getElementById('meuGrafico'));
         let dadosOriginais = [];
 
@@ -190,16 +216,13 @@
                     return linhaLimpa;
                 });
 
-                // Esconde meses sem valores
                 dadosOriginais = dadosLimpos.filter(linha => {
                     if (!linha['mes'] || !linha['ano']) return false;
-                    
                     let d = limparNumeroBR(linha['duodecimo']);
                     let e = limparNumeroBR(linha['empenhado']);
                     let l = limparNumeroBR(linha['liquidado']);
                     let p = limparNumeroBR(linha['pago']);
                     let r = limparNumeroBR(linha['resultado']);
-                    
                     return (d !== 0 || e !== 0 || l !== 0 || p !== 0 || r !== 0);
                 });
                 
@@ -268,11 +291,18 @@
                 totalResultado += limparNumeroBR(linha['resultado']);
             });
 
+            // Atualiza os Valores em R$
             document.getElementById('kpiDuodecimo').textContent = formatarMoeda(totalDuodecimo);
             document.getElementById('kpiEmpenhado').textContent = formatarMoeda(totalEmpenhado);
             document.getElementById('kpiLiquidado').textContent = formatarMoeda(totalLiquidado);
             document.getElementById('kpiPago').textContent = formatarMoeda(totalPago);
             document.getElementById('kpiResultado').textContent = formatarMoeda(totalResultado);
+
+            // Calcula e atualiza os Selos de Porcentagem
+            document.getElementById('percEmpenhado').textContent = calcularPercentual(totalEmpenhado, totalDuodecimo) + ' do Duodécimo';
+            document.getElementById('percLiquidado').textContent = calcularPercentual(totalLiquidado, totalDuodecimo) + ' do Duodécimo';
+            document.getElementById('percPago').textContent      = calcularPercentual(totalPago, totalDuodecimo) + ' do Duodécimo';
+            document.getElementById('percResultado').textContent = calcularPercentual(totalResultado, totalDuodecimo) + ' em Caixa';
 
             let tituloDinamico = 'Acompanhamento Orçamentário';
             if (ano !== 'Todos' && mes !== 'Todos') {
@@ -307,7 +337,6 @@
                             readOnly: true, 
                             title: 'Ver Tabela', 
                             lang: ['Tabela de Dados Orçamentários', 'Fechar', 'Atualizar'],
-                            // MÁGICA AQUI: Constrói uma tabela HTML estilizada
                             optionToContent: function (opt) {
                                 let axisData = opt.xAxis[0].data;
                                 let series = opt.series;
@@ -326,7 +355,6 @@
                                     table += '<tr style="border-bottom:1px solid #e5e7eb;">';
                                     table += '<td style="padding:10px; font-weight:bold; color:#4b5563;">' + axisData[i] + '</td>';
                                     for (let j = 0; j < series.length; j++) {
-                                        // Formata os valores da tabela em R$
                                         let valorMoeda = formatarMoeda(series[j].data[i]);
                                         table += '<td style="padding:10px; color:#1f2937;">' + valorMoeda + '</td>';
                                     }
@@ -374,7 +402,7 @@
                 dataZoom: [
                     {
                         type: 'slider',
-                        show: eixoX.length > 1, 
+                        show: eixoX.length > 6, 
                         start: 0,
                         end: 100,
                         bottom: 30,
