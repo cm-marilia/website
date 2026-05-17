@@ -49,29 +49,28 @@
             border-color: #5470C6;
         }
 
-        /* NOVA SOLUÇÃO: CSS Grid para manter 5 colunas iguais e com a mesma altura */
+        /* CSS Grid para manter 5 colunas iguais e com a mesma altura */
         .container-cards {
             max-width: 1200px;
             margin: 20px auto 10px auto;
             padding: 0 15px;
             display: grid;
-            grid-template-columns: repeat(5, 1fr); /* Força 5 colunas idênticas lado a lado */
-            gap: 10px; /* Espaço entre os cards */
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
             box-sizing: border-box;
         }
 
-        /* O card agora se ajusta automaticamente à altura máxima da linha */
         .card {
             background: #ffffff;
-            padding: 12px 5px; /* Padding levemente reduzido para caber melhor no iframe */
+            padding: 12px 5px;
             border-radius: 8px;
             text-align: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.04);
             border-left: 4px solid #9ca3af;
             display: flex;
             flex-direction: column;
-            justify-content: center; /* Centraliza o texto verticalmente se o card esticar */
-            height: 100%; /* Faz todos terem a mesma altura */
+            justify-content: center;
+            height: 100%;
             box-sizing: border-box;
         }
 
@@ -82,7 +81,7 @@
         .card.resultado { border-left-color: #EE6666; }
 
         .card-titulo {
-            font-size: 11px; /* Fonte levemente menor para evitar quebras desnecessárias */
+            font-size: 11px;
             text-transform: uppercase;
             color: #6b7280;
             font-weight: bold;
@@ -93,7 +92,6 @@
             font-size: 14px;
             font-weight: bold;
             color: #111827;
-            /* Permite que o texto do valor quebre de linha se o espaço for muito estreito, sem estourar o layout */
             word-wrap: break-word; 
         }
 
@@ -192,7 +190,7 @@
                     return linhaLimpa;
                 });
 
-                // MÁGICA DOS MESES VAZIOS (Esconde meses futuros que não têm valores)
+                // Esconde meses sem valores
                 dadosOriginais = dadosLimpos.filter(linha => {
                     if (!linha['mes'] || !linha['ano']) return false;
                     
@@ -304,7 +302,40 @@
                 },
                 toolbox: {
                     feature: {
-                        dataView: { show: true, readOnly: true, title: 'Ver Tabela', lang: ['Tabela de Dados', 'Fechar', 'Atualizar'] },
+                        dataView: { 
+                            show: true, 
+                            readOnly: true, 
+                            title: 'Ver Tabela', 
+                            lang: ['Tabela de Dados Orçamentários', 'Fechar', 'Atualizar'],
+                            // MÁGICA AQUI: Constrói uma tabela HTML estilizada
+                            optionToContent: function (opt) {
+                                let axisData = opt.xAxis[0].data;
+                                let series = opt.series;
+                                
+                                let table = '<div style="width:100%; overflow-y:auto; height:100%;">';
+                                table += '<table style="width:100%; border-collapse:collapse; text-align:center; font-family:Arial, sans-serif; font-size:14px;">';
+                                table += '<thead style="background-color:#f3f4f6; position:sticky; top:0;"><tr>';
+                                table += '<th style="padding:10px; border-bottom:2px solid #d1d5db; color:#374151;">Período</th>';
+                                
+                                for (let i = 0; i < series.length; i++) {
+                                    table += '<th style="padding:10px; border-bottom:2px solid #d1d5db; color:#374151;">' + series[i].name + '</th>';
+                                }
+                                table += '</tr></thead><tbody>';
+                                
+                                for (let i = 0, l = axisData.length; i < l; i++) {
+                                    table += '<tr style="border-bottom:1px solid #e5e7eb;">';
+                                    table += '<td style="padding:10px; font-weight:bold; color:#4b5563;">' + axisData[i] + '</td>';
+                                    for (let j = 0; j < series.length; j++) {
+                                        // Formata os valores da tabela em R$
+                                        let valorMoeda = formatarMoeda(series[j].data[i]);
+                                        table += '<td style="padding:10px; color:#1f2937;">' + valorMoeda + '</td>';
+                                    }
+                                    table += '</tr>';
+                                }
+                                table += '</tbody></table></div>';
+                                return table;
+                            }
+                        },
                         saveAsImage: { show: true, title: 'Baixar Imagem' }
                     },
                     right: 20,
