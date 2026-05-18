@@ -250,16 +250,26 @@
                     }, 
                     saveAsImage: { show: true, title: 'Imagem' } 
                 } },
-                legend: { data: ['Duodécimo Previsto', 'Duodécimo Recebido', 'Valor Empenhado', 'Valor Liquidado', 'Valor Pago', 'Saldo Orçamentário'], bottom: 0 },
                 
-                // CORREÇÃO: Aumentada a margem inferior (bottom) para 110px para evitar sobreposição da legenda com a barra de rolagem e os textos inclinados
-                grid: { top: '15%', bottom: 110, containLabel: true },
+                // MÁGICA: Legenda dividida estruturalmente em duas linhas!
+                legend: [
+                    { 
+                        data: ['Duodécimo Previsto', 'Duodécimo Recebido', 'Saldo Orçamentário'], 
+                        bottom: 25 // Fica na linha superior da legenda
+                    },
+                    { 
+                        data: ['Valor Empenhado', 'Valor Liquidado', 'Valor Pago'], 
+                        bottom: 0  // Fica na linha inferior da legenda
+                    }
+                ],
+                
+                // CORREÇÃO: Grid e Slider ajustados para acomodarem duas linhas na legenda
+                grid: { top: '15%', bottom: 130, containLabel: true },
                 
                 xAxis: { type: 'category', data: eixoX, axisLabel: { rotate: 45 } },
                 yAxis: { type: 'value', axisLabel: { formatter: (v) => v >= 1000000 ? (v/1000000)+'M' : v >= 1000 ? (v/1000)+'k' : v } },
                 
-                // CORREÇÃO: Subindo o 'bottom' do slider de 30 para 55 para dar espaço à legenda caso ela quebre em duas linhas
-                dataZoom: [{ type: 'slider', show: eixoX.length > 1, bottom: 55, height: 20, startValue: 0, endValue: indexUltimoPreenchido }],
+                dataZoom: [{ type: 'slider', show: eixoX.length > 1, bottom: 65, height: 20, startValue: 0, endValue: indexUltimoPreenchido }],
                 
                 series: [
                     { 
