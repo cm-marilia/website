@@ -194,7 +194,6 @@
             renderizarGrafico(dadosVisiveis, titulo);
         }
 
-        // Nova função inteligente para atualizar apenas as caixinhas (KPIs) com base no que está visível
         function atualizarKPIs(d) {
             let tPre = 0, tRec = 0, tEmp = 0, tLiq = 0, tPag = 0, tRes = 0;
             d.forEach(l => {
@@ -223,7 +222,6 @@
         function renderizarGrafico(d, titulo) {
             const eixoX = d.map(l => l.mes.toUpperCase() + '/' + l.ano);
             
-            // Lógica para encontrar qual é o último mês que possui dados reais (para cortar a barra de rolagem)
             let indexUltimoPreenchido = d.length - 1;
             for (let i = d.length - 1; i >= 0; i--) {
                 if (limparNumeroBR(d[i].duodecimo) > 0 || limparNumeroBR(d[i].empenhado) > 0 || limparNumeroBR(d[i].pago) > 0) {
@@ -257,7 +255,6 @@
                 xAxis: { type: 'category', data: eixoX, axisLabel: { rotate: 45 } },
                 yAxis: { type: 'value', axisLabel: { formatter: (v) => v >= 1000000 ? (v/1000000)+'M' : v >= 1000 ? (v/1000)+'k' : v } },
                 
-                // MÁGICA 2: A Barra de rolagem já inicia no 'indexUltimoPreenchido'
                 dataZoom: [{ type: 'slider', show: eixoX.length > 1, bottom: 30, height: 20, startValue: 0, endValue: indexUltimoPreenchido }],
                 
                 series: [
@@ -265,10 +262,9 @@
                         name: 'Duodécimo Previsto', 
                         type: 'line', 
                         data: d.map(l => limparNumeroBR(l.duodecimo_previsto)), 
-                        // MÁGICA 1: Linha Turquesa grossa, contínua e sem fundo
                         lineStyle: { type: 'solid', color: '#00ced1', width: 8 }, 
                         itemStyle: { color: '#00ced1' },
-                        symbolSize: 0, 
+                        symbolSize: 12, /* ALTERADO AQUI: Bolinhas adicionadas com tamanho 12 para aparecer na linha grossa */
                         z: 1 
                     },
                     { 
@@ -278,7 +274,6 @@
                             let val = limparNumeroBR(l.duodecimo);
                             return val === 0 ? null : val;
                         }), 
-                        // Linha preta fina correndo por dentro/por cima da turquesa
                         lineStyle: { type: 'solid', color: '#000000', width: 3 }, 
                         itemStyle: { color: '#000000' },
                         symbolSize: 8, 
@@ -305,13 +300,11 @@
             
             myChart.setOption(opt, true);
 
-            // MÁGICA 3: Ao desenhar, atualiza as caixinhas considerando apenas os meses que estão dentro do zoom
             let dadosNoZoom = d.slice(0, indexUltimoPreenchido + 1);
             atualizarKPIs(dadosNoZoom);
         }
 
-        // MÁGICA 3 (Continuação): Faz as caixinhas recalcularem em tempo real quando você arrasta a barra
-        myChart.off('datazoom'); // Previne sobreposição de eventos
+        myChart.off('datazoom'); 
         myChart.on('datazoom', function () {
             let optAtual = myChart.getOption();
             let startIdx = optAtual.dataZoom[0].startValue;
