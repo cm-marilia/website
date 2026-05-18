@@ -49,7 +49,6 @@
             justify-content: center; align-items: center; height: 100%;
         }
 
-        /* Cores dos Cards (Turquesa aplicado no primeiro card) */
         .card.previsto  { border-left-color: #00ced1; } 
         .card.duodecimo { border-left-color: #000000; }
         .card.empenhado { border-left-color: #5470C6; }
@@ -61,7 +60,6 @@
         .card-valor { font-size: 13px; font-weight: bold; color: #111827; }
         .card-perc { font-size: 9px; margin-top: 4px; padding: 2px 5px; border-radius: 4px; font-weight: bold; }
         
-        /* Cor da porcentagem do Turquesa */
         .perc-previsto  { background-color: rgba(0, 206, 209, 0.1); color: #008b8b; }
         .perc-empenhado { background-color: rgba(84, 112, 198, 0.1); color: #3730a3; } 
         .perc-liquidado { background-color: rgba(145, 204, 117, 0.1); color: #166534; } 
@@ -159,14 +157,12 @@
                     return clean;
                 }).filter(l => {
                     if (!l.mes || !l.ano) return false;
-                    
                     let d = limparNumeroBR(l.duodecimo);
                     let e = limparNumeroBR(l.empenhado);
                     let liq = limparNumeroBR(l.liquidado);
                     let p = limparNumeroBR(l.pago);
                     let r = limparNumeroBR(l.resultado);
                     let prev = limparNumeroBR(l.duodecimo_previsto);
-                    
                     return (d > 0 || e > 0 || liq > 0 || p > 0 || r > 0 || prev > 0);
                 });
 
@@ -193,10 +189,13 @@
         function aplicarFiltros() {
             const aS = document.getElementById('filtroAno').value, mS = document.getElementById('filtroMes').value;
             dadosVisiveis = dadosOriginais.filter(l => (aS === 'Todos' || l.ano === aS) && (mS === 'Todos' || l.mes.toUpperCase() === mS));
-            atualizarPainel(dadosVisiveis, aS, mS);
+            
+            let titulo = `Acompanhamento Orçamentário ${aS !== 'Todos' ? '- ' + aS : ''}`;
+            renderizarGrafico(dadosVisiveis, titulo);
         }
 
-        function atualizarPainel(d, a, m) {
+        // Nova função inteligente para atualizar apenas as caixinhas (KPIs) com base no que está visível
+        function atualizarKPIs(d) {
             let tPre = 0, tRec = 0, tEmp = 0, tLiq = 0, tPag = 0, tRes = 0;
             d.forEach(l => {
                 tPre += limparNumeroBR(l.duodecimo_previsto);
@@ -219,12 +218,20 @@
             document.getElementById('percLiquidado').textContent = calcularPerc(tLiq, tRec) + ' do Recebido';
             document.getElementById('percPago').textContent = calcularPerc(tPag, tRec) + ' do Recebido';
             document.getElementById('percResultado').textContent = calcularPerc(tRes, tRec) + ' Livre';
-
-            renderizarGrafico(d, `Acompanhamento Orçamentário ${a !== 'Todos' ? '- ' + a : ''}`);
         }
 
         function renderizarGrafico(d, titulo) {
             const eixoX = d.map(l => l.mes.toUpperCase() + '/' + l.ano);
+            
+            // Lógica para encontrar qual é o último mês que possui dados reais (para cortar a barra de rolagem)
+            let indexUltimoPreenchido = d.length - 1;
+            for (let i = d.length - 1; i >= 0; i--) {
+                if (limparNumeroBR(d[i].duodecimo) > 0 || limparNumeroBR(d[i].empenhado) > 0 || limparNumeroBR(d[i].pago) > 0) {
+                    indexUltimoPreenchido = i;
+                    break;
+                }
+            }
+
             const opt = {
                 title: { text: titulo, left: 'center', textStyle: { fontSize: 16 } },
                 tooltip: { trigger: 'axis', valueFormatter: (v) => formatarMoeda(v) },
@@ -249,16 +256,18 @@
                 grid: { top: '15%', bottom: '15%', containLabel: true },
                 xAxis: { type: 'category', data: eixoX, axisLabel: { rotate: 45 } },
                 yAxis: { type: 'value', axisLabel: { formatter: (v) => v >= 1000000 ? (v/1000000)+'M' : v >= 1000 ? (v/1000)+'k' : v } },
-                dataZoom: [{ type: 'slider', show: eixoX.length > 1, bottom: 30, height: 20 }],
+                
+                // MÁGICA 2: A Barra de rolagem já inicia no 'indexUltimoPreenchido'
+                dataZoom: [{ type: 'slider', show: eixoX.length > 1, bottom: 30, height: 20, startValue: 0, endValue: indexUltimoPreenchido }],
+                
                 series: [
                     { 
                         name: 'Duodécimo Previsto', 
                         type: 'line', 
                         data: d.map(l => limparNumeroBR(l.duodecimo_previsto)), 
-                        // MÁGICA: Cor Turquesa vibrante com preenchimento aplicado aqui
-                        lineStyle: { type: 'dotted', color: '#00ced1', width: 3 }, 
+                        // MÁGICA 1: Linha Turquesa grossa, contínua e sem fundo
+                        lineStyle: { type: 'solid', color: '#00ced1', width: 8 }, 
                         itemStyle: { color: '#00ced1' },
-                        areaStyle: { color: 'rgba(0, 206, 209, 0.15)' }, // Sombra Turquesa claro
                         symbolSize: 0, 
                         z: 1 
                     },
@@ -269,7 +278,8 @@
                             let val = limparNumeroBR(l.duodecimo);
                             return val === 0 ? null : val;
                         }), 
-                        lineStyle: { type: 'solid', color: '#000000', width: 4 }, 
+                        // Linha preta fina correndo por dentro/por cima da turquesa
+                        lineStyle: { type: 'solid', color: '#000000', width: 3 }, 
                         itemStyle: { color: '#000000' },
                         symbolSize: 8, 
                         z: 3 
@@ -292,8 +302,24 @@
                     }
                 ]
             };
+            
             myChart.setOption(opt, true);
+
+            // MÁGICA 3: Ao desenhar, atualiza as caixinhas considerando apenas os meses que estão dentro do zoom
+            let dadosNoZoom = d.slice(0, indexUltimoPreenchido + 1);
+            atualizarKPIs(dadosNoZoom);
         }
+
+        // MÁGICA 3 (Continuação): Faz as caixinhas recalcularem em tempo real quando você arrasta a barra
+        myChart.off('datazoom'); // Previne sobreposição de eventos
+        myChart.on('datazoom', function () {
+            let optAtual = myChart.getOption();
+            let startIdx = optAtual.dataZoom[0].startValue;
+            let endIdx = optAtual.dataZoom[0].endValue;
+            
+            let dadosAtualizados = dadosVisiveis.slice(startIdx, endIdx + 1);
+            atualizarKPIs(dadosAtualizados);
+        });
 
         window.addEventListener('resize', () => myChart.resize());
 
