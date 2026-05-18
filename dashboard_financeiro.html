@@ -252,7 +252,7 @@
                     }, 
                     saveAsImage: { show: true, title: 'Imagem' } 
                 } },
-                legend: { data: ['Duodécimo Previsto', 'Duodécimo Recebido', 'Valores Empenhados', 'Valores Liquidados', 'Valores Pagos', 'Saldo Orçamentário'], bottom: 0 },
+                legend: { data: ['Duodécimo Previsto', 'Duodécimo Recebido', 'Valor Empenhado', 'Valor Liquidado', 'Valor Pago', 'Saldo Orçamentário'], bottom: 0 },
                 grid: { top: '15%', bottom: '15%', containLabel: true },
                 xAxis: { type: 'category', data: eixoX, axisLabel: { rotate: 45 } },
                 yAxis: { type: 'value', axisLabel: { formatter: (v) => v >= 1000000 ? (v/1000000)+'M' : v >= 1000 ? (v/1000)+'k' : v } },
@@ -284,9 +284,9 @@
                         symbolSize: 8, 
                         z: 3 
                     },
-                    { name: 'Valores Empenhados', type: 'bar', data: d.map(l => limparNumeroBR(l.empenhado)), itemStyle: { color: '#5470C6' }, z: 2 },
-                    { name: 'Valores Liquidados', type: 'bar', data: d.map(l => limparNumeroBR(l.liquidado)), itemStyle: { color: '#91CC75' }, z: 2 },
-                    { name: 'Valores Pagos', type: 'bar', data: d.map(l => limparNumeroBR(l.pago)), itemStyle: { color: '#FAC858' }, z: 2 },
+                    { name: 'Valor Empenhado', type: 'bar', data: d.map(l => limparNumeroBR(l.empenhado)), itemStyle: { color: '#5470C6' }, z: 2 },
+                    { name: 'Valor Liquidado', type: 'bar', data: d.map(l => limparNumeroBR(l.liquidado)), itemStyle: { color: '#91CC75' }, z: 2 },
+                    { name: 'Valor Pago', type: 'bar', data: d.map(l => limparNumeroBR(l.pago)), itemStyle: { color: '#FAC858' }, z: 2 },
                     { 
                         name: 'Saldo Orçamentário', 
                         type: 'line', 
