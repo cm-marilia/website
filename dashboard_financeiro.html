@@ -49,7 +49,8 @@
             justify-content: center; align-items: center; height: 100%;
         }
 
-        .card.previsto  { border-left-color: #94a3b8; } 
+        /* Cores dos Cards (Turquesa aplicado no primeiro card) */
+        .card.previsto  { border-left-color: #00ced1; } 
         .card.duodecimo { border-left-color: #000000; }
         .card.empenhado { border-left-color: #5470C6; }
         .card.liquidado { border-left-color: #91CC75; }
@@ -60,7 +61,8 @@
         .card-valor { font-size: 13px; font-weight: bold; color: #111827; }
         .card-perc { font-size: 9px; margin-top: 4px; padding: 2px 5px; border-radius: 4px; font-weight: bold; }
         
-        .perc-previsto  { background-color: #f1f5f9; color: #475569; }
+        /* Cor da porcentagem do Turquesa */
+        .perc-previsto  { background-color: rgba(0, 206, 209, 0.1); color: #008b8b; }
         .perc-empenhado { background-color: rgba(84, 112, 198, 0.1); color: #3730a3; } 
         .perc-liquidado { background-color: rgba(145, 204, 117, 0.1); color: #166534; } 
         .perc-pago      { background-color: rgba(250, 200, 88, 0.1); color: #92400e; } 
@@ -253,9 +255,10 @@
                         name: 'Duodécimo Previsto', 
                         type: 'line', 
                         data: d.map(l => limparNumeroBR(l.duodecimo_previsto)), 
-                        lineStyle: { type: 'dotted', color: '#94a3b8', width: 3 }, 
-                        itemStyle: { color: '#94a3b8' },
-                        areaStyle: { color: 'rgba(148, 163, 184, 0.15)' }, 
+                        // MÁGICA: Cor Turquesa vibrante com preenchimento aplicado aqui
+                        lineStyle: { type: 'dotted', color: '#00ced1', width: 3 }, 
+                        itemStyle: { color: '#00ced1' },
+                        areaStyle: { color: 'rgba(0, 206, 209, 0.15)' }, // Sombra Turquesa claro
                         symbolSize: 0, 
                         z: 1 
                     },
