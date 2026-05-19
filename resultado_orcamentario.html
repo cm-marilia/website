@@ -1,467 +1,464 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Relatório de Sanções e Contratos</title>
-
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
-    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Orçamentário - Câmara Municipal de Marília</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* =========================================
-           1. ESTILOS GERAIS E BASE
-           ========================================= */
-        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden;}
-        #wrapper { padding-bottom: 40px; padding: 15px; } 
-
-        .topo { background: #003b75; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .topo h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
-        .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-        .texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
-
-        .painel-grupo { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .titulo-painel { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
-        .badge-atualizacao { position: absolute; top: -10px; right: 20px; font-size: 10px; background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
-
-        /* ELEMENTOS DE FORMULÁRIO */
-        select, input { height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box; width: 100%; }
-        button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; width: 100%; }
-        button.btn-filtro:hover { background: #00274d; }
-
-        /* FILTROS RESPONSIVOS */
-        .painel-filtros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 10px; }
-        .painel-filtros:last-child { margin-bottom: 0; }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6; color: #1f2937; }
         
-        /* EXPORTAÇÃO RESPONSIVA E CARROSSEL */
-        .painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
-        .painel-exportacao button { flex: 1; min-width: 100px; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .painel-exportacao button:hover { background: #00274d; }
-        .painel-exportacao .btn-acao { background: #0284c7; }
-        .painel-exportacao::-webkit-scrollbar { height: 6px; }
-        .painel-exportacao::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-
-        /* CABEÇALHO VISUALIZAÇÃO */
-        .dt-custom-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 5px 0; }
-        .badge-contagem { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid #bae6fd; }
-
-        /* CORREÇÃO DO MENU "EXIBIR X RESULTADOS" */
-        .dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; margin: 0; white-space: nowrap; }
-        .dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
-
-        /* TABELA BASE E CARDS */
-        #tabela thead { display: none !important; }
-        table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
-        
-        .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        .card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; display: flex; justify-content: space-between; align-items: center; }
-        .card-header-texto { display: flex; flex-direction: column; gap: 2px; width: 80%; }
-        .nome-principal { font-size: 15px; font-weight: 800; color: #003b75; text-transform: uppercase; word-break: break-word; }
-        .subtitulo-card { font-size: 12px; color: #64748b; font-weight: 500; text-transform: uppercase; }
-        
-        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: center; max-width: 150px; }
-        .status-grave { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-        .status-leve { background: #fef08a; color: #854d0e; border: 1px solid #fde047; }
-        
-        /* GRELHA DOS CARDS AJUSTADA PARA 3 COLUNAS */
-        .card-body { display: grid; grid-template-columns: repeat(3, 1fr); padding: 12px 15px; gap: 12px; }
-        .span-2 { grid-column: span 2; }
-        
-        .info-col { display: flex; flex-direction: column; }
-        .info-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
-        .info-valor { font-size: 13px; font-weight: 700; color: #1e293b; text-align: justify; }
-
-        /* PAGINAÇÃO */
-        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px;}
-        .dataTables_wrapper .dataTables_info { padding-top: 0 !important; color: #475569; font-size: 13px; font-weight: 500; margin-bottom: 0 !important; }
-        .dataTables_wrapper .dataTables_paginate { display: flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 0 !important; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 6px 12px !important; border-radius: 6px !important; margin: 0 !important; border: 1px solid transparent !important; color: #475569 !important; font-weight: 600; font-size: 13px; background: transparent !important; cursor: pointer; transition: 0.2s; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border-color: #003b75 !important; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #003b75 !important; }
-
-        #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #003b75; font-weight: bold; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        #cabecalho-impressao { display: none; }
-
-        /* =========================================
-           RESPONSIVIDADE CELULAR E IFRAME
-           ========================================= */
-        @media (max-width: 850px) {
-            .painel-filtros { grid-template-columns: repeat(2, 1fr); }
-            .card-body { grid-template-columns: repeat(2, 1fr); }
-        }
-           
-        @media (max-width: 600px) {
-            .painel-filtros { grid-template-columns: 1fr; }
-            .topo { flex-direction: column; gap: 10px; text-align: center; }
-            .card-header { flex-direction: column; text-align: center; gap: 10px; }
-            .card-header-texto { width: 100%; }
-            .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
-            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
-            /* Ajuste para não quebrar a grelha em telemóvel */
-            .card-body { grid-template-columns: 1fr; }
-            .span-2 { grid-column: span 1; }
+        .painel-filtros {
+            background: #ffffff; padding: 15px 20px; display: flex; flex-wrap: wrap;
+            justify-content: center; align-items: center; gap: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-bottom: 1px solid #e5e7eb;
         }
 
-        @media print {
-            .topo, fieldset, .dt-bottom-controls { display: none !important; }
-            #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
-            .card-info { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; }
-            #main-container { display: block !important; margin: 0; }
+        .filtro-grupo label { font-weight: bold; color: #4b5563; margin-right: 8px; font-size: 14px; }
+
+        .filtro-grupo select {
+            width: 180px; height: 40px; padding: 0 12px; border: 1px solid #d1d5db;
+            border-radius: 6px; font-size: 14px; color: #1f2937; background-color: #fff;
+            cursor: pointer; outline: none;
         }
+
+        /* ESTILO DO BADGE DE ATUALIZAÇÃO */
+        .badge-atualizacao {
+            background-color: rgba(46, 204, 113, 0.12);
+            border: 1px solid rgba(46, 204, 113, 0.25);
+            padding: 8px 16px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #136342;
+        }
+        .badge-atualizacao .ponto-verde {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 4px 4px, #5effa4, #1aa35a);
+            box-shadow: 0 0 5px rgba(46, 204, 113, 0.6);
+        }
+
+        /* REPOSICIONAMENTO: Ocupa as duas extremidades da linha (Badge na esquerda, Botões na direita) */
+        .painel-exportacao {
+            max-width: 1240px; margin: 15px auto 0 auto; padding: 0 15px;
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
+        }
+
+        .painel-exportacao span { font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase; }
+
+        .btn-export {
+            background-color: #ffffff; border: 1px solid #d1d5db; padding: 6px 0;
+            border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer;
+            width: 65px; /* Define o mesmo tamanho exato para todos os botões */
+            text-align: center;
+        }
+        .btn-export:hover { background-color: #f3f4f6; }
+
+        .container-cards {
+            max-width: 1240px; margin: 15px auto 10px auto; padding: 0 15px;
+            display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; box-sizing: border-box;
+        }
+
+        .card {
+            background: #ffffff; padding: 10px 5px; border-radius: 8px;
+            text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            border-left: 4px solid #9ca3af; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; height: 100%;
+        }
+
+        .card.previsto  { border-left-color: #00ced1; } 
+        .card.duodecimo { border-left-color: #000000; }
+        .card.empenhado { border-left-color: #5470C6; }
+        .card.liquidado { border-left-color: #91CC75; }
+        .card.pago      { border-left-color: #FAC858; }
+        .card.resultado { border-left-color: #EE6666; }
+
+        .card-titulo { font-size: 10px; text-transform: uppercase; color: #6b7280; font-weight: bold; margin-bottom: 3px; }
+        .card-valor { font-size: 13px; font-weight: bold; color: #111827; }
+        .card-perc { font-size: 9px; margin-top: 4px; padding: 2px 5px; border-radius: 4px; font-weight: bold; }
+        
+        .perc-previsto  { background-color: rgba(0, 206, 209, 0.1); color: #008b8b; }
+        .perc-empenhado { background-color: rgba(84, 112, 198, 0.1); color: #3730a3; } 
+        .perc-liquidado { background-color: rgba(145, 204, 117, 0.1); color: #166534; } 
+        .perc-pago      { background-color: rgba(250, 200, 88, 0.1); color: #92400e; } 
+        .perc-resultado { background-color: rgba(238, 102, 102, 0.1); color: #991b1b; }
+
+        .container-grafico { max-width: 1240px; margin: 10px auto 20px auto; padding: 0 15px; }
+        #meuGrafico { width: 100%; height: 500px; background: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); padding: 15px 0; }
     </style>
 </head>
 <body>
 
-<div id="wrapper">
-    <header class="topo">
-        <h1>Relatório de Sanções e Contratos</h1>
-        <div class="logo-container">
-            <img src="Brasão_de_Marília.png" alt="Brasão de Marília" width="45" height="50" class="brasao">
-            <span class="texto-camara">Câmara Municipal de Marília</span>
+    <div class="painel-filtros">
+        <div class="filtro-grupo">
+            <label for="filtroAno">Ano:</label>
+            <select id="filtroAno"><option value="Todos">Todos</option></select>
         </div>
-    </header>
-
-    <div id="cabecalho-impressao">
-        <img src="Brasão_de_Marília.png" width="63" height="70" alt="Brasão de Marília">
-        <div>
-            <h1 style="margin:0; color:#003b75;">Relatório de Sanções e Contratos</h1>
-            <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
+        <div class="filtro-grupo">
+            <label for="filtroMes">Mês:</label>
+            <select id="filtroMes"><option value="Todos">Todos</option></select>
         </div>
     </div>
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <span>Carregando base de dados...</span>
+    <div class="painel-exportacao">
+        <div class="badge-atualizacao">
+            <span class="ponto-verde"></span>
+            <span id="txtAtualizacao">Carregando atualização...</span>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span>Download:</span>
+            <button class="btn-export" onclick="exportarCSV()">CSV</button>
+            <button class="btn-export" onclick="exportarXLSX()">XLSX</button>
+            <button class="btn-export" onclick="exportarJSON()">JSON</button>
+            <button class="btn-export" onclick="exportarXML()">XML</button>
+        </div>
     </div>
 
-    <main id="main-container" style="display:none;">
-        <fieldset class="painel-grupo">
-            <legend class="titulo-painel">Filtros de Pesquisa</legend>
-            <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
-            
-            <div class="painel-filtros">
-                <input type="text" id="filtroTexto" placeholder="Pesquisar por Razão Social ou CNPJ..." autocomplete="off" aria-label="Pesquisar por Razão Social ou CNPJ">
-                <select id="filtroTipoSancao" aria-label="Filtrar por Tipo de Sanção"><option value="">Tipo de Sanção</option></select>
-                <select id="filtroAnoContrato" aria-label="Filtrar por Ano do Contrato"><option value="">Ano do Contrato</option></select>
-                <select id="filtroAnoSancao" aria-label="Filtrar por Ano da Sanção"><option value="">Ano da Sanção</option></select>
-            </div>
-            
-            <div class="painel-filtros">
-                <select id="filtroMesSancao" aria-label="Filtrar por Mês da Sanção">
-                    <option value="">Mês da Sanção</option>
-                    <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
-                    <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
-                    <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
-                    <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-                </select>
-                <div></div>
-                <div></div>
-                <button class="btn-filtro" onclick="limparFiltros()">Limpar filtros</button>
-            </div>
-        </fieldset>
+    <div class="container-cards">
+        <div class="card previsto">
+            <div class="card-titulo">Receita Prevista</div>
+            <div class="card-valor" id="kpiPrevisto">R$ 0,00</div>
+            <span class="card-perc perc-previsto">Orçamento do Período</span>
+        </div>
+        <div class="card duodecimo">
+            <div class="card-titulo">Receita Recebida</div>
+            <div class="card-valor" id="kpiDuodecimo">R$ 0,00</div>
+            <span class="card-perc perc-resultado" id="percRealizado">0% do Previsto</span>
+        </div>
+        <div class="card empenhado">
+            <div class="card-titulo">Valor Empenhado</div>
+            <div class="card-valor" id="kpiEmpenhado">R$ 0,00</div>
+            <span class="card-perc perc-empenhado" id="percEmpenhado">0%</span>
+        </div>
+        <div class="card liquidado">
+            <div class="card-titulo">Valor Liquidado</div>
+            <div class="card-valor" id="kpiLiquidado">R$ 0,00</div>
+            <span class="card-perc perc-liquidado" id="percLiquidado">0%</span>
+        </div>
+        <div class="card pago">
+            <div class="card-titulo">Valor Pago</div>
+            <div class="card-valor" id="kpiPago">R$ 0,00</div>
+            <span class="card-perc perc-pago" id="percPago">0%</span>
+        </div>
+        <div class="card resultado">
+            <div class="card-titulo">Saldo Orçamentário</div>
+            <div class="card-valor" id="kpiResultado">R$ 0,00</div>
+            <span class="card-perc perc-resultado" id="percResultado">0% Livre</span>
+        </div>
+    </div>
 
-        <fieldset class="painel-grupo">
-            <legend class="titulo-painel">Exportação e Impressão</legend>
-            <div class="painel-exportacao">
-                <button onclick="exportarCSV()">⬇️ CSV</button>
-                <button onclick="exportarXLSX()">⬇️ Excel</button>
-                <button onclick="exportarJSON()">⬇️ JSON</button>
-                <button onclick="exportarXMR()">⬇️ XML</button>
-                <button class="btn-acao" onclick="imprimirSeguro()">🖨️ Imprimir</button>
-                <button class="btn-acao" onclick="carregarDados()">🔄 Atualizar</button>
-            </div>
-        </fieldset>
+    <div class="container-grafico">
+        <div id="meuGrafico"></div>
+    </div>
 
-        <fieldset class="painel-grupo" id="painel-visualizacao" style="padding: 10px 15px;">
-            <legend class="titulo-painel">Visualização</legend>
-            <div class="dt-custom-header">
-                <div id="comprimento-tabela"></div> 
-                <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
-            </div>
-        </fieldset>
+    <script>
+        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSeiEl6tsmsHfu5qECIgTNFJtSLOHJWPUD334BxUtITfI-YKaWwH-vvVM5IBTO5WDypR_r3p_AjcxZL/pub?output=csv&t=' + new Date().getTime();
 
-        <table id="tabela" style="width:100%" role="presentation">
-            <thead><tr><th>Dados</th></tr></thead>
-            <tbody></tbody>
-        </table>
-    </main>
-</div>
-
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-<script>
-    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXZV70X4FFyh12T4nl90hoY2xe_pMIWTCna2aiwNNTbOqh3GRcYZO54REDus5uCteZ9wu9Cce-9vub/pub?output=csv";
-    
-    let tabela;
-    let dadosGlobais = [];
-    let carimboAtualizacao = "";
-
-    function enviarAlturaIframe() {
-        setTimeout(() => {
-            const wrapper = document.getElementById('wrapper');
-            if (wrapper) {
-                const h = wrapper.offsetHeight + 40; 
-                window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
-            }
-        }, 200); 
-    }
-
-    function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
-
-    function parseDataBR(str) {
-        if (!str || str === "-" || str === "—") return null;
-        const p = str.split('/');
-        if (p.length !== 3) return null;
-        return new Date(p[2], p[1] - 1, p[0]).getTime();
-    }
-
-    function processarCSV(csvText) {
-        const wb = XLSX.read(csvText, { type: 'string' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
+        const formatarMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
         
-        const linhasMatriz = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-        if (linhasMatriz.length === 0) return [];
+        const limparNumeroBR = (v) => {
+            if (!v) return 0;
+            if (typeof v === 'number') return v;
+            let s = String(v).replace(/[^\d,-]/g, '');
+            return parseFloat(s.replace(',', '.')) || 0;
+        };
 
-        let linhaCabecalho = 0;
-        let primeiraLinhaTexto = linhasMatriz[0].join(",");
-        
-        if (!primeiraLinhaTexto.toLowerCase().includes("ano_contrato") && linhasMatriz[1] && linhasMatriz[1].join(",").toLowerCase().includes("ano_contrato")) {
-            linhaCabecalho = 1;
-            let matchDataHora = primeiraLinhaTexto.match(/(\d{1,2}\/\d{1,2}\/\d{4})[^\d]*(\d{1,2}:\d{2})/);
-            if (matchDataHora) {
-                carimboAtualizacao = `Atualizado em ${matchDataHora[1]} às ${matchDataHora[2]}`;
-            } else {
-                carimboAtualizacao = String(linhasMatriz[0][0]).replace(/MODIF_REAL:\s*/i, "Atualizado em ");
-            }
-        } else {
-            linhaCabecalho = 0;
-            carimboAtualizacao = "Sincronizado com a planilha base";
-        }
+        const calcularPerc = (v, t) => (t === 0) ? '0,0%' : ((v / t) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
 
-        const headers = linhasMatriz[linhaCabecalho].map(h => String(h).trim().toLowerCase().replace(/[\uFEFF\u200B]/g, ""));
-        const lista = [];
-        
-        for (let i = linhaCabecalho + 1; i < linhasMatriz.length; i++) {
-            const colunas = linhasMatriz[i];
-            
-            if (!colunas || colunas.length === 0 || colunas.every(c => String(c).trim() === "")) continue;
-            
-            let obj = {};
-            headers.forEach((h, idx) => {
-                obj[h] = colunas[idx] !== undefined ? String(colunas[idx]).trim() : "";
+        const myChart = echarts.init(document.getElementById('meuGrafico'));
+        let dadosOriginais = [], dadosVisiveis = [];
+
+        fetch(csvUrl)
+            .then(res => res.text())
+            .then(textoBruto => {
+                const linhas = textoBruto.split(/\r?\n/);
+                const primeiraLinha = linhas[0];
+                
+                // CORREÇÃO: Captura cirurgicamente apenas o padrão da data e hora, eliminando as vírgulas extras no final
+                let match = primeiraLinha.match(/MODIF_REAL:\s*\d{2}\/\d{2}\/\d{4},\s*\d{2}:\d{2}(:\d{2})?/i);
+                let textoAtualizacao = "";
+                
+                if (match) {
+                    textoAtualizacao = match[0]
+                        .replace(/MODIF_REAL:\s*/i, "Dados atualizados em ")
+                        .replace(",", " às")
+                        .replace(/:\d{2}$/, ""); /* Corta os segundos do final */
+                } else {
+                    // Fallback de limpeza caso o padrão sofra microalterações
+                    textoAtualizacao = primeiraLinha.replace(/[",;]+$/, '').replace(/"/g, '').trim();
+                    if (textoAtualizacao.toUpperCase().includes("MODIF_REAL")) {
+                        textoAtualizacao = textoAtualizacao
+                            .replace(/MODIF_REAL:\s*/i, "Dados atualizados em ")
+                            .replace(",", " às")
+                            .replace(/:\d{2}$/, ""); /* Corta os segundos do final */
+                    }
+                }
+                
+                if (textoAtualizacao) {
+                    document.getElementById('txtAtualizacao').textContent = textoAtualizacao;
+                }
+
+                const dadosTabelaCsv = linhas.slice(1).join('\n');
+
+                Papa.parse(dadosTabelaCsv, {
+                    header: true, skipEmptyLines: true,
+                    complete: function(results) {
+                        dadosOriginais = results.data.map(linha => {
+                            let clean = {};
+                            for (let key in linha) {
+                                let cleanKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+                                clean[cleanKey] = linha[key];
+                            }
+                            return clean;
+                        }).filter(l => {
+                            if (!l.mes || !l.ano) return false;
+                            let d = limparNumeroBR(l.duodecimo);
+                            let e = limparNumeroBR(l.empenhado);
+                            let liq = limparNumeroBR(l.liquidado);
+                            let p = limparNumeroBR(l.pago);
+                            let r = limparNumeroBR(l.resultado);
+                            let prev = limparNumeroBR(l.duodecimo_previsto);
+                            return (d > 0 || e > 0 || liq > 0 || p > 0 || r > 0 || prev > 0);
+                        });
+
+                        popularFiltros(dadosOriginais);
+                        aplicarFiltros();
+                    }
+                });
+            })
+            .catch(err => {
+                console.error("Erro no carregamento:", err);
+                document.getElementById('txtAtualizacao').textContent = "Atualização indisponível";
             });
+
+        function popularFiltros(d) {
+            const sAno = document.getElementById('filtroAno'), sMes = document.getElementById('filtroMes');
+            const anos = [...new Set(d.map(i => i.ano))].sort((a,b) => b-a);
+            const meses = [...new Set(d.map(i => i.mes.toUpperCase()))];
             
-            let razaoLimpa = obj.razao_social ? obj.razao_social.toLowerCase() : "";
-            let cnpjLimpo = obj.cnpj ? obj.cnpj.replace(/\D/g, '') : "";
-            obj.busca_nome = removerAcentos(razaoLimpa) + " " + cnpjLimpo;
+            anos.forEach(a => { let o = document.createElement('option'); o.value = a; o.textContent = a; sAno.appendChild(o); });
+            meses.forEach(m => { let o = document.createElement('option'); o.value = m; o.textContent = m; sMes.appendChild(o); });
             
-            if (obj.data_sancao && obj.data_sancao.includes('/')) {
-                const partes = obj.data_sancao.split('/');
-                obj.ano_sancao_extraido = partes[2];
-                obj.mes_sancao_extraido = partes[1];
-            } else {
-                obj.ano_sancao_extraido = "";
-                obj.mes_sancao_extraido = "";
-            }
-            
-            lista.push(obj);
+            const atual = new Date().getFullYear().toString();
+            sAno.value = anos.includes(atual) ? atual : anos[0];
+
+            sAno.addEventListener('change', aplicarFiltros);
+            sMes.addEventListener('change', aplicarFiltros);
         }
-        return lista;
-    }
 
-    async function carregarDados() {
-        $('#loader').show();
-        $('#main-container').hide();
-        try {
-            const response = await fetch(`${CSV_URL}&cache=${Date.now()}`);
-            const text = await response.text();
-            dadosGlobais = processarCSV(text);
-            popularFiltrosDynamic();
-            aplicarFiltros();
-            $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
-            $('#loader').hide();
-            $('#main-container').fadeIn(400, () => enviarAlturaIframe());
-        } catch (error) {
-            console.error(error);
-            $('#loader').html('<b style="color:red">Erro ao carregar dados. Verifique o compartilhamento da planilha.</b>');
+        function aplicarFiltros() {
+            const aS = document.getElementById('filtroAno').value, mS = document.getElementById('filtroMes').value;
+            dadosVisiveis = dadosOriginais.filter(l => (aS === 'Todos' || l.ano === aS) && (mS === 'Todos' || l.mes.toUpperCase() === mS));
+            
+            let titulo = `Acompanhamento Orçamentário ${aS !== 'Todos' ? '- ' + aS : ''}`;
+            renderizarGrafico(dadosVisiveis, titulo);
         }
-    }
 
-    function popularFiltrosDynamic() {
-        const tipos = [...new Set(dadosGlobais.map(d => d.tipo_sancao))].filter(Boolean).sort();
-        $('#filtroTipoSancao').html('<option value="">Tipo de Sanção</option>');
-        tipos.forEach(t => $('#filtroTipoSancao').append(`<option value="${t}">${t}</option>`));
+        function atualizarKPIs(d) {
+            let tPre = 0, tRec = 0, tEmp = 0, tLiq = 0, tPag = 0, tRes = 0;
+            d.forEach(l => {
+                tPre += limparNumeroBR(l.duodecimo_previsto);
+                tRec += limparNumeroBR(l.duodecimo);
+                tEmp += limparNumeroBR(l.empenhado);
+                tLiq += limparNumeroBR(l.liquidado);
+                tPag += limparNumeroBR(l.pago);
+                tRes += limparNumeroBR(l.resultado);
+            });
 
-        const anosContrato = [...new Set(dadosGlobais.map(d => d.ano_contrato))].filter(Boolean).sort((a,b) => b - a);
-        $('#filtroAnoContrato').html('<option value="">Ano do Contrato</option>');
-        anosContrato.forEach(a => $('#filtroAnoContrato').append(`<option value="${a}">${a}</option>`));
+            document.getElementById('kpiPrevisto').textContent = formatarMoeda(tPre);
+            document.getElementById('kpiDuodecimo').textContent = formatarMoeda(tRec);
+            document.getElementById('kpiEmpenhado').textContent = formatarMoeda(tEmp);
+            document.getElementById('kpiLiquidado').textContent = formatarMoeda(tLiq);
+            document.getElementById('kpiPago').textContent = formatarMoeda(tPag);
+            document.getElementById('kpiResultado').textContent = formatarMoeda(tRes);
 
-        const anosSancao = [...new Set(dadosGlobais.map(d => d.ano_sancao_extraido))].filter(a => a && a.length === 4).sort((a,b) => b - a);
-        $('#filtroAnoSancao').html('<option value="">Ano da Sanção</option>');
-        anosSancao.forEach(a => $('#filtroAnoSancao').append(`<option value="${a}">${a}</option>`));
-    }
+            document.getElementById('percRealizado').textContent = calcularPerc(tRec, tPre) + ' do Previsto';
+            document.getElementById('percEmpenhado').textContent = calcularPerc(tEmp, tRec) + ' do Recebido';
+            document.getElementById('percLiquidado').textContent = calcularPerc(tLiq, tRec) + ' do Recebido';
+            document.getElementById('percPago').textContent = calcularPerc(tPag, tRec) + ' do Recebido';
+            document.getElementById('percResultado').textContent = calcularPerc(tRes, tRec) + ' Livre';
+        }
 
-    function ordenarSancoes(lista) {
-        return lista.sort((a, b) => {
-            const dataA = parseDataBR(a.data_sancao) || 0;
-            const dataB = parseDataBR(b.data_sancao) || 0;
-            return dataB - dataA;
-        });
-    }
-
-    function aplicarFiltros() {
-        const buscaTexto = removerAcentos($('#filtroTexto').val().toLowerCase().replace(/\D/g, ''));
-        const buscaOriginal = removerAcentos($('#filtroTexto').val().toLowerCase());
-        const tipoSancao = $('#filtroTipoSancao').val();
-        const anoContrato = $('#filtroAnoContrato').val();
-        const anoSancao = $('#filtroAnoSancao').val();
-        const mesSancao = $('#filtroMesSancao').val();
-
-        let filtrados = dadosGlobais.filter(d => {
-            const matchTexto = !buscaOriginal || d.busca_nome.includes(buscaOriginal) || d.busca_nome.includes(buscaTexto);
-            const matchTipo = !tipoSancao || d.tipo_sancao === tipoSancao;
-            const matchAnoContrato = !anoContrato || d.ano_contrato === anoContrato;
-            const matchAnoSancao = !anoSancao || d.ano_sancao_extraido === anoSancao;
-            const matchMesSancao = !mesSancao || d.mes_sancao_extraido === mesSancao;
-
-            return matchTexto && matchTipo && matchAnoContrato && matchAnoSancao && matchMesSancao;
-        });
-
-        renderizarTabela(ordenarSancoes(filtrados));
-    }
-
-    function renderizarTabela(dados) {
-        if (tabela) { tabela.destroy(); $('#comprimento-tabela').empty(); }
-
-        tabela = $('#tabela').DataTable({
-            data: dados,
-            pageLength: 10,
-            ordering: false,
-            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
-            dom: 'lrt<"dt-bottom-controls"ip>',
-            columns: [{
-                data: null,
-                render: function(d) {
-                    const ts = d.tipo_sancao ? d.tipo_sancao.toLowerCase() : "";
-                    const badgeClass = (ts.includes("multa") || ts.includes("suspen") || ts.includes("inidone")) ? "status-grave" : "status-leve";
-
-                    return `
-                        <div class="card-info">
-                            <div class="card-header">
-                                <div class="card-header-texto">
-                                    <span class="nome-principal">${d.razao_social || "Razão Social não informada"}</span>
-                                    <span class="subtitulo-card">CNPJ: ${d.cnpj || "—"}</span>
-                                </div>
-                                <span class="status-badge ${badgeClass}">${d.tipo_sancao || "Sanção"}</span>
-                            </div>
-                            <div class="card-body">
-                                <div class="info-col"><span class="info-label">Contrato</span><span class="info-valor">${d.numero_contrato || "—"}/${d.ano_contrato || "—"}</span></div>
-                                <div class="info-col span-2"><span class="info-label">Objeto do Contrato</span><span class="info-valor">${d.objeto || "—"}</span></div>
-                                
-                                <div class="info-col"><span class="info-label">Motivo da Penalidade</span><span class="info-valor">${d.motivo || "—"}</span></div>
-                                <div class="info-col"><span class="info-label">Data da Sanção</span><span class="info-valor">${d.data_sancao || "—"}</span></div>
-                                <div class="info-col"><span class="info-label">Valor da Multa / Ação</span><span class="info-valor">${d.valor || "—"}</span></div>
-                                
-                                <div class="info-col"><span class="info-label">Processo Adm. Punitivo</span><span class="info-valor">${d.processo_administrativo_punitivo || "—"}</span></div>
-                                <div class="info-col span-2"><span class="info-label">Fundamento Legal</span><span class="info-valor">${d.fundamento || "—"}</span></div>
-                            </div>
-                        </div>
-                    `;
-                }
-            }],
-            initComplete: function() { $('.dataTables_length').appendTo('#comprimento-tabela'); enviarAlturaIframe(); },
-            drawCallback: function() {
-                const totalFiltrado = this.api().rows({ filter: 'applied' }).count();
-                $('#contagem-registros').html(`<b>${totalFiltrado}</b> registros encontrados`);
-                enviarAlturaIframe();
-            }
-        });
-
-        tabela.on('page.dt', function () {
-            setTimeout(function() {
-                document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
-        });
-    }
-
-    function limparFiltros() {
-        $('#filtroTexto, #filtroTipoSancao, #filtroAnoContrato, #filtroAnoSancao, #filtroMesSancao').val('');
-        aplicarFiltros();
-    }
-
-    function gerarNomeArquivoBase() {
-        let partes = ["sancoes_contratos"];
-        const texto = $('#filtroTexto').val().trim();
-        if (texto) partes.push(texto.replace(/\s+/g, '_'));
-        if ($('#filtroTipoSancao').val()) partes.push($('#filtroTipoSancao').val().replace(/\s+/g, '_'));
-        if ($('#filtroAnoContrato').val()) partes.push($('#filtroAnoContrato').val());
-        
-        return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
-    }
-
-    function exportarCSV() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        let csv = "\ufeffAno Contrato,Numero Contrato,Razao Social,CNPJ,Objeto,Data Sancao,Tipo Sancao,Valor,Motivo,Fundamento,Processo Administrativo\n";
-        data.forEach(d => { 
-            csv += `"${d.ano_contrato}","${d.numero_contrato}","${d.razao_social}","${d.cnpj}","${d.objeto}","${d.data_sancao}","${d.tipo_sancao}","${d.valor}","${d.motivo}","${d.fundamento}","${d.processo_administrativo_punitivo}"\n`; 
-        });
-        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv");
-    }
-
-    function exportarXLSX() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        const dataLimpa = data.map(({ busca_nome, ano_sancao_extraido, mes_sancao_extraido, ...resto }) => resto);
-        const ws = XLSX.utils.json_to_sheet(dataLimpa);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Sanções");
-        XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx");
-    }
-
-    function exportarJSON() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        const dataLimpa = data.map(({ busca_nome, ano_sancao_extraido, mes_sancao_extraido, ...resto }) => resto);
-        downloadFile(JSON.stringify(dataLimpa, null, 2), gerarNomeArquivoBase() + ".json", "application/json");
-    }
-
-    function exportarXMR() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        let xml = '<?xml version="1.0" encoding="UTF-8"?><dados>';
-        data.forEach(d => {
-            xml += '<registro>';
-            for (let k in d) {
-                if(typeof d[k] !== 'object' && k !== 'busca_nome' && k !== 'ano_sancao_extraido' && k !== 'mes_sancao_extraido') {
-                     xml += `<${k}>${d[k]}</${k}>`;
+        function renderizarGrafico(d, titulo) {
+            const eixoX = d.map(l => l.mes.toUpperCase() + '/' + l.ano);
+            
+            let indexUltimoPreenchido = d.length - 1;
+            for (let i = d.length - 1; i >= 0; i--) {
+                if (limparNumeroBR(d[i].duodecimo) > 0 || limparNumeroBR(d[i].empenhado) > 0 || limparNumeroBR(d[i].pago) > 0) {
+                    indexUltimoPreenchido = i;
+                    break;
                 }
             }
-            xml += '</registro>';
+
+            const opt = {
+                title: { text: titulo, left: 'center', textStyle: { fontSize: 16 } },
+                tooltip: { trigger: 'axis', valueFormatter: (v) => formatarMoeda(v) },
+                toolbox: { feature: { 
+                    dataView: { show: true, readOnly: true, title: 'Tabela', lang:['Dados','Fechar','Ver'],
+                        optionToContent: function(opt) {
+                            let axis = opt.xAxis[0].data, series = opt.series;
+                            let table = '<table style="width:100%;text-align:center;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f3f4f6"><th>Mês</th>';
+                            series.forEach(s => table += `<th>${s.name}</th>`);
+                            table += '</tr></thead><tbody>';
+                            for(let i=0; i<axis.length; i++) {
+                                table += `<tr><td style="font-weight:bold">${axis[i]}</td>`;
+                                series.forEach(s => table += `<td>${formatarMoeda(s.data[i])}</td>`);
+                                table += '</tr>';
+                            }
+                            return table + '</tbody></table>';
+                        }
+                    }, 
+                    saveAsImage: { show: true, title: 'Imagem' } 
+                } },
+                
+                legend: [
+                    { data: ['Receita Prevista', 'Receita Recebida', 'Saldo Orçamentário'], bottom: 25 },
+                    { data: ['Valor Empenhado', 'Valor Liquidado', 'Valor Pago'], bottom: 0 }
+                ],
+                
+                grid: { top: '15%', bottom: 130, containLabel: true },
+                xAxis: { type: 'category', data: eixoX, axisLabel: { rotate: 45 } },
+                yAxis: { type: 'value', axisLabel: { formatter: (v) => v >= 1000000 ? (v/1000000)+'M' : v >= 1000 ? (v/1000)+'k' : v } },
+                
+                dataZoom: [{ type: 'slider', show: eixoX.length > 1, bottom: 65, height: 20, startValue: 0, endValue: indexUltimoPreenchido }],
+                
+                series: [
+                    { 
+                        name: 'Receita Prevista', 
+                        type: 'line', 
+                        data: d.map(l => limparNumeroBR(l.duodecimo_previsto)), 
+                        lineStyle: { type: 'solid', color: '#00ced1', width: 8 }, 
+                        itemStyle: { color: '#00ced1' },
+                        symbolSize: 12, 
+                        z: 1 
+                    },
+                    { 
+                        name: 'Receita Recebida', 
+                        type: 'line', 
+                        data: d.map(l => {
+                            let val = limparNumeroBR(l.duodecimo);
+                            return val === 0 ? null : val;
+                        }), 
+                        lineStyle: { type: 'solid', color: '#000000', width: 3 }, 
+                        itemStyle: { color: '#000000' },
+                        symbolSize: 8, 
+                        z: 3 
+                    },
+                    { name: 'Valor Empenhado', type: 'bar', data: d.map(l => limparNumeroBR(l.empenhado)), itemStyle: { color: '#5470C6' }, z: 2 },
+                    { name: 'Valor Liquidado', type: 'bar', data: d.map(l => limparNumeroBR(l.liquidado)), itemStyle: { color: '#91CC75' }, z: 2 },
+                    { name: 'Valor Pago', type: 'bar', data: d.map(l => limparNumeroBR(l.pago)), itemStyle: { color: '#FAC858' }, z: 2 },
+                    { 
+                        name: 'Saldo Orçamentário', 
+                        type: 'line', 
+                        smooth: true, 
+                        data: d.map(l => {
+                            let rec = limparNumeroBR(l.duodecimo);
+                            let val = limparNumeroBR(l.resultado);
+                            return rec === 0 ? null : val;
+                        }), 
+                        itemStyle: { color: '#EE6666' }, 
+                        lineStyle: { width: 3 }, 
+                        z: 3 
+                    }
+                ]
+            };
+            
+            myChart.setOption(opt, true);
+
+            let dadosNoZoom = d.slice(0, indexUltimoPreenchido + 1);
+            atualizarKPIs(dadosNoZoom);
+        }
+
+        myChart.off('datazoom'); 
+        myChart.on('datazoom', function () {
+            let optAtual = myChart.getOption();
+            let startIdx = optAtual.dataZoom[0].startValue;
+            let endIdx = optAtual.dataZoom[0].endValue;
+            
+            let dadosAtualizados = dadosVisiveis.slice(startIdx, endIdx + 1);
+            atualizarKPIs(dadosAtualizados);
         });
-        xml += '</dados>';
-        downloadFile(xml, gerarNomeArquivoBase() + ".xml", "application/xml");
-    }
 
-    function downloadFile(content, fileName, mime) {
-        const blob = new Blob([content], { type: mime });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = fileName; a.click();
-    }
+        window.addEventListener('resize', () => myChart.resize());
 
-    function imprimirSeguro() {
-        if(!tabela) return;
-        const len = tabela.page.len();
-        tabela.page.len(-1).draw('page'); 
-        setTimeout(() => { window.print(); tabela.page.len(len).draw('page'); }, 500);
-    }
+        function obterDadosZoom() {
+            let optAtual = myChart.getOption();
+            if (optAtual && optAtual.dataZoom && optAtual.dataZoom.length > 0) {
+                let startIdx = optAtual.dataZoom[0].startValue;
+                let endIdx = optAtual.dataZoom[0].endValue;
+                return dadosVisiveis.slice(startIdx, endIdx + 1);
+            }
+            return dadosVisiveis;
+        }
 
-    $(document).ready(function() {
-        $('select').on('change', aplicarFiltros);
-        $('#filtroTexto').on('input', aplicarFiltros); 
-        carregarDados();
-    });
-</script>
+        function gerarNomeArquivoBase() {
+            const ano = document.getElementById('filtroAno').value;
+            let nome = 'orcamento_cmm'; 
+            
+            if (ano !== 'Todos') nome += '_' + ano;
+            else nome += '_todos_anos';
+
+            let dadosExportar = obterDadosZoom();
+            if (dadosExportar.length > 0) {
+                let mesInicio = dadosExportar[0].mes.toLowerCase();
+                let mesFim = dadosExportar[dadosExportar.length - 1].mes.toLowerCase();
+                
+                if (mesInicio === mesFim) {
+                    nome += '_' + mesInicio;
+                } else {
+                    nome += '_' + mesInicio + '_a_' + mesFim;
+                }
+            }
+
+            return nome;
+        }
+
+        function prepararDados() {
+            let dadosExportar = obterDadosZoom();
+            return dadosExportar.map(l => ({
+                "Ano": l.ano, "Mes": l.mes,
+                "Duodecimo_Previsto": limparNumeroBR(l.duodecimo_previsto),
+                "Duodecimo_Recebido": limparNumeroBR(l.duodecimo),
+                "Empenhado": limparNumeroBR(l.empenhado),
+                "Liquidado": limparNumeroBR(l.liquidado),
+                "Pago": limparNumeroBR(l.pago),
+                "Resultado": limparNumeroBR(l.resultado)
+            }));
+        }
+
+        function exportarCSV() {
+            const csv = Papa.unparse(prepararDados(), { delimiter: ";" });
+            baixar("\uFEFF" + csv, `${gerarNomeArquivoBase()}.csv`, "text/csv;charset=utf-8;");
+        }
+        function exportarXLSX() {
+            const ws = XLSX.utils.json_to_sheet(prepararDados());
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Dados");
+            XLSX.writeFile(wb, `${gerarNomeArquivoBase()}.xlsx`);
+        }
+        function exportarJSON() {
+            baixar(JSON.stringify(prepararDados(), null, 2), `${gerarNomeArquivoBase()}.json`, "application/json");
+        }
+        function exportarXML() {
+            let xml = '<?xml version="1.0" encoding="UTF-8"?><orcamento>';
+            prepararDados().forEach(l => {
+                xml += '<registro>';
+                for(let k in l) xml += `<${k.replace(/[^\w]/g,'')}>${l[k]}</${k.replace(/[^\w]/g,'')}>`;
+                xml += '</registro>';
+            });
+            baixar(xml + '</orcamento>', `${gerarNomeArquivoBase()}.xml`, "application/xml");
+        }
+        function baixar(c, n, t) {
+            const b = new Blob([c], { type: t }), u = URL.createObjectURL(b), a = document.createElement('a');
+            a.href = u; a.download = n; a.click(); URL.revokeObjectURL(u);
+        }
+    </script>
 </body>
 </html>
