@@ -189,14 +189,16 @@
                 if (match) {
                     textoAtualizacao = match[0]
                         .replace(/MODIF_REAL:\s*/i, "Atualizado em ")
-                        .replace(",", " às");
+                        .replace(",", " às")
+                        .replace(/:\d{2}$/, ""); /* Corta os segundos do final */
                 } else {
                     // Fallback de limpeza caso o padrão sofra microalterações
                     textoAtualizacao = primeiraLinha.replace(/[",;]+$/, '').replace(/"/g, '').trim();
                     if (textoAtualizacao.toUpperCase().includes("MODIF_REAL")) {
                         textoAtualizacao = textoAtualizacao
                             .replace(/MODIF_REAL:\s*/i, "Atualizado em ")
-                            .replace(",", " às");
+                            .replace(",", " às")
+                            .replace(/:\d{2}$/, ""); /* Corta os segundos do final */
                     }
                 }
                 
