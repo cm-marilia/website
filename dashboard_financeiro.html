@@ -45,9 +45,10 @@
             box-shadow: 0 0 5px rgba(46, 204, 113, 0.6);
         }
 
+        /* REPOSICIONAMENTO: Ocupa as duas extremidades da linha (Badge na esquerda, Botões na direita) */
         .painel-exportacao {
             max-width: 1240px; margin: 15px auto 0 auto; padding: 0 15px;
-            display: flex; justify-content: flex-end; align-items: center; gap: 10px;
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
         }
 
         .painel-exportacao span { font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase; }
@@ -102,18 +103,21 @@
             <label for="filtroMes">Mês:</label>
             <select id="filtroMes"><option value="Todos">Todos</option></select>
         </div>
+    </div>
+
+    <div class="painel-exportacao">
         <div class="badge-atualizacao">
             <span class="ponto-verde"></span>
             <span id="txtAtualizacao">Carregando atualização...</span>
         </div>
-    </div>
-
-    <div class="painel-exportacao">
-        <span>Dados Abertos (CMM):</span>
-        <button class="btn-export" onclick="exportarCSV()">CSV</button>
-        <button class="btn-export" onclick="exportarXLSX()">XLSX</button>
-        <button class="btn-export" onclick="exportarJSON()">JSON</button>
-        <button class="btn-export" onclick="exportarXML()">XML</button>
+        
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span>Dados Abertos (CMM):</span>
+            <button class="btn-export" onclick="exportarCSV()">CSV</button>
+            <button class="btn-export" onclick="exportarXLSX()">XLSX</button>
+            <button class="btn-export" onclick="exportarJSON()">JSON</button>
+            <button class="btn-export" onclick="exportarXML()">XML</button>
+        </div>
     </div>
 
     <div class="container-cards">
@@ -170,19 +174,28 @@
         const myChart = echarts.init(document.getElementById('meuGrafico'));
         let dadosOriginais = [], dadosVisiveis = [];
 
-        // LEITURA CORRIGIDA: Quebra por ponto e vírgula e ignora aspas para manter a hora perfeitamente intacta
         fetch(csvUrl)
             .then(res => res.text())
             .then(textoBruto => {
                 const linhas = textoBruto.split(/\r?\n/);
                 const primeiraLinha = linhas[0];
                 
-                let textoAtualizacao = primeiraLinha.split(';')[0].replace(/"/g, '').trim();
+                // CORREÇÃO: Captura cirurgicamente apenas o padrão da data e hora, eliminando as vírgulas extras no final
+                let match = primeiraLinha.match(/MODIF_REAL:\s*\d{2}\/\d{2}\/\d{4},\s*\d{2}:\d{2}(:\d{2})?/i);
+                let textoAtualizacao = "";
                 
-                if (textoAtualizacao.toUpperCase().includes("MODIF_REAL")) {
-                    textoAtualizacao = textoAtualizacao
+                if (match) {
+                    textoAtualizacao = match[0]
                         .replace(/MODIF_REAL:\s*/i, "Atualizado em ")
                         .replace(",", " às");
+                } else {
+                    // Fallback de limpeza caso o padrão sofra microalterações
+                    textoAtualizacao = primeiraLinha.replace(/[",;]+$/, '').replace(/"/g, '').trim();
+                    if (textoAtualizacao.toUpperCase().includes("MODIF_REAL")) {
+                        textoAtualizacao = textoAtualizacao
+                            .replace(/MODIF_REAL:\s*/i, "Atualizado em ")
+                            .replace(",", " às");
+                    }
                 }
                 
                 if (textoAtualizacao) {
@@ -196,7 +209,7 @@
                     complete: function(results) {
                         dadosOriginais = results.data.map(linha => {
                             let clean = {};
-                            for (let key in linha) { // CORRIGIDO: Loop oficial recuperado e funcional
+                            for (let key in linha) {
                                 let cleanKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
                                 clean[cleanKey] = linha[key];
                             }
@@ -311,7 +324,6 @@
                 xAxis: { type: 'category', data: eixoX, axisLabel: { rotate: 45 } },
                 yAxis: { type: 'value', axisLabel: { formatter: (v) => v >= 1000000 ? (v/1000000)+'M' : v >= 1000 ? (v/1000)+'k' : v } },
                 
-                // CORREÇÃO: Zoom apontando corretamente para o índice limpo e estável
                 dataZoom: [{ type: 'slider', show: eixoX.length > 1, bottom: 65, height: 20, startValue: 0, endValue: indexUltimoPreenchido }],
                 
                 series: [
