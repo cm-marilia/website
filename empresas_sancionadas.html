@@ -69,7 +69,9 @@
         /* ACORDEÃO (OBSERVAÇÕES) */
         .btn-obs { background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: fit-content; gap: 8px; transition: 0.2s; text-transform: uppercase; }
         .btn-obs:hover { background: #e2e8f0; color: #0f172a; }
-        .obs-content { display: none; margin-top: 8px; padding: 12px; background: #f8fafc; border-left: 3px solid #003b75; border-radius: 0 6px 6px 0; font-size: 13px; color: #334155; line-height: 1.5; }
+        
+        /* Ajustes aplicados aqui: texto justificado */
+        .obs-content { display: none; margin-top: 8px; padding: 12px; background: #f8fafc; border-left: 3px solid #003b75; border-radius: 0 6px 6px 0; font-size: 13px; color: #334155; line-height: 1.6; text-align: justify; }
         .obs-content.mostrar { display: block; animation: fadeIn 0.3s ease-in-out; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
@@ -111,7 +113,7 @@
             #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
             .card-info { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; }
             #main-container { display: block !important; margin: 0; }
-            .obs-content { display: block !important; border: 1px solid #ddd; } /* Força exibir na impressão */
+            .obs-content { display: block !important; border: 1px solid #ddd; } 
         }
     </style>
 </head>
@@ -201,12 +203,11 @@
 
     function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
 
-    // Função de clique global para o acordeão da observação
     window.toggleObservacao = function(idBotao) {
         const conteudo = document.getElementById(idBotao);
         if (conteudo) {
             conteudo.classList.toggle('mostrar');
-            enviarAlturaIframe(); // Recalcula a altura do iframe quando o acordeão abrir
+            enviarAlturaIframe(); 
         }
     };
 
@@ -220,7 +221,6 @@
         let linhaCabecalho = 0;
         let primeiraLinhaTexto = linhasMatriz[0].join(",");
         
-        // Proteção para identificar onde começam os cabeçalhos das 6 colunas
         if (!primeiraLinhaTexto.toLowerCase().includes("cnpj") && linhasMatriz[1] && linhasMatriz[1].join(",").toLowerCase().includes("cnpj")) {
             linhaCabecalho = 1;
             let matchDataHora = primeiraLinhaTexto.match(/(\d{1,2}\/\d{1,2}\/\d{4})[^\d]*(\d{1,2}:\d{2})/);
@@ -294,7 +294,7 @@
         tabela = $('#tabela').DataTable({
             data: dados,
             pageLength: 10,
-            ordering: false, // Mantém a ordem original da planilha
+            ordering: false,
             language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
             dom: 'lrt<"dt-bottom-controls"ip>',
             columns: [{
@@ -302,6 +302,9 @@
                 render: function(d) {
                     const idObservacao = 'obs-' + Math.random().toString(36).substr(2, 9);
                     const temObservacao = d.observacao && d.observacao.trim() !== "";
+                    
+                    // Tratamento aplicado aqui: Substitui \n por <br>
+                    const textoObservacaoFormatado = temObservacao ? d.observacao.replace(/\r?\n/g, '<br>') : "";
 
                     return `
                         <div class="card-info">
@@ -323,7 +326,7 @@
                                             📋 Ver Observação <span>▼</span>
                                         </button>
                                         <div id="${idObservacao}" class="obs-content">
-                                            ${d.observacao}
+                                            ${textoObservacaoFormatado}
                                         </div>
                                     </div>
                                 ` : `
@@ -371,7 +374,9 @@
         const data = tabela.rows({ filter: 'applied' }).data().toArray();
         let csv = "\ufeffCNPJ,Razao Social,Numero Contrato,Objeto Contrato,Motivo Sancao,Observacao\n";
         data.forEach(d => { 
-            csv += `"${d.cnpj}","${d.razao_social}","${d.numero_contrato}","${d.objeto_contrato}","${d.motivo_sancao}","${d.observacao}"\n`; 
+            // Limpa as quebras de linha reais do CSV para não quebrar a formatação da exportação
+            const obsLimpa = d.observacao ? d.observacao.replace(/\r?\n/g, ' ') : '';
+            csv += `"${d.cnpj}","${d.razao_social}","${d.numero_contrato}","${d.objeto_contrato}","${d.motivo_sancao}","${obsLimpa}"\n`; 
         });
         downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv");
     }
