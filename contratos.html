@@ -19,7 +19,11 @@
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
 
-        .brasao { max-width: 100%; height: auto; object-fit: contain; }
+        .brasao {
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
         
         .painel-grupo { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .titulo-painel { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
@@ -45,6 +49,7 @@
         .dt-custom-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 5px 0; }
         .badge-contagem { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid #bae6fd; }
 
+        /* CORREÇÃO DO MENU "EXIBIR X RESULTADOS" */
         .dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; margin: 0; white-space: nowrap; }
         .dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
 
@@ -82,6 +87,9 @@
 
         #cabecalho-impressao { display: none; }
 
+        /* =========================================
+           4. TELA PEQUENA (CELULAR) E IMPRESSÃO
+           ========================================= */
         @media (max-width: 600px) {
             .topo { flex-direction: column; gap: 10px; text-align: center; }
             .card-header { flex-direction: column; text-align: center; gap: 10px; }
@@ -120,18 +128,20 @@
 
     <div id="loader">
         <div class="spinner"></div>
-        <span>A processar a base de dados de contratos...</span>
+        <span>Carregando base de dados de contratos...</span>
     </div>
 
     <main class="container" id="main-container" style="display: none;">
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
-            <div id="badge-atualizacao" class="badge-atualizacao">⏳ A sincronizar...</div>
+            <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
             
             <div class="painel-filtros" style="margin-bottom: 10px;">
-                <input type="text" id="filtroTexto" placeholder="Pesquisar por razão social, contrato, objeto..." autocomplete="off">
-                <select id="filtroStatus"><option value="">Situação (Todas)</option></select>
-                <select id="filtroTipoData">
+                <input type="text" id="filtroTexto" placeholder="Pesquisar por razão social, contrato, objeto..." autocomplete="off" aria-label="Pesquisar por texto">
+                <select id="filtroStatus" aria-label="Filtrar por Situação">
+                    <option value="">Situação (Todas)</option>
+                </select>
+                <select id="filtroTipoData" aria-label="Filtrar por Tipo de Data">
                     <option value="">Filtrar período por...</option>
                     <option value="data_contrato">Data do Contrato</option>
                     <option value="vigencia_contrato">Vigência do Contrato</option>
@@ -139,14 +149,14 @@
             </div>
             
             <div class="painel-filtros">
-                <select id="filtroMes">
+                <select id="filtroMes" aria-label="Filtrar por Mês">
                     <option value="">Mês</option>
                     <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
                     <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
                     <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
                     <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
                 </select>
-                <select id="filtroAno"><option value="">Ano</option></select>
+                <select id="filtroAno" aria-label="Filtrar por Ano"><option value="">Ano</option></select>
                 <button class="btn-filtro" onclick="limparFiltros()">Limpar filtros</button>
             </div>
         </fieldset>
@@ -166,4 +176,295 @@
         <fieldset class="painel-grupo" id="painel-visualizacao" style="padding: 10px 15px;">
             <legend class="titulo-painel">Visualização</legend>
             <div class="dt-custom-header">
-                <div
+                <div id="comprimento-tabela"></div> 
+                <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
+            </div>
+        </fieldset>
+
+        <table id="tabela" style="width:100%" role="presentation">
+            <thead><tr><th>Dados dos Contratos</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </main>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+    // URL convertida automaticamente para saída em CSV amigável para requisições AJAX
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSOFxEcL_ieplRjzBjFVqfv7jj1EsXNyWbf3Db_1JxfzOCFx1qNhFRswrGWVlcwyD1H0qFb-vsLc3jf/pub?output=csv";
+    
+    let tabela;
+    let dadosGlobais = [];
+    let carimboAtualizacao = "";
+
+    // INFRAESTRUTURA
+    function enviarAlturaIframe() {
+        setTimeout(() => {
+            const wrapper = document.getElementById('wrapper');
+            if (wrapper) {
+                const h = wrapper.offsetHeight + 40; 
+                window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
+            }
+        }, 200); 
+    }
+
+    function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
+
+    function gerarNomeArquivoBase() {
+        let partes = ["contratos"];
+        const txt = $('#filtroTexto').val().trim();
+        if (txt) partes.push(txt.replace(/\s+/g, '_'));
+        if ($('#filtroStatus').val()) partes.push($('#filtroStatus').val());
+        if ($('#filtroAno').val()) partes.push($('#filtroAno').val());
+        return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '');
+    }
+
+    // CARREGAMENTO E PROCESSAMENTO
+    async function carregarDados() {
+        $('#loader').show(); $('#main-container').hide();
+        try {
+            const response = await fetch(`${SHEET_URL}&cache=${Date.now()}`);
+            const text = await response.text();
+            dadosGlobais = processarCSV(text);
+            popularFiltrosDinamicos();
+            aplicarFiltros();
+            $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
+            $('#loader').hide();
+            $('#main-container').fadeIn(400, () => enviarAlturaIframe());
+        } catch (e) { console.error(e); }
+    }
+
+    function processarCSV(str) {
+        const linhas = str.trim().split("\n");
+        // Captura o carimbo cronológico na célula A1 (linha 0)
+        const match = linhas[0].match(/(\d{2}\/\d{2}\/\d{4},?\s*\d{2}:\d{2})/);
+        carimboAtualizacao = match ? `Atualizado em ${match[1].replace(',', '')}` : "Dados Sincronizados";
+
+        // Lê os cabeçalhos reais na linha 1
+        const headers = linhas[1].split(",").map(h => h.trim().replace(/"/g, '').toLowerCase());
+        
+        return linhas.slice(2).map(row => {
+            const colunas = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            let obj = {};
+            
+            headers.forEach((h, i) => {
+                let val = colunas[i] ? colunas[i].replace(/"/g, '').trim() : "";
+                if (h.includes("n_contrato")) obj.n_contrato = val;
+                if (h.includes("razao_social")) obj.razao_social = val;
+                if (h.includes("objeto_contrato")) obj.objeto_contrato = val;
+                if (h.includes("data_contrato")) obj.data_contrato = val;
+                if (h.includes("valor_contrato")) obj.valor_contrato = val;
+                if (h.includes("vigencia_contrato")) obj.vigencia_contrato = val;
+                if (h.includes("modalidade")) obj.modalidade = val;
+                if (h.includes("fiscal")) obj.fiscal = val;
+                if (h.includes("situacao")) obj.situacao = val;
+            });
+            
+            // Unifica termos textuais para otimizar e acelerar a busca global instantânea
+            let buscaUnificada = `${obj.razao_social || ''} ${obj.objeto_contrato || ''} ${obj.n_contrato || ''} ${obj.fiscal || ''}`;
+            obj.busca_indexada = removerAcentos(buscaUnificada.toLowerCase());
+            
+            return obj;
+        }).filter(d => d.n_contrato || d.razao_social);
+    }
+
+    function popularFiltrosDinamicos() {
+        let statuses = new Set();
+        let anos = new Set();
+        
+        dadosGlobais.forEach(d => {
+            if (d.situacao) statuses.add(d.situacao);
+            if (d.data_contrato) { const p = d.data_contrato.split('/'); if(p[2] && p[2].length === 4) anos.add(p[2]); }
+            if (d.vigencia_contrato) { const p = d.vigencia_contrato.split('/'); if(p[2] && p[2].length === 4) anos.add(p[2]); }
+        });
+        
+        // Alimenta o seletor de Situação de forma dinâmica baseada na sua planilha
+        let htmlStatus = '<option value="">Situação (Todas)</option>';
+        [...statuses].sort().forEach(s => {
+            htmlStatus += `<option value="${s}">${s}</option>`;
+        });
+        $('#filtroStatus').html(htmlStatus);
+
+        // Alimenta o seletor de Ano
+        let arrAnos = [...anos].sort((a,b) => b-a);
+        let htmlAno = '<option value="">Ano</option>';
+        arrAnos.forEach(a => { htmlAno += `<option value="${a}">${a}</option>`; });
+        $('#filtroAno').html(htmlAno);
+    }
+
+    // LÓGICA DE FILTRO E RENDER
+    function aplicarFiltros() {
+        const txt = removerAcentos($('#filtroTexto').val().toLowerCase());
+        const sit = $('#filtroStatus').val();
+        const tipoData = $('#filtroTipoData').val();
+        const mes = $('#filtroMes').val();
+        const ano = $('#filtroAno').val();
+
+        const res = dadosGlobais.filter(d => {
+            const matchTexto = !txt || d.busca_indexada.includes(txt);
+            const matchSit = !sit || d.situacao === sit;
+
+            let matchData = true;
+            if (tipoData || mes || ano) {
+                const mContrato = d.data_contrato ? (!mes || d.data_contrato.split('/')[1] === mes) && (!ano || d.data_contrato.split('/')[2] === ano) : false;
+                const mVigencia = d.vigencia_contrato ? (!mes || d.vigencia_contrato.split('/')[1] === mes) && (!ano || d.vigencia_contrato.split('/')[2] === ano) : false;
+
+                if (tipoData === 'data_contrato') matchData = mContrato;
+                else if (tipoData === 'vigencia_contrato') matchData = mVigencia;
+                else matchData = mContrato || mVigencia;
+            }
+            return matchTexto && matchSit && matchData;
+        });
+
+        // Ordenação padrão: Alfabética por Razão Social
+        res.sort((a, b) => (a.razao_social || "").localeCompare(b.razao_social || ""));
+
+        renderizar(res);
+    }
+
+    function renderizar(dados) {
+        if (tabela) { tabela.destroy(); $('#comprimento-tabela').empty(); }
+
+        tabela = $('#tabela').DataTable({
+            data: dados,
+            pageLength: 10,
+            ordering: false,
+            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
+            dom: 'lrt<"dt-bottom-controls"ip>',
+            columns: [{
+                data: null,
+                render: function(d) {
+                    // Decide a cor da Badge de Status com base no texto
+                    const sitNormalizado = (d.situacao || '').toLowerCase();
+                    const statusClass = (sitNormalizado.includes('encerrado') || sitNormalizado.includes('inativo') || sitNormalizado.includes('suspenso')) ? 'status-desligado' : 'status-ativo';
+                    
+                    return `
+                        <div class="card-info">
+                            <div class="card-header">
+                                <div class="card-header-texto">
+                                    <span class="nome-principal">${d.razao_social || 'Razão Social Não Informada'}</span>
+                                    <span class="subtitulo-card">Contrato: ${d.n_contrato || '-'} | Modalidade: ${d.modalidade || '-'}</span>
+                                </div>
+                                <span class="status-badge ${statusClass}">${d.situacao || 'N/I'}</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="info-col full-width">
+                                    <span class="info-label">Objeto do Contrato</span>
+                                    <span class="info-valor" style="font-weight: 500; font-size: 12.5px;">${d.objeto_contrato || '-'}</span>
+                                </div>
+                                <div class="info-col">
+                                    <span class="info-label">Valor do Contrato</span>
+                                    <span class="info-valor" style="color: #0369a1;">${d.valor_contrato || '-'}</span>
+                                </div>
+                                <div class="info-col">
+                                    <span class="info-label">Data Contrato</span>
+                                    <span class="info-valor">${d.data_contrato || '-'}</span>
+                                </div>
+                                <div class="info-col">
+                                    <span class="info-label">Vigência</span>
+                                    <span class="info-valor">${d.vigencia_contrato || '-'}</span>
+                                </div>
+                                <div class="info-col">
+                                    <span class="info-label">Fiscal Técnico</span>
+                                    <span class="info-valor">${d.fiscal || '-'}</span>
+                                </div>
+                            </div>
+                        </div>`;
+                }
+            }],
+            initComplete: function() { $('.dataTables_length').appendTo('#comprimento-tabela'); enviarAlturaIframe(); },
+            drawCallback: function() { 
+                const total = this.api().rows({ filter: 'applied' }).count();
+                $('#contagem-registros').html(`<b>${total}</b> contratos encontrados`);
+                enviarAlturaIframe(); 
+            }
+        });
+
+        tabela.on('page.dt', function () {
+            setTimeout(function() {
+                document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        });
+    }
+
+    // EXPORTAÇÃO
+    function exportarCSV() {
+        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+        let csv = "\ufeffN_Contrato,Razao_Social,Objeto_Contrato,Data_Contrato,Valor_Contrato,Vigencia_Contrato,Modalidade,Fiscal,Situacao\n";
+        data.forEach(d => { 
+            csv += `"${d.n_contrato}","${d.razao_social}","${d.objeto_contrato}","${d.data_contrato}","${d.valor_contrato}","${d.vigencia_contrato}","${d.modalidade}","${d.fiscal}","${d.situacao}"\n`; 
+        });
+        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv");
+    }
+
+    function exportarXLSX() {
+        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+        const dataFormatada = data.map(d => ({
+            "Nº Contrato": d.n_contrato,
+            "Razão Social": d.razao_social,
+            "Objeto": d.objeto_contrato,
+            "Data Contrato": d.data_contrato,
+            "Valor": d.valor_contrato,
+            "Vigência": d.vigencia_contrato,
+            "Modalidade": d.modalidade,
+            "Fiscal": d.fiscal,
+            "Situação": d.situacao
+        }));
+        const ws = XLSX.utils.json_to_sheet(dataFormatada);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Contratos");
+        XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx");
+    }
+
+    function exportarJSON() {
+        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+        const exportData = data.map(d => {
+            let item = {...d};
+            delete item.busca_indexada;
+            return item;
+        });
+        downloadFile(JSON.stringify(exportData, null, 2), gerarNomeArquivoBase() + ".json", "application/json");
+    }
+
+    function exportarXML() {
+        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+        let xml = '<?xml version="1.0" encoding="UTF-8"?><contratos>';
+        data.forEach(d => {
+            xml += '<contrato>';
+            for (let k in d) {
+                if(typeof d[k] !== 'object' && k !== 'busca_indexada') {
+                     xml += `<${k}>${d[k]}</${k}>`;
+                }
+            }
+            xml += '</contrato>';
+        });
+        xml += '</contratos>';
+        downloadFile(xml, gerarNomeArquivoBase() + ".xml", "application/xml");
+    }
+
+    function downloadFile(content, fileName, mime) {
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = fileName; a.click();
+    }
+
+    function imprimirSeguro() {
+        const len = tabela.page.len();
+        tabela.page.len(-1).draw('page');
+        setTimeout(() => { window.print(); tabela.page.len(len).draw('page'); }, 500);
+    }
+
+    function limparFiltros() { $('#filtroTexto').val(''); $('select').val(''); aplicarFiltros(); }
+    
+    $(document).ready(function() {
+        $('#filtroTexto').on('input', aplicarFiltros);
+        $('select').on('change', aplicarFiltros);
+        carregarDados();
+    });
+</script>
+</body>
+</html>
