@@ -19,11 +19,7 @@
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
 
-        .brasao {
-            max-width: 100%;
-            height: auto;
-            object-fit: contain;
-        }
+        .brasao { max-width: 100%; height: auto; object-fit: contain; }
         
         .painel-grupo { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .titulo-painel { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
@@ -49,7 +45,6 @@
         .dt-custom-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 5px 0; }
         .badge-contagem { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid #bae6fd; }
 
-        /* CORREÇÃO DO MENU "EXIBIR X RESULTADOS" */
         .dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; margin: 0; white-space: nowrap; }
         .dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
 
@@ -87,9 +82,6 @@
 
         #cabecalho-impressao { display: none; }
 
-        /* =========================================
-           4. TELA PEQUENA (CELULAR) E IMPRESSÃO
-           ========================================= */
         @media (max-width: 600px) {
             .topo { flex-direction: column; gap: 10px; text-align: center; }
             .card-header { flex-direction: column; text-align: center; gap: 10px; }
@@ -128,20 +120,18 @@
 
     <div id="loader">
         <div class="spinner"></div>
-        <span>Carregando base de dados de contratos...</span>
+        <span>A processar a base de dados de contratos...</span>
     </div>
 
     <main class="container" id="main-container" style="display: none;">
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
-            <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
+            <div id="badge-atualizacao" class="badge-atualizacao">⏳ A sincronizar...</div>
             
             <div class="painel-filtros" style="margin-bottom: 10px;">
-                <input type="text" id="filtroTexto" placeholder="Pesquisar por razão social, contrato, objeto..." autocomplete="off" aria-label="Pesquisar por texto">
-                <select id="filtroStatus" aria-label="Filtrar por Situação">
-                    <option value="">Situação (Todas)</option>
-                </select>
-                <select id="filtroTipoData" aria-label="Filtrar por Tipo de Data">
+                <input type="text" id="filtroTexto" placeholder="Pesquisar por razão social, contrato, objeto..." autocomplete="off">
+                <select id="filtroStatus"><option value="">Situação (Todas)</option></select>
+                <select id="filtroTipoData">
                     <option value="">Filtrar período por...</option>
                     <option value="data_contrato">Data do Contrato</option>
                     <option value="vigencia_contrato">Vigência do Contrato</option>
@@ -149,14 +139,14 @@
             </div>
             
             <div class="painel-filtros">
-                <select id="filtroMes" aria-label="Filtrar por Mês">
+                <select id="filtroMes">
                     <option value="">Mês</option>
                     <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
                     <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
                     <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
                     <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
                 </select>
-                <select id="filtroAno" aria-label="Filtrar por Ano"><option value="">Ano</option></select>
+                <select id="filtroAno"><option value="">Ano</option></select>
                 <button class="btn-filtro" onclick="limparFiltros()">Limpar filtros</button>
             </div>
         </fieldset>
@@ -176,140 +166,4 @@
         <fieldset class="painel-grupo" id="painel-visualizacao" style="padding: 10px 15px;">
             <legend class="titulo-painel">Visualização</legend>
             <div class="dt-custom-header">
-                <div id="comprimento-tabela"></div> 
-                <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
-            </div>
-        </fieldset>
-
-        <table id="tabela" style="width:100%" role="presentation">
-            <thead><tr><th>Dados dos Contratos</th></tr></thead>
-            <tbody></tbody>
-        </table>
-    </main>
-</div>
-
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-<script>
-    const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSOFxEcL_ieplRjzBjFVqfv7jj1EsXNyWbf3Db_1JxfzOCFx1qNhFRswrGWVlcwyD1H0qFb-vsLc3jf/pub?output=csv";
-    
-    let tabela;
-    let dadosGlobais = [];
-    let carimboAtualizacao = "";
-
-    // INFRAESTRUTURA
-    function enviarAlturaIframe() {
-        setTimeout(() => {
-            const wrapper = document.getElementById('wrapper');
-            if (wrapper) {
-                const h = wrapper.offsetHeight + 40; 
-                window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
-            }
-        }, 200); 
-    }
-
-    function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
-
-    function gerarNomeArquivoBase() {
-        let partes = ["contratos"];
-        const txt = $('#filtroTexto').val().trim();
-        if (txt) partes.push(txt.replace(/\s+/g, '_'));
-        if ($('#filtroStatus').val()) partes.push($('#filtroStatus').val());
-        if ($('#filtroAno').val()) partes.push($('#filtroAno').val());
-        return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '');
-    }
-
-    // CARREGAMENTO
-    async function carregarDados() {
-        $('#loader').show(); $('#main-container').hide();
-        try {
-            const response = await fetch(`${SHEET_URL}&cache=${Date.now()}`);
-            if (!response.ok) throw new Error("Erro de conexão com o Google Sheets.");
-            
-            const text = await response.text();
-            dadosGlobais = processarCSV(text);
-            
-            popularFiltrosDinamicos();
-            aplicarFiltros();
-            
-            $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
-            $('#loader').hide();
-            $('#main-container').fadeIn(400, () => enviarAlturaIframe());
-        } catch (e) { 
-            console.error(e); 
-            $('#loader').html(`<div style="color: #991b1b; text-align: center;"><b>Erro ao processar a planilha.</b><br>Verifique o console (F12).</div>`);
-        }
-    }
-
-    // O SEGREDO: Novo Processador CSV à prova de falhas (Lida com "Enters" dentro das células)
-    function processarCSV(str) {
-        // Função interna que lê o CSV caractere por caractere (não congela o navegador)
-        function csvToArray(text) {
-            let p = '', row = [''], ret = [row], i = 0, r = 0, s = !0, l;
-            for (l of text) {
-                if ('"' === l) {
-                    if (s && l === p) row[i] += l;
-                    s = !s;
-                } else if (',' === l && s) l = row[++i] = '';
-                else if ('\n' === l && s) {
-                    if ('\r' === p) row[i] = row[i].slice(0, -1);
-                    row = ret[++r] = ['']; i = 0;
-                } else row[i] += l;
-                p = l;
-            }
-            if (ret[ret.length - 1].length === 1 && ret[ret.length - 1][0] === '') ret.pop();
-            return ret;
-        }
-
-        const linhasMatriz = csvToArray(str);
-        if (linhasMatriz.length < 2) return [];
-
-        // Linha 1 (Índice 0): Data de Atualização
-        const carimboStr = linhasMatriz[0][0] || "";
-        const match = carimboStr.match(/(\d{2}\/\d{2}\/\d{4},?\s*\d{2}:\d{2})/);
-        carimboAtualizacao = match ? `Atualizado em ${match[1].replace(',', '')}` : "Dados Sincronizados";
-
-        // Linha 2 (Índice 1): Cabeçalhos
-        const headers = linhasMatriz[1].map(h => h.trim().toLowerCase());
-        
-        // Linhas 3+ (Índice 2+): Dados dos Contratos
-        return linhasMatriz.slice(2).map(colunas => {
-            let obj = {};
-            headers.forEach((h, i) => {
-                let val = colunas[i] ? colunas[i].trim() : "";
-                if (h.includes("n_contrato")) obj.n_contrato = val;
-                if (h.includes("razao_social")) obj.razao_social = val;
-                if (h.includes("objeto_contrato")) obj.objeto_contrato = val;
-                if (h.includes("data_contrato")) obj.data_contrato = val;
-                if (h.includes("valor_contrato")) obj.valor_contrato = val;
-                if (h.includes("vigencia_contrato")) obj.vigencia_contrato = val;
-                if (h.includes("modalidade")) obj.modalidade = val;
-                if (h.includes("fiscal")) obj.fiscal = val;
-                if (h.includes("situacao")) obj.situacao = val;
-            });
-            
-            let buscaUnificada = `${obj.razao_social || ''} ${obj.objeto_contrato || ''} ${obj.n_contrato || ''} ${obj.fiscal || ''}`;
-            obj.busca_indexada = removerAcentos(buscaUnificada.toLowerCase().replace(/\n/g, ' '));
-            
-            return obj;
-        }).filter(d => d.n_contrato || d.razao_social);
-    }
-
-    // FILTROS E RENDERIZAÇÃO
-    function popularFiltrosDinamicos() {
-        let statuses = new Set();
-        let anos = new Set();
-        
-        dadosGlobais.forEach(d => {
-            if (d.situacao) statuses.add(d.situacao);
-            if (d.data_contrato) { const p = d.data_contrato.split('/'); if(p[2] && p[2].length === 4) anos.add(p[2]); }
-            if (d.vigencia_contrato) { const p = d.vigencia_contrato.split('/'); if(p[2] && p[2].length === 4) anos.add(p[2]); }
-        });
-        
-        let htmlStatus = '<option value="">Situação (Todas)</option>';
-        [...statuses].sort().forEach(s => { htmlStatus += `<option value="${s}">${s}</option>`; });
-        $('#filtroStatus').html(htmlStatus);
-
-        let arrAnos = [...anos].sort((a
+                <div
