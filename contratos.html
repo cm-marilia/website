@@ -64,10 +64,8 @@
         .card-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); padding: 12px 15px; gap: 12px; }
         .info-col { display: flex; flex-direction: column; }
         .info-col.full-width { grid-column: 1 / -1; background: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid #f1f5f9; }
-        .info-col.sub-info { grid-column: 1 / -1; background: transparent; padding: 0; border: none; margin-bottom: -4px; margin-top: -4px; }
         .info-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
         .info-valor { font-size: 13px; font-weight: 700; color: #1e293b; }
-        .texto-secundario { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; }
 
         /* PAGINAÇÃO */
         .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px;}
@@ -195,16 +193,12 @@
     function enviarAlturaIframe() {
         setTimeout(() => {
             const wrapper = document.getElementById('wrapper');
-            if (wrapper) {
-                const h = wrapper.offsetHeight + 40; 
-                window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
-            }
+            if (wrapper) window.parent.postMessage({ tipo: 'ajustarAltura', valor: wrapper.offsetHeight + 40 }, '*');
         }, 200); 
     }
 
     function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
 
-    // Converte a data formato DD/MM/AAAA para milissegundos para ordenação precisa
     function converterDataParaTimestamp(dataStr) {
         if (!dataStr || dataStr === "-") return 0;
         const partes = dataStr.split('/');
@@ -221,7 +215,6 @@
         return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '');
     }
 
-    // Leitor Avançado à prova de aspas e vírgulas textuais internas
     function lerCSVAvançado(texto) {
         let resultado = [];
         let linha = [];
@@ -296,7 +289,6 @@
                     else if (h.includes("situacao") || h.includes("status")) obj.situacao = val;
                 });
                 
-                // Converte e armazena o timestamp para otimizar a ordenação cronológica rápida
                 obj.timestamp_contrato = converterDataParaTimestamp(obj.data_contrato);
 
                 let buscaUnificada = `${obj.razao_social || ''} ${obj.objeto_contrato || ''} ${obj.n_contrato || ''} ${obj.fiscal || ''}`;
@@ -358,19 +350,13 @@
             return matchTexto && matchSit && matchData;
         });
 
-        // REQUISITO: Ativos primeiro, Encerrados depois | Do mais novo para o mais antigo (Decrescente por timestamp)
         res.sort((a, b) => {
             const sitA = (a.situacao || "").toLowerCase();
             const sitB = (b.situacao || "").toLowerCase();
             const aEncerrado = sitA.includes('encerrado') || sitA.includes('inativo') || sitA.includes('suspenso');
             const bEncerrado = sitB.includes('encerrado') || sitB.includes('inativo') || sitB.includes('suspenso');
 
-            // 1. Agrupamento por status (Quem NÃO é encerrado fica acima)
-            if (aEncerrado !== bEncerrado) {
-                return aEncerrado ? 1 : -1;
-            }
-            
-            // 2. Critério de desempate interno: Do mais novo (maior timestamp) para o mais antigo (menor timestamp)
+            if (aEncerrado !== bEncerrado) return aEncerrado ? 1 : -1;
             return b.timestamp_contrato - a.timestamp_contrato;
         });
 
@@ -392,12 +378,12 @@
                     const sitNormalizado = (d.situacao || '').toLowerCase();
                     const statusClass = (sitNormalizado.includes('encerrado') || sitNormalizado.includes('inativo') || sitNormalizado.includes('suspenso')) ? 'status-desligado' : 'status-ativo';
                     
-                    // REQUISITO: Tradutor inteligente para converter as siglas das modalidades em nomes formais extensos
-                    let modalidadeTraduzida = d.modalidade || '-';
-                    const modNormalizada = modalidadeTraduzida.trim().toUpperCase();
-                    if (modNormalizada === 'PE') modalidadeTraduzida = "Pregão Eletrônico";
-                    else if (modNormalizada === 'DL') modalidadeTraduzida = "Dispensa de Licitação";
-                    else if (modNormalizada === 'INEX') modalidadeTraduzida = "Inexigibilidade";
+                    // CORREÇÃO: Tradutor blindado contra espaços extras invisíveis vindo da planilha
+                    let modalidadeTraduzida = (d.modalidade || '-').trim().toUpperCase();
+                    if (modalidadeTraduzida === 'PE') modalidadeTraduzida = "Pregão Eletrônico";
+                    else if (modalidadeTraduzida === 'DL') modalidadeTraduzida = "Dispensa de Licitação";
+                    else if (modalidadeTraduzida === 'INEX') modalidadeTraduzida = "Inexigibilidade";
+                    else modalidadeTraduzida = d.modalidade || '-'; // Mantém o original caso seja outra modalidade
 
                     const objetoFormatado = d.objeto_contrato ? d.objeto_contrato.replace(/\n/g, '<br>') : '-';
 
@@ -410,9 +396,15 @@
                                 <span class="status-badge ${statusClass}">${d.situacao || 'N/I'}</span>
                             </div>
                             <div class="card-body">
-                                <div class="info-col sub-info">
-                                    <span class="texto-secundario"><b>Número do Contrato:</b> ${d.n_contrato || '-'} &nbsp;|&nbsp; <b>Modalidade:</b> ${modalidadeTraduzida}</span>
+                                <div class="info-col">
+                                    <span class="info-label">Número do Contrato</span>
+                                    <span class="info-valor">${d.n_contrato || '-'}</span>
                                 </div>
+                                <div class="info-col">
+                                    <span class="info-label">Modalidade</span>
+                                    <span class="info-valor">${modalidadeTraduzida}</span>
+                                </div>
+                                
                                 <div class="info-col full-width">
                                     <span class="info-label">Objeto do Contrato</span>
                                     <span class="info-valor" style="font-weight: 500; font-size: 12.5px;">${objetoFormatado}</span>
@@ -422,15 +414,15 @@
                                     <span class="info-valor" style="color: #0369a1;">${d.valor_contrato || '-'}</span>
                                 </div>
                                 <div class="info-col">
-                                    <span class="info-label">Data Contrato</span>
+                                    <span class="info-label">Data do Contrato</span>
                                     <span class="info-valor">${d.data_contrato || '-'}</span>
                                 </div>
                                 <div class="info-col">
-                                    <span class="info-label">Vigência</span>
+                                    <span class="info-label">Vigente Até</span>
                                     <span class="info-valor">${d.vigencia_contrato || '-'}</span>
                                 </div>
                                 <div class="info-col">
-                                    <span class="info-label">Fiscal Técnico</span>
+                                    <span class="info-label">Fiscal</span>
                                     <span class="info-valor">${d.fiscal || '-'}</span>
                                 </div>
                             </div>
@@ -463,8 +455,8 @@
     function exportarXLSX() {
         const data = tabela.rows({ filter: 'applied' }).data().toArray();
         const dataFormatada = data.map(d => ({
-            "Nº Contrato": d.n_contrato, "Razão Social": d.razao_social, "Objeto": d.objeto_contrato, "Data Contrato": d.data_contrato,
-            "Valor": d.valor_contrato, "Vigência": d.vigencia_contrato, "Modalidade": d.modalidade, "Fiscal": d.fiscal, "Situação": d.situacao
+            "Nº Contrato": d.n_contrato, "Razão Social": d.razao_social, "Objeto": d.objeto_contrato, "Data do Contrato": d.data_contrato,
+            "Valor": d.valor_contrato, "Vigente Até": d.vigencia_contrato, "Modalidade": d.modalidade, "Fiscal": d.fiscal, "Situação": d.situacao
         }));
         const ws = XLSX.utils.json_to_sheet(dataFormatada);
         const wb = XLSX.utils.book_new();
