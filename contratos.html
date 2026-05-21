@@ -32,7 +32,7 @@
 
         /* NOVO LAYOUT DE FILTROS (2 LINHAS DE 3, 1 LINHA DE 2) */
         .painel-filtros { display: grid; gap: 10px; margin-bottom: 10px; }
-        .linha-2 { grid-template-columns: 2fr 1fr; } /* Barra de pesquisa mais larga */
+        .linha-2 { grid-template-columns: 2fr 1fr; } 
         .linha-3 { grid-template-columns: repeat(3, 1fr); }
 
         /* EXPORTAÇÃO RESPONSIVA */
@@ -101,7 +101,6 @@
             .card-body { grid-template-columns: 1fr 1fr; }
             .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
             .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
-            /* Transforma os filtros em uma coluna só no celular */
             .linha-2, .linha-3 { grid-template-columns: 1fr; }
         }
 
@@ -323,11 +322,12 @@
                     else if (h.includes("vigencia")) obj.vigencia_contrato = val;
                     else if (h.includes("modalidade")) obj.modalidade = val;
                     else if (h.includes("fiscal")) obj.fiscal = val;
-                    else if (h.includes("situacao") || h.includes("status")) obj.situacao = val;
+                    // A coluna Situação não é mais mapeada aqui.
                     else if (h.includes("link_pdf")) obj.link_pdf = val;
                     else if (h.includes("link_sapl")) obj.link_sapl = val;
                 });
                 
+                // CÁLCULO 100% AUTOMÁTICO DA SITUAÇÃO (IGNORA A PLANILHA)
                 let vigenciaTimestamp = converterDataParaTimestamp(obj.vigencia_contrato);
                 let hoje = new Date();
                 hoje.setHours(0, 0, 0, 0);
@@ -339,11 +339,7 @@
                         obj.situacao = "Encerrado";
                     }
                 } else {
-                    if(obj.situacao) {
-                        obj.situacao = obj.situacao.charAt(0).toUpperCase() + obj.situacao.slice(1).toLowerCase();
-                    } else {
-                        obj.situacao = "Vigência Indeterminada"; 
-                    }
+                    obj.situacao = "Vigência Indeterminada"; 
                 }
 
                 let modStr = obj.modalidade || "";
@@ -382,7 +378,7 @@
         
         let htmlStatus = '<option value="">Situação</option>';
         [...statuses].sort().forEach(s => {
-            let selected = (s.toLowerCase().includes('vigente') || s.toLowerCase().includes('ativo')) ? 'selected' : '';
+            let selected = (s === 'Vigente') ? 'selected' : '';
             htmlStatus += `<option value="${s}" ${selected}>${s}</option>`;
         });
         $('#filtroStatus').html(htmlStatus);
@@ -437,8 +433,8 @@
         res.sort((a, b) => {
             const sitA = (a.situacao || "").toLowerCase();
             const sitB = (b.situacao || "").toLowerCase();
-            const aEncerrado = sitA.includes('encerrado') || sitA.includes('inativo') || sitA.includes('suspenso');
-            const bEncerrado = sitB.includes('encerrado') || sitB.includes('inativo') || sitB.includes('suspenso');
+            const aEncerrado = sitA.includes('encerrado');
+            const bEncerrado = sitB.includes('encerrado');
 
             if (aEncerrado !== bEncerrado) return aEncerrado ? 1 : -1;
             return b.peso_ordenacao_contrato - a.peso_ordenacao_contrato;
@@ -460,11 +456,10 @@
                 data: null,
                 render: function(d) {
                     const sitNormalizado = (d.situacao || '').toLowerCase();
-                    const statusClass = (sitNormalizado.includes('encerrado') || sitNormalizado.includes('inativo') || sitNormalizado.includes('suspenso')) ? 'status-desligado' : 'status-ativo';
+                    const statusClass = (sitNormalizado.includes('encerrado')) ? 'status-desligado' : 'status-ativo';
                     
                     const objetoFormatado = d.objeto_contrato ? d.objeto_contrato.replace(/\n/g, '<br>') : '-';
                     
-                    // Lógica Dinâmica para exibir CPF ou CNPJ de forma elegante
                     let numLimpo = (d.cpf_cnpj || '').replace(/\D/g, '');
                     let labelDoc = "CNPJ/CPF";
                     if (numLimpo.length === 11) labelDoc = "CPF";
@@ -555,7 +550,7 @@
     }
 
     // ==========================================
-    // FUNÇÕES DE EXPORTAÇÃO BLINDADAS (COM LGPD)
+    // FUNÇÕES DE EXPORTAÇÃO BLINDADAS (COM LGPD E SITUAÇÃO AUTOMÁTICA)
     // ==========================================
     function gerarNomeArquivoBase() {
         let partes = ["contratos"];
@@ -603,7 +598,7 @@
                 "Vigente Até": d.vigencia_contrato || '', 
                 "Modalidade": d.modalidade || '', 
                 "Fiscal": d.fiscal || '', 
-                "Situação": d.situacao || '',
+                "Situação": d.situacao || '', 
                 "Link PDF": d.link_pdf !== '-' ? d.link_pdf || '' : "",
                 "Link SAPL": d.link_sapl !== '-' ? d.link_sapl || '' : ""
             }));
@@ -678,7 +673,7 @@
         $('select').val(''); 
         
         let statusOpt = $('#filtroStatus option').filter(function() {
-            return $(this).text().toLowerCase().includes('vigente') || $(this).text().toLowerCase().includes('ativo');
+            return $(this).text() === 'Vigente';
         }).first().val();
         
         if(statusOpt) $('#filtroStatus').val(statusOpt);
