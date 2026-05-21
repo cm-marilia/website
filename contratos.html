@@ -130,7 +130,7 @@
             <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
             
             <div class="painel-filtros" style="margin-bottom: 10px;">
-                <input type="text" id="filtroTexto" placeholder="Pesquisar por razão social, contrato, objeto..." autocomplete="off">
+                <input type="text" id="filtroTexto" placeholder="Pesquisar por razão social, CNPJ/CPF, contrato, objeto..." autocomplete="off">
                 <select id="filtroStatus">
                     <option value="">Situação (Todas)</option>
                 </select>
@@ -147,7 +147,7 @@
                     <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
                     <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
                     <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
-                    <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                    <option value="10">Outubro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
                 </select>
                 <select id="filtroAno"><option value="">Ano</option></select>
                 <button class="btn-filtro" onclick="limparFiltros()">Limpar filtros</button>
@@ -211,6 +211,20 @@
         if (ano < 100) ano += (ano < 50 ? 2000 : 1900);
         
         return (ano * 1000000) + numero;
+    }
+
+    // NOVA FUNÇÃO: Máscara LGPD para CPF
+    function mascararCPF(doc) {
+        if (!doc) return "";
+        let numeros = doc.replace(/\D/g, ''); // Remove tudo que não for número
+        
+        // Se for CPF (11 dígitos), esconde os 3 primeiros e os 2 últimos
+        if (numeros.length === 11) {
+            return `***.${numeros.substring(3, 6)}.${numeros.substring(6, 9)}-**`;
+        }
+        
+        // Se for CNPJ ou qualquer outra coisa, devolve como estava na planilha
+        return doc; 
     }
 
     function lerCSVAvançado(texto) {
@@ -278,6 +292,7 @@
                     let val = colunas[i] ? colunas[i] : "";
                     if (h.includes("n_contrato") || h === "contrato") obj.n_contrato = val;
                     else if (h.includes("razao") || h.includes("social")) obj.razao_social = val;
+                    else if (h.includes("cpf") || h.includes("cnpj")) obj.cpf_cnpj = val;
                     else if (h.includes("objeto")) obj.objeto_contrato = val;
                     else if (h.includes("data")) obj.data_contrato = val;
                     else if (h.includes("valor")) obj.valor_contrato = val;
@@ -291,7 +306,7 @@
                 
                 obj.peso_ordenacao_contrato = extrairPesoContrato(obj.n_contrato);
 
-                let buscaUnificada = `${obj.razao_social || ''} ${obj.objeto_contrato || ''} ${obj.n_contrato || ''} ${obj.fiscal || ''}`;
+                let buscaUnificada = `${obj.razao_social || ''} ${obj.cpf_cnpj || ''} ${obj.objeto_contrato || ''} ${obj.n_contrato || ''} ${obj.fiscal || ''}`;
                 obj.busca_indexada = removerAcentos(buscaUnificada.toLowerCase().replace(/\n/g, ' '));
                 return obj;
             }).filter(d => d.n_contrato || d.razao_social);
@@ -381,6 +396,10 @@
                     const statusClass = (sitNormalizado.includes('encerrado') || sitNormalizado.includes('inativo') || sitNormalizado.includes('suspenso')) ? 'status-desligado' : 'status-ativo';
                     
                     const objetoFormatado = d.objeto_contrato ? d.objeto_contrato.replace(/\n/g, '<br>') : '-';
+                    
+                    // LGPD: Aplica a máscara e gera o HTML do documento
+                    const cpfCnpjMascarado = mascararCPF(d.cpf_cnpj);
+                    const docFormatado = cpfCnpjMascarado && cpfCnpjMascarado !== '-' ? `<span style="font-size: 11px; color: #64748b; font-weight: 600; letter-spacing: 0.5px;">CNPJ/CPF: ${cpfCnpjMascarado}</span>` : '';
 
                     let htmlBotoesLinks = '';
                     const temPdf = d.link_pdf && d.link_pdf.trim() !== '' && d.link_pdf.trim() !== '-';
@@ -402,6 +421,7 @@
                             <div class="card-header">
                                 <div class="card-header-texto">
                                     <span class="nome-principal">${d.razao_social || 'Razão Social Não Informada'}</span>
+                                    ${docFormatado}
                                 </div>
                                 <span class="status-badge ${statusClass}">${d.situacao || 'N/I'}</span>
                             </div>
@@ -463,7 +483,7 @@
     }
 
     // ==========================================
-    // FUNÇÕES DE EXPORTAÇÃO BLINDADAS
+    // FUNÇÕES DE EXPORTAÇÃO BLINDADAS (COM LGPD)
     // ==========================================
     function gerarNomeArquivoBase() {
         let partes = ["contratos"];
@@ -486,12 +506,13 @@
     function exportarCSV() {
         try {
             const data = tabela.rows({ filter: 'applied' }).data().toArray();
-            let csv = "\ufeffN_Contrato,Razao_Social,Objeto_Contrato,Data_Contrato,Valor_Contrato,Vigencia_Contrato,Modalidade,Fiscal,Situacao,Link_PDF,Link_SAPL\n";
+            let csv = "\ufeffN_Contrato,Razao_Social,CPF_CNPJ,Objeto_Contrato,Data_Contrato,Valor_Contrato,Vigencia_Contrato,Modalidade,Fiscal,Situacao,Link_PDF,Link_SAPL\n";
             data.forEach(d => { 
                 const objSafe = d.objeto_contrato ? String(d.objeto_contrato).replace(/"/g, '""') : "";
+                const docSafe = mascararCPF(d.cpf_cnpj || '');
                 const pdfSafe = d.link_pdf && d.link_pdf !== '-' ? d.link_pdf : "";
                 const saplSafe = d.link_sapl && d.link_sapl !== '-' ? d.link_sapl : "";
-                csv += `"${d.n_contrato || ''}","${d.razao_social || ''}","${objSafe}","${d.data_contrato || ''}","${d.valor_contrato || ''}","${d.vigencia_contrato || ''}","${d.modalidade || ''}","${d.fiscal || ''}","${d.situacao || ''}","${pdfSafe}","${saplSafe}"\n`; 
+                csv += `"${d.n_contrato || ''}","${d.razao_social || ''}","${docSafe}","${objSafe}","${d.data_contrato || ''}","${d.valor_contrato || ''}","${d.vigencia_contrato || ''}","${d.modalidade || ''}","${d.fiscal || ''}","${d.situacao || ''}","${pdfSafe}","${saplSafe}"\n`; 
             });
             downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv");
         } catch(e) { alert("Erro ao exportar CSV: " + e.message); console.error(e); }
@@ -503,6 +524,7 @@
             const dataFormatada = data.map(d => ({
                 "Nº Contrato": d.n_contrato || '', 
                 "Razão Social": d.razao_social || '', 
+                "CNPJ/CPF": mascararCPF(d.cpf_cnpj || ''),
                 "Objeto": d.objeto_contrato || '', 
                 "Data do Contrato": d.data_contrato || '',
                 "Valor": d.valor_contrato || '', 
@@ -525,6 +547,7 @@
             const data = tabela.rows({ filter: 'applied' }).data().toArray();
             const exportData = data.map(d => { 
                 let item = {...d}; 
+                item.cpf_cnpj = mascararCPF(item.cpf_cnpj || ''); // Aplica LGPD
                 delete item.busca_indexada; 
                 delete item.peso_ordenacao_contrato; 
                 return item; 
@@ -541,7 +564,8 @@
                 xml += '<contrato>';
                 for (let k in d) {
                     if(typeof d[k] !== 'object' && k !== 'busca_indexada' && k !== 'peso_ordenacao_contrato') {
-                        xml += `<${k}>${d[k]}</${k}>`;
+                        let valor = k === 'cpf_cnpj' ? mascararCPF(d[k] || '') : d[k]; // Aplica LGPD
+                        xml += `<${k}>${valor}</${k}>`;
                     }
                 }
                 xml += '</contrato>';
