@@ -30,8 +30,10 @@
         button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; width: 100%; }
         button.btn-filtro:hover { background: #00274d; }
 
-        /* FILTROS RESPONSIVOS */
-        .painel-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+        /* NOVO LAYOUT DE FILTROS (2 LINHAS DE 3, 1 LINHA DE 2) */
+        .painel-filtros { display: grid; gap: 10px; margin-bottom: 10px; }
+        .linha-2 { grid-template-columns: 2fr 1fr; } /* Barra de pesquisa mais larga */
+        .linha-3 { grid-template-columns: repeat(3, 1fr); }
 
         /* EXPORTAÇÃO RESPONSIVA */
         .painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
@@ -92,6 +94,17 @@
 
         #cabecalho-impressao { display: none; }
 
+        @media (max-width: 768px) {
+            .topo { flex-direction: column; gap: 10px; text-align: center; }
+            .card-header { flex-direction: column; text-align: center; gap: 10px; }
+            .card-header-texto { width: 100%; }
+            .card-body { grid-template-columns: 1fr 1fr; }
+            .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
+            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
+            /* Transforma os filtros em uma coluna só no celular */
+            .linha-2, .linha-3 { grid-template-columns: 1fr; }
+        }
+
         @media print {
             .topo, fieldset, .dt-bottom-controls, .container-links { display: none !important; }
             #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
@@ -129,25 +142,28 @@
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
             <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
             
-            <div class="painel-filtros" style="margin-bottom: 10px;">
+            <div class="painel-filtros linha-2">
                 <input type="text" id="filtroTexto" placeholder="Pesquisar por razão social, CNPJ/CPF, contrato, objeto..." autocomplete="off">
+                <select id="filtroFiscal">
+                    <option value="">Fiscal</option>
+                </select>
+            </div>
+            
+            <div class="painel-filtros linha-3">
                 <select id="filtroStatus">
                     <option value="">Situação</option>
                 </select>
                 <select id="filtroModalidade">
                     <option value="">Modalidade</option>
                 </select>
-                <select id="filtroFiscal">
-                    <option value="">Fiscal</option>
-                </select>
-            </div>
-            
-            <div class="painel-filtros">
                 <select id="filtroTipoData">
                     <option value="">Filtrar período por...</option>
                     <option value="data_contrato">Data do Contrato</option>
                     <option value="vigencia_contrato">Vigência do Contrato</option>
                 </select>
+            </div>
+            
+            <div class="painel-filtros linha-3" style="margin-bottom: 0;">
                 <select id="filtroMes">
                     <option value="">Mês</option>
                     <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
@@ -312,7 +328,6 @@
                     else if (h.includes("link_sapl")) obj.link_sapl = val;
                 });
                 
-                // Cálculo automático da Situação e formatação limpa (Vigente / Encerrado)
                 let vigenciaTimestamp = converterDataParaTimestamp(obj.vigencia_contrato);
                 let hoje = new Date();
                 hoje.setHours(0, 0, 0, 0);
@@ -331,11 +346,9 @@
                     }
                 }
 
-                // Cria uma versão da modalidade sem números (Ex: Pregão 04/2024 -> Pregão) para o Filtro
                 let modStr = obj.modalidade || "";
                 obj.modalidade_filtro = modStr.replace(/nº|n°/gi, '').replace(/[\d\/\-\.]+/g, '').replace(/\s+/g, ' ').trim();
 
-                // Padroniza o fiscal para o filtro
                 obj.fiscal_filtro = (obj.fiscal || "").trim();
 
                 obj.peso_ordenacao_contrato = extrairPesoContrato(obj.n_contrato);
@@ -363,11 +376,10 @@
         dadosGlobais.forEach(d => {
             if (d.situacao) statuses.add(d.situacao);
             if (d.modalidade_filtro) modalidades.add(d.modalidade_filtro);
-            if (d.fiscal_filtro) fiscais.add(d.fiscal_filtro);
+            if (d.fiscal_filtro && d.fiscal_filtro !== '-') fiscais.add(d.fiscal_filtro);
             if (d.data_contrato) { const p = d.data_contrato.split('/'); if(p[2] && p[2].length === 4) anos.add(p[2]); }
         });
         
-        // Filtro Situação
         let htmlStatus = '<option value="">Situação</option>';
         [...statuses].sort().forEach(s => {
             let selected = (s.toLowerCase().includes('vigente') || s.toLowerCase().includes('ativo')) ? 'selected' : '';
@@ -375,21 +387,18 @@
         });
         $('#filtroStatus').html(htmlStatus);
 
-        // Filtro Modalidade
         let htmlMod = '<option value="">Modalidade</option>';
         [...modalidades].sort().forEach(m => {
             htmlMod += `<option value="${m}">${m}</option>`;
         });
         $('#filtroModalidade').html(htmlMod);
 
-        // Filtro Fiscal
         let htmlFis = '<option value="">Fiscal</option>';
         [...fiscais].sort().forEach(f => {
             htmlFis += `<option value="${f}">${f}</option>`;
         });
         $('#filtroFiscal').html(htmlFis);
 
-        // Filtro Ano
         let arrAnos = [...anos].sort((a,b) => b-a);
         let htmlAno = '<option value="">Ano</option>';
         arrAnos.forEach(a => { htmlAno += `<option value="${a}">${a}</option>`; });
@@ -662,7 +671,7 @@
         $('select').val(''); 
         
         let statusOpt = $('#filtroStatus option').filter(function() {
-            return $(this).text().toLowerCase().includes('vigente');
+            return $(this).text().toLowerCase().includes('vigente') || $(this).text().toLowerCase().includes('ativo');
         }).first().val();
         
         if(statusOpt) $('#filtroStatus').val(statusOpt);
