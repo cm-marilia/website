@@ -378,13 +378,6 @@
                     const sitNormalizado = (d.situacao || '').toLowerCase();
                     const statusClass = (sitNormalizado.includes('encerrado') || sitNormalizado.includes('inativo') || sitNormalizado.includes('suspenso')) ? 'status-desligado' : 'status-ativo';
                     
-                    // CORREÇÃO: Tradutor blindado contra espaços extras invisíveis vindo da planilha
-                    let modalidadeTraduzida = (d.modalidade || '-').trim().toUpperCase();
-                    if (modalidadeTraduzida === 'PE') modalidadeTraduzida = "Pregão Eletrônico";
-                    else if (modalidadeTraduzida === 'DL') modalidadeTraduzida = "Dispensa de Licitação";
-                    else if (modalidadeTraduzida === 'INEX') modalidadeTraduzida = "Inexigibilidade";
-                    else modalidadeTraduzida = d.modalidade || '-'; // Mantém o original caso seja outra modalidade
-
                     const objetoFormatado = d.objeto_contrato ? d.objeto_contrato.replace(/\n/g, '<br>') : '-';
 
                     return `
@@ -402,7 +395,7 @@
                                 </div>
                                 <div class="info-col">
                                     <span class="info-label">Modalidade</span>
-                                    <span class="info-valor">${modalidadeTraduzida}</span>
+                                    <span class="info-valor">${d.modalidade || '-'}</span>
                                 </div>
                                 
                                 <div class="info-col full-width">
