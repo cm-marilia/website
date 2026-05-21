@@ -53,7 +53,6 @@
         table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
         
         .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
         .card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; display: flex; justify-content: space-between; align-items: center; }
         .card-header-texto { display: flex; flex-direction: column; gap: 2px; width: 75%; }
         .nome-principal { font-size: 15px; font-weight: 800; color: #003b75; text-transform: uppercase; word-break: break-word; }
@@ -202,7 +201,6 @@
 
     function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
 
-    // Converte textos de contratos como "15/2024" ou "3/23" em pesos numéricos para ordenação precisa
     function extrairPesoContrato(nContrato) {
         if (!nContrato || nContrato === "-") return 0;
         const partes = nContrato.split('/');
@@ -211,10 +209,8 @@
         let numero = parseInt(partes[0].replace(/[^0-9]/g, ''), 10) || 0;
         let ano = parseInt(partes[1].replace(/[^0-9]/g, ''), 10) || 0;
         
-        // Normaliza anos com 2 dígitos (ex: 23 virá 2023)
         if (ano < 100) ano += (ano < 50 ? 2000 : 1900);
         
-        // Multiplica o ano por 1.000.000 para que o ano tenha prioridade total no desempate matemático
         return (ano * 1000000) + numero;
     }
 
@@ -294,7 +290,6 @@
                     else if (h.includes("link_sapl")) obj.link_sapl = val;
                 });
                 
-                // Gera o peso matemático do número do contrato para a ordenação dinâmica
                 obj.peso_ordenacao_contrato = extrairPesoContrato(obj.n_contrato);
 
                 let buscaUnificada = `${obj.razao_social || ''} ${obj.objeto_contrato || ''} ${obj.n_contrato || ''} ${obj.fiscal || ''}`;
@@ -317,8 +312,8 @@
         
         dadosGlobais.forEach(d => {
             if (d.situacao) statuses.add(d.situacao);
+            // Agora os anos do filtro são alimentados APENAS pela Data do Contrato
             if (d.data_contrato) { const p = d.data_contrato.split('/'); if(p[2] && p[2].length === 4) anos.add(p[2]); }
-            if (d.vigencia_contrato) { const p = d.vigencia_contrato.split('/'); if(p[2] && p[2].length === 4) anos.add(p[2]); }
         });
         
         let htmlStatus = '<option value="">Situação (Todas)</option>';
@@ -350,24 +345,23 @@
                 const mContrato = d.data_contrato ? (!mes || d.data_contrato.split('/')[1] === mes) && (!ano || d.data_contrato.split('/')[2] === ano) : false;
                 const mVigencia = d.vigencia_contrato ? (!mes || d.vigencia_contrato.split('/')[1] === mes) && (!ano || d.vigencia_contrato.split('/')[2] === ano) : false;
 
-                if (tipoData === 'data_contrato') matchData = mContrato;
-                else if (tipoData === 'vigencia_contrato') matchData = mVigencia;
-                else matchData = mContrato || mVigencia;
+                // NOVA LÓGICA: Padrão focado na Data do Contrato. Só usa Vigência se for selecionado explicitamente.
+                if (tipoData === 'vigencia_contrato') {
+                    matchData = mVigencia;
+                } else {
+                    matchData = mContrato; 
+                }
             }
             return matchTexto && matchSit && matchData;
         });
 
-        // REQUISITO: Ordenação baseada no número do contrato (maior/mais recente para o menor/mais antigo)
         res.sort((a, b) => {
             const sitA = (a.situacao || "").toLowerCase();
             const sitB = (b.situacao || "").toLowerCase();
             const aEncerrado = sitA.includes('encerrado') || sitA.includes('inativo') || sitA.includes('suspenso');
             const bEncerrado = sitB.includes('encerrado') || sitB.includes('inativo') || sitB.includes('suspenso');
 
-            // 1. Separa Vigentes de Encerrados
             if (aEncerrado !== bEncerrado) return aEncerrado ? 1 : -1;
-            
-            // 2. Desempate: Ordena de forma decrescente pelo número/ano do contrato
             return b.peso_ordenacao_contrato - a.peso_ordenacao_contrato;
         });
 
