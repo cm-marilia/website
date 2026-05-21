@@ -8,12 +8,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; color: #1e293b; }
+        /* AJUSTE IFRAME: box-sizing garante que o padding não ultrapasse os limites da tela */
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; color: #1e293b; overflow-x: hidden; }
         
         .painel-filtros {
             background: #ffffff; padding: 15px 20px; display: flex; flex-wrap: wrap;
             justify-content: center; align-items: center; gap: 20px;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border-bottom: 1px solid #e2e8f0;
+            width: 100%;
         }
 
         .filtro-grupo { display: flex; align-items: center; }
@@ -39,9 +42,10 @@
             box-shadow: 0 0 5px rgba(59, 130, 246, 0.6);
         }
 
+        /* AJUSTE IFRAME: max-width alterado para 100% para fluir nos 850px */
         .painel-exportacao {
-            max-width: 1240px; margin: 20px auto 0 auto; padding: 0 15px;
-            display: flex; justify-content: space-between; align-items: center; gap: 10px;
+            width: 100%; margin: 20px auto 0 auto; padding: 0 15px;
+            display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
         }
         .painel-exportacao span { font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; }
 
@@ -52,9 +56,10 @@
         }
         .btn-export:hover { background-color: #f8fafc; border-color: #94a3b8; }
 
+        /* AJUSTE IFRAME: Largura fluida */
         .container-cards {
-            max-width: 1240px; margin: 15px auto 10px auto; padding: 0 15px;
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; box-sizing: border-box;
+            width: 100%; margin: 15px auto 10px auto; padding: 0 15px;
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
         }
 
         .card {
@@ -78,28 +83,26 @@
         .perc-green { background-color: rgba(16, 185, 129, 0.1); color: #047857; }
         .perc-amber { background-color: rgba(245, 158, 114, 0.1); color: #b45309; }
 
+        /* AJUSTE IFRAME: Largura fluida */
         .container-graficos {
-            max-width: 1240px; margin: 10px auto 20px auto; padding: 0 15px;
+            width: 100%; margin: 10px auto 20px auto; padding: 0 15px;
             display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;
         }
         
         .grafico-wrapper {
             background: #ffffff; border-radius: 8px; padding: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02); box-sizing: border-box;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02); overflow: hidden;
         }
         
         .grafico-box { width: 100%; height: 350px; }
         .grafico-full { grid-column: span 2; }
 
-        @media (max-width: 1024px) {
+        /* REGRAS DE RESPONSIVIDADE (Ajustadas para 860px) */
+        @media (max-width: 860px) {
             .container-cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-            .container-graficos { grid-template-columns: 1fr; }
-            .grafico-wrapper { grid-column: span 1; }
-        }
-
-        @media (max-width: 768px) {
-            .painel-exportacao { flex-direction: column-reverse; align-items: center; gap: 15px; }
-            .painel-exportacao div { justify-content: center; }
+            .container-graficos { grid-template-columns: 1fr; } /* Empilha os gráficos de pizza no iframe de 850px */
+            .grafico-full { grid-column: span 1; }
+            .painel-exportacao { flex-direction: column; align-items: flex-start; gap: 15px; }
         }
 
         @media (max-width: 480px) {
@@ -175,7 +178,6 @@
     </div>
 
     <script>
-        // URL da sua planilha real vinculada diretamente conforme fornecido
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTTaV8Dk7ngYuTASW0Md9TrIa4W8_t5MczIFVdo1SnDSRdVd_0Wp7WDXUSbGR5PmM2_GL7xiitMbb4A/pub?output=csv&t=' + new Date().getTime();
 
         const domElements = {
@@ -216,7 +218,6 @@
                 const linhas = textoBruto.split(/\r?\n/);
                 const primeiraLinha = linhas[0];
                 
-                // Extração da data de modificação idêntica ao comportamento original
                 let match = primeiraLinha.match(/MODIF_REAL:\s*\d{2}\/\d{2}\/\d{4},\s*\d{2}:\d{2}(:\d{2})?/i);
                 let textoAtualizacao = "";
                 
@@ -241,8 +242,6 @@
                     domElements.txtAtualizacao.textContent = "Conectado à Base de Dados Ativa";
                 }
 
-                // AQUI ESTÁ A CORREÇÃO SOLICITADA: Pula a primeira linha (metadados de data/hora) 
-                // e faz o parse a partir da segunda linha (cabeçalho)
                 const dadosTabelaCsv = linhas.slice(1).join('\n');
 
                 Papa.parse(dadosTabelaCsv, {
@@ -292,8 +291,8 @@
                 });
             })
             .catch(err => {
-                console.error("Erro no carregamento dos dados ativos:", err);
-                domElements.txtAtualizacao.textContent = "Erro na sincronização de dados";
+                console.error("Erro no carregamento:", err);
+                domElements.txtAtualizacao.textContent = "Erro na sincronização";
             });
 
         function popularFiltrosDinamicos(d) {
@@ -367,6 +366,7 @@
                 mapaAssunto[l.assunto_exibicao] = (mapaAssunto[l.assunto_exibicao] || 0) + 1;
             });
 
+            // GRÁFICO 1: Tipos
             let dataTipo = Object.keys(mapaTipo).map(k => ({ name: k, value: mapaTipo[k] }));
             charts.tipo.setOption({
                 title: { text: 'Distribuição por Tipo', left: 'center', textStyle: { fontSize: 14, color: '#334155' } },
@@ -379,34 +379,54 @@
                 }]
             }, true);
 
+            // GRÁFICO 2: Canais
             let dataCanal = Object.keys(mapaCanal).map(k => ({ name: k, value: mapaCanal[k] }));
             charts.canal.setOption({
-                title: { text: 'Canais de Entrada Utilizados', left: 'center', textStyle: { fontSize: 14, color: '#334155' } },
+                title: { text: 'Canais de Entrada', left: 'center', textStyle: { fontSize: 14, color: '#334155' } },
                 tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
                 legend: { bottom: '0', left: 'center', type: 'scroll' },
                 series: [{
                     type: 'pie', radius: '65%', center: ['50%', '50%'],
                     data: dataCanal, roseType: 'radius',
                     itemStyle: { borderRadius: 4 },
-                    label: { show: true, fontSize: 10, formatter: '{b}' }
+                    label: { show: false }
                 }]
             }, true);
 
+            // GRÁFICO 3: ASSUNTOS (MODIFICADO)
+            // 1. Removemos o limitador (.slice) para puxar TODOS os assuntos
             let dadosAssuntosOrdenados = Object.keys(mapaAssunto)
                 .map(k => ({ assunto: k, total: mapaAssunto[k] }))
-                .sort((a, b) => b.total - a.total)
-                .slice(0, 8);
+                .sort((a, b) => b.total - a.total);
+
+            // 2. Cálculo dinâmico da altura da DIV baseado na quantidade de barras (para não esmagá-las)
+            const chartAssuntoDOM = document.getElementById('chartAssunto');
+            const novaAltura = Math.max(350, dadosAssuntosOrdenados.length * 35 + 80);
+            chartAssuntoDOM.style.height = novaAltura + 'px';
+            charts.assunto.resize(); // Informa ao ECharts que a caixa mudou de tamanho
 
             charts.assunto.setOption({
-                title: { text: 'Principais Assuntos Recorrentes (Top 8)', left: 'left', textStyle: { fontSize: 14, color: '#334155' } },
+                title: { text: 'Todos os Assuntos Recorrentes', left: 'left', textStyle: { fontSize: 14, color: '#334155' } },
                 tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                grid: { left: '3%', right: '8%', bottom: '3%', top: '50px', containLabel: true },
                 xAxis: { type: 'value', boundaryGap: [0, 0.01] },
-                yAxis: { type: 'category', data: dadosAssuntosOrdenados.map(i => i.assunto).reverse() },
+                yAxis: { 
+                    type: 'category', 
+                    data: dadosAssuntosOrdenados.map(i => i.assunto).reverse(),
+                    axisLabel: { width: 250, overflow: 'truncate' } // Evita que textos gigantes quebrem o layout do iframe
+                },
                 series: [{
-                    name: 'Demandas', type: 'bar',
+                    name: 'Demandas', 
+                    type: 'bar',
                     data: dadosAssuntosOrdenados.map(i => i.total).reverse(),
-                    itemStyle: { color: '#3b82f6', borderRadius: [0, 4, 4, 0] },
+                    // 3. Sistema de Cores Variadas para as barras
+                    itemStyle: { 
+                        color: function(params) {
+                            const paleta = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#14b8a6', '#6366f1', '#ec4899'];
+                            return paleta[params.dataIndex % paleta.length];
+                        },
+                        borderRadius: [0, 4, 4, 0] 
+                    },
                     label: { show: true, position: 'right', fontSize: 10 }
                 }]
             }, true);
