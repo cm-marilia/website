@@ -132,16 +132,22 @@
             <div class="painel-filtros" style="margin-bottom: 10px;">
                 <input type="text" id="filtroTexto" placeholder="Pesquisar por razão social, CNPJ/CPF, contrato, objeto..." autocomplete="off">
                 <select id="filtroStatus">
-                    <option value="">Situação (Todas)</option>
+                    <option value="">Situação</option>
                 </select>
+                <select id="filtroModalidade">
+                    <option value="">Modalidade</option>
+                </select>
+                <select id="filtroFiscal">
+                    <option value="">Fiscal</option>
+                </select>
+            </div>
+            
+            <div class="painel-filtros">
                 <select id="filtroTipoData">
                     <option value="">Filtrar período por...</option>
                     <option value="data_contrato">Data do Contrato</option>
                     <option value="vigencia_contrato">Vigência do Contrato</option>
                 </select>
-            </div>
-            
-            <div class="painel-filtros">
                 <select id="filtroMes">
                     <option value="">Mês</option>
                     <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
@@ -220,7 +226,6 @@
         return new Date(partes[2], partes[1] - 1, partes[0]).getTime();
     }
 
-    // Máscara LGPD para CPF
     function mascararCPF(doc) {
         if (!doc) return "";
         let numeros = doc.replace(/\D/g, ''); 
@@ -307,10 +312,10 @@
                     else if (h.includes("link_sapl")) obj.link_sapl = val;
                 });
                 
-                // NOVIDADE: Cálculo Automático de Vigência (Substitui a digitação manual)
+                // Cálculo automático da Situação e formatação limpa (Vigente / Encerrado)
                 let vigenciaTimestamp = converterDataParaTimestamp(obj.vigencia_contrato);
                 let hoje = new Date();
-                hoje.setHours(0, 0, 0, 0); // Zera as horas para comparar exatamente o dia
+                hoje.setHours(0, 0, 0, 0);
 
                 if (vigenciaTimestamp > 0) {
                     if (vigenciaTimestamp >= hoje.getTime()) {
@@ -319,13 +324,23 @@
                         obj.situacao = "Encerrado";
                     }
                 } else {
-                    // Mantém o que estava lá (ou "Indeterminado") se a data de vigência estiver vazia
-                    obj.situacao = obj.situacao || "Vigência Indeterminada"; 
+                    if(obj.situacao) {
+                        obj.situacao = obj.situacao.charAt(0).toUpperCase() + obj.situacao.slice(1).toLowerCase();
+                    } else {
+                        obj.situacao = "Vigência Indeterminada"; 
+                    }
                 }
+
+                // Cria uma versão da modalidade sem números (Ex: Pregão 04/2024 -> Pregão) para o Filtro
+                let modStr = obj.modalidade || "";
+                obj.modalidade_filtro = modStr.replace(/nº|n°/gi, '').replace(/[\d\/\-\.]+/g, '').replace(/\s+/g, ' ').trim();
+
+                // Padroniza o fiscal para o filtro
+                obj.fiscal_filtro = (obj.fiscal || "").trim();
 
                 obj.peso_ordenacao_contrato = extrairPesoContrato(obj.n_contrato);
 
-                let buscaUnificada = `${obj.razao_social || ''} ${obj.cpf_cnpj || ''} ${obj.objeto_contrato || ''} ${obj.n_contrato || ''} ${obj.fiscal || ''}`;
+                let buscaUnificada = `${obj.razao_social || ''} ${obj.cpf_cnpj || ''} ${obj.objeto_contrato || ''} ${obj.n_contrato || ''} ${obj.fiscal || ''} ${obj.modalidade || ''}`;
                 obj.busca_indexada = removerAcentos(buscaUnificada.toLowerCase().replace(/\n/g, ' '));
                 return obj;
             }).filter(d => d.n_contrato || d.razao_social);
@@ -341,20 +356,40 @@
 
     function popularFiltrosDinamicos() {
         let statuses = new Set();
+        let modalidades = new Set();
+        let fiscais = new Set();
         let anos = new Set();
         
         dadosGlobais.forEach(d => {
             if (d.situacao) statuses.add(d.situacao);
+            if (d.modalidade_filtro) modalidades.add(d.modalidade_filtro);
+            if (d.fiscal_filtro) fiscais.add(d.fiscal_filtro);
             if (d.data_contrato) { const p = d.data_contrato.split('/'); if(p[2] && p[2].length === 4) anos.add(p[2]); }
         });
         
-        let htmlStatus = '<option value="">Situação (Todas)</option>';
+        // Filtro Situação
+        let htmlStatus = '<option value="">Situação</option>';
         [...statuses].sort().forEach(s => {
             let selected = (s.toLowerCase().includes('vigente') || s.toLowerCase().includes('ativo')) ? 'selected' : '';
             htmlStatus += `<option value="${s}" ${selected}>${s}</option>`;
         });
         $('#filtroStatus').html(htmlStatus);
 
+        // Filtro Modalidade
+        let htmlMod = '<option value="">Modalidade</option>';
+        [...modalidades].sort().forEach(m => {
+            htmlMod += `<option value="${m}">${m}</option>`;
+        });
+        $('#filtroModalidade').html(htmlMod);
+
+        // Filtro Fiscal
+        let htmlFis = '<option value="">Fiscal</option>';
+        [...fiscais].sort().forEach(f => {
+            htmlFis += `<option value="${f}">${f}</option>`;
+        });
+        $('#filtroFiscal').html(htmlFis);
+
+        // Filtro Ano
         let arrAnos = [...anos].sort((a,b) => b-a);
         let htmlAno = '<option value="">Ano</option>';
         arrAnos.forEach(a => { htmlAno += `<option value="${a}">${a}</option>`; });
@@ -364,6 +399,8 @@
     function aplicarFiltros() {
         const txt = removerAcentos($('#filtroTexto').val().toLowerCase());
         const sit = $('#filtroStatus').val();
+        const mod = $('#filtroModalidade').val();
+        const fis = $('#filtroFiscal').val();
         const tipoData = $('#filtroTipoData').val();
         const mes = $('#filtroMes').val();
         const ano = $('#filtroAno').val();
@@ -371,6 +408,8 @@
         const res = dadosGlobais.filter(d => {
             const matchTexto = !txt || d.busca_indexada.includes(txt);
             const matchSit = !sit || d.situacao === sit;
+            const matchMod = !mod || d.modalidade_filtro === mod;
+            const matchFis = !fis || d.fiscal_filtro === fis;
 
             let matchData = true;
             if (tipoData || mes || ano) {
@@ -383,7 +422,7 @@
                     matchData = mContrato; 
                 }
             }
-            return matchTexto && matchSit && matchData;
+            return matchTexto && matchSit && matchMod && matchFis && matchData;
         });
 
         res.sort((a, b) => {
@@ -566,7 +605,9 @@
                 let item = {...d}; 
                 item.cpf_cnpj = mascararCPF(item.cpf_cnpj || ''); 
                 delete item.busca_indexada; 
-                delete item.peso_ordenacao_contrato; 
+                delete item.peso_ordenacao_contrato;
+                delete item.modalidade_filtro;
+                delete item.fiscal_filtro;
                 return item; 
             });
             downloadFile(JSON.stringify(exportData, null, 2), gerarNomeArquivoBase() + ".json", "application/json");
@@ -580,7 +621,7 @@
             data.forEach(d => {
                 xml += '<contrato>';
                 for (let k in d) {
-                    if(typeof d[k] !== 'object' && k !== 'busca_indexada' && k !== 'peso_ordenacao_contrato') {
+                    if(typeof d[k] !== 'object' && k !== 'busca_indexada' && k !== 'peso_ordenacao_contrato' && k !== 'modalidade_filtro' && k !== 'fiscal_filtro') {
                         let valor = k === 'cpf_cnpj' ? mascararCPF(d[k] || '') : d[k]; 
                         xml += `<${k}>${valor}</${k}>`;
                     }
@@ -621,7 +662,7 @@
         $('select').val(''); 
         
         let statusOpt = $('#filtroStatus option').filter(function() {
-            return $(this).text().toLowerCase().includes('vigente') || $(this).text().toLowerCase().includes('ativo');
+            return $(this).text().toLowerCase().includes('vigente');
         }).first().val();
         
         if(statusOpt) $('#filtroStatus').val(statusOpt);
