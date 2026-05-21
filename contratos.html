@@ -53,6 +53,7 @@
         table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
         
         .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
         .card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; display: flex; justify-content: space-between; align-items: center; }
         .card-header-texto { display: flex; flex-direction: column; gap: 2px; width: 75%; }
         .nome-principal { font-size: 15px; font-weight: 800; color: #003b75; text-transform: uppercase; word-break: break-word; }
@@ -70,7 +71,7 @@
         .info-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
         .info-valor { font-size: 13px; font-weight: 700; color: #1e293b; word-break: break-word; }
 
-        /* ESTILOS DOS NOVOS BOTÕES DE LINKS EXTERNOS */
+        /* ESTILOS DOS BOTÕES DE LINKS EXTERNOS */
         .container-links { display: flex; flex-wrap: wrap; gap: 12px; width: 100%; }
         .btn-link-externo { flex: 1; min-width: 200px; display: flex; align-items: center; justify-content: center; gap: 8px; height: 42px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; text-transform: uppercase; transition: 0.2s ease-in-out; box-sizing: border-box; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         .btn-pdf { background: #fef2f2; color: #991b1b; border: 1px solid #fee2e2; }
@@ -201,20 +202,20 @@
 
     function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
 
-    function converterDataParaTimestamp(dataStr) {
-        if (!dataStr || dataStr === "-") return 0;
-        const partes = dataStr.split('/');
-        if (partes.length !== 3) return 0;
-        return new Date(partes[2], partes[1] - 1, partes[0]).getTime();
-    }
-
-    function gerarNomeArquivoBase() {
-        let partes = ["contratos"];
-        const txt = $('#filtroTexto').val().trim();
-        if (txt) partes.push(txt.replace(/\s+/g, '_'));
-        if ($('#filtroStatus').val()) partes.push($('#filtroStatus').val());
-        if ($('#filtroAno').val()) partes.push($('#filtroAno').val());
-        return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '');
+    // Converte textos de contratos como "15/2024" ou "3/23" em pesos numéricos para ordenação precisa
+    function extrairPesoContrato(nContrato) {
+        if (!nContrato || nContrato === "-") return 0;
+        const partes = nContrato.split('/');
+        if (partes.length !== 2) return 0;
+        
+        let numero = parseInt(partes[0].replace(/[^0-9]/g, ''), 10) || 0;
+        let ano = parseInt(partes[1].replace(/[^0-9]/g, ''), 10) || 0;
+        
+        // Normaliza anos com 2 dígitos (ex: 23 virá 2023)
+        if (ano < 100) ano += (ano < 50 ? 2000 : 1900);
+        
+        // Multiplica o ano por 1.000.000 para que o ano tenha prioridade total no desempate matemático
+        return (ano * 1000000) + numero;
     }
 
     function lerCSVAvançado(texto) {
@@ -289,12 +290,12 @@
                     else if (h.includes("modalidade")) obj.modalidade = val;
                     else if (h.includes("fiscal")) obj.fiscal = val;
                     else if (h.includes("situacao") || h.includes("status")) obj.situacao = val;
-                    // REQUISITO: Captação das duas novas colunas adicionadas à planilha
                     else if (h.includes("link_pdf")) obj.link_pdf = val;
                     else if (h.includes("link_sapl")) obj.link_sapl = val;
                 });
                 
-                obj.timestamp_contrato = converterDataParaTimestamp(obj.data_contrato);
+                // Gera o peso matemático do número do contrato para a ordenação dinâmica
+                obj.peso_ordenacao_contrato = extrairPesoContrato(obj.n_contrato);
 
                 let buscaUnificada = `${obj.razao_social || ''} ${obj.objeto_contrato || ''} ${obj.n_contrato || ''} ${obj.fiscal || ''}`;
                 obj.busca_indexada = removerAcentos(buscaUnificada.toLowerCase().replace(/\n/g, ' '));
@@ -356,14 +357,18 @@
             return matchTexto && matchSit && matchData;
         });
 
+        // REQUISITO: Ordenação baseada no número do contrato (maior/mais recente para o menor/mais antigo)
         res.sort((a, b) => {
             const sitA = (a.situacao || "").toLowerCase();
             const sitB = (b.situacao || "").toLowerCase();
             const aEncerrado = sitA.includes('encerrado') || sitA.includes('inativo') || sitA.includes('suspenso');
             const bEncerrado = sitB.includes('encerrado') || sitB.includes('inativo') || sitB.includes('suspenso');
 
+            // 1. Separa Vigentes de Encerrados
             if (aEncerrado !== bEncerrado) return aEncerrado ? 1 : -1;
-            return b.timestamp_contrato - a.timestamp_contrato;
+            
+            // 2. Desempate: Ordena de forma decrescente pelo número/ano do contrato
+            return b.peso_ordenacao_contrato - a.peso_ordenacao_contrato;
         });
 
         renderizar(res);
@@ -386,7 +391,6 @@
                     
                     const objetoFormatado = d.objeto_contrato ? d.objeto_contrato.replace(/\n/g, '<br>') : '-';
 
-                    // REQUISITO: Montagem condicional dos botões de links externos (não renderiza botão se o link estiver vazio)
                     let htmlBotoesLinks = '';
                     const temPdf = d.link_pdf && d.link_pdf.trim() !== '' && d.link_pdf.trim() !== '-';
                     const temSapl = d.link_sapl && d.link_sapl.trim() !== '' && d.link_sapl.trim() !== '-';
@@ -491,7 +495,7 @@
 
     function exportarJSON() {
         const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        const exportData = data.map(d => { let item = {...d}; delete item.busca_indexada; delete item.timestamp_contrato; return item; });
+        const exportData = data.map(d => { let item = {...d}; delete item.busca_indexada; delete item.peso_ordenacao_contrato; return item; });
         downloadFile(JSON.stringify(exportData, null, 2), gerarNomeArquivoBase() + ".json", "application/json");
     }
 
@@ -500,7 +504,7 @@
         let xml = '<?xml version="1.0" encoding="UTF-8"?><contratos>';
         data.forEach(d => {
             xml += '<contrato>';
-            for (let k in d) if(typeof d[k] !== 'object' && k !== 'busca_indexada' && k !== 'timestamp_contrato') xml += `<${k}>${d[k]}</${k}>`;
+            for (let k in d) if(typeof d[k] !== 'object' && k !== 'busca_indexada' && k !== 'peso_ordenacao_contrato') xml += `<${k}>${d[k]}</${k}>`;
             xml += '</contrato>';
         });
         xml += '</contratos>';
