@@ -147,7 +147,7 @@
                     <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
                     <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
                     <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
-                    <option value="10">Outubro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                    <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
                 </select>
                 <select id="filtroAno"><option value="">Ano</option></select>
                 <button class="btn-filtro" onclick="limparFiltros()">Limpar filtros</button>
@@ -213,17 +213,20 @@
         return (ano * 1000000) + numero;
     }
 
-    // NOVA FUNÇÃO: Máscara LGPD para CPF
+    function converterDataParaTimestamp(dataStr) {
+        if (!dataStr || dataStr === "-") return 0;
+        const partes = dataStr.split('/');
+        if (partes.length !== 3) return 0;
+        return new Date(partes[2], partes[1] - 1, partes[0]).getTime();
+    }
+
+    // Máscara LGPD para CPF
     function mascararCPF(doc) {
         if (!doc) return "";
-        let numeros = doc.replace(/\D/g, ''); // Remove tudo que não for número
-        
-        // Se for CPF (11 dígitos), esconde os 3 primeiros e os 2 últimos
+        let numeros = doc.replace(/\D/g, ''); 
         if (numeros.length === 11) {
             return `***.${numeros.substring(3, 6)}.${numeros.substring(6, 9)}-**`;
         }
-        
-        // Se for CNPJ ou qualquer outra coisa, devolve como estava na planilha
         return doc; 
     }
 
@@ -304,6 +307,22 @@
                     else if (h.includes("link_sapl")) obj.link_sapl = val;
                 });
                 
+                // NOVIDADE: Cálculo Automático de Vigência (Substitui a digitação manual)
+                let vigenciaTimestamp = converterDataParaTimestamp(obj.vigencia_contrato);
+                let hoje = new Date();
+                hoje.setHours(0, 0, 0, 0); // Zera as horas para comparar exatamente o dia
+
+                if (vigenciaTimestamp > 0) {
+                    if (vigenciaTimestamp >= hoje.getTime()) {
+                        obj.situacao = "Vigente";
+                    } else {
+                        obj.situacao = "Encerrado";
+                    }
+                } else {
+                    // Mantém o que estava lá (ou "Indeterminado") se a data de vigência estiver vazia
+                    obj.situacao = obj.situacao || "Vigência Indeterminada"; 
+                }
+
                 obj.peso_ordenacao_contrato = extrairPesoContrato(obj.n_contrato);
 
                 let buscaUnificada = `${obj.razao_social || ''} ${obj.cpf_cnpj || ''} ${obj.objeto_contrato || ''} ${obj.n_contrato || ''} ${obj.fiscal || ''}`;
@@ -396,8 +415,6 @@
                     const statusClass = (sitNormalizado.includes('encerrado') || sitNormalizado.includes('inativo') || sitNormalizado.includes('suspenso')) ? 'status-desligado' : 'status-ativo';
                     
                     const objetoFormatado = d.objeto_contrato ? d.objeto_contrato.replace(/\n/g, '<br>') : '-';
-                    
-                    // LGPD: Aplica a máscara e gera o HTML do documento
                     const cpfCnpjMascarado = mascararCPF(d.cpf_cnpj);
                     const docFormatado = cpfCnpjMascarado && cpfCnpjMascarado !== '-' ? `<span style="font-size: 11px; color: #64748b; font-weight: 600; letter-spacing: 0.5px;">CNPJ/CPF: ${cpfCnpjMascarado}</span>` : '';
 
@@ -547,7 +564,7 @@
             const data = tabela.rows({ filter: 'applied' }).data().toArray();
             const exportData = data.map(d => { 
                 let item = {...d}; 
-                item.cpf_cnpj = mascararCPF(item.cpf_cnpj || ''); // Aplica LGPD
+                item.cpf_cnpj = mascararCPF(item.cpf_cnpj || ''); 
                 delete item.busca_indexada; 
                 delete item.peso_ordenacao_contrato; 
                 return item; 
@@ -564,7 +581,7 @@
                 xml += '<contrato>';
                 for (let k in d) {
                     if(typeof d[k] !== 'object' && k !== 'busca_indexada' && k !== 'peso_ordenacao_contrato') {
-                        let valor = k === 'cpf_cnpj' ? mascararCPF(d[k] || '') : d[k]; // Aplica LGPD
+                        let valor = k === 'cpf_cnpj' ? mascararCPF(d[k] || '') : d[k]; 
                         xml += `<${k}>${valor}</${k}>`;
                     }
                 }
@@ -584,11 +601,9 @@
         a.href = url; 
         a.download = fileName;
         
-        // Injeta e clica no link invisível
         document.body.appendChild(a); 
         a.click();
         
-        // Limpa a memória logo em seguida
         setTimeout(() => {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
