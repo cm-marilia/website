@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Manifestações e Ouvidoria</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; color: #1e293b; }
+        
+        .painel-filtros {
+            background: #ffffff; padding: 15px 20px; display: flex; flex-wrap: wrap;
+            justify-content: center; align-items: center; gap: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border-bottom: 1px solid #e2e8f0;
+        }
+
+        .filtro-grupo { display: flex; align-items: center; }
+        .filtro-grupo label { font-weight: bold; color: #475569; margin-right: 8px; font-size: 14px; }
+
+        .filtro-grupo select {
+            width: 180px; height: 40px; padding: 0 12px; border: 1px solid #cbd5e1;
+            border-radius: 6px; font-size: 14px; color: #1e293b; background-color: #fff;
+            cursor: pointer; outline: none; transition: border-color 0.2s;
+        }
+        .filtro-grupo select:focus { border-color: #3b82f6; }
+
+        .badge-atualizacao {
+            background-color: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            padding: 8px 16px; border-radius: 30px;
+            display: flex; align-items: center; gap: 8px;
+            font-size: 13px; font-weight: bold; color: #1d4ed8;
+        }
+        .badge-atualizacao .ponto-azul {
+            width: 12px; height: 12px; border-radius: 50%;
+            background: radial-gradient(circle at 4px 4px, #60a5fa, #1d4ed8);
+            box-shadow: 0 0 5px rgba(59, 130, 246, 0.6);
+        }
+
+        .painel-exportacao {
+            max-width: 1240px; margin: 20px auto 0 auto; padding: 0 15px;
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
+        }
+        .painel-exportacao span { font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+
+        .btn-export {
+            background-color: #ffffff; border: 1px solid #cbd5e1; padding: 6px 0;
+            border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer;
+            width: 65px; text-align: center; transition: all 0.2s;
+        }
+        .btn-export:hover { background-color: #f8fafc; border-color: #94a3b8; }
+
+        .container-cards {
+            max-width: 1240px; margin: 15px auto 10px auto; padding: 0 15px;
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; box-sizing: border-box;
+        }
+
+        .card {
+            background: #ffffff; padding: 15px 10px; border-radius: 8px;
+            text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            border-left: 4px solid #94a3b8; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; height: 100%;
+        }
+
+        .card.total     { border-left-color: #3b82f6; }
+        .card.sla       { border-left-color: #8b5cf6; }
+        .card.resolvido { border-left-color: #10b981; }
+        .card.pendente  { border-left-color: #f59e0b; }
+
+        .card-titulo { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: bold; margin-bottom: 5px; }
+        .card-valor { font-size: 18px; font-weight: bold; color: #0f172a; }
+        .card-perc { font-size: 10px; margin-top: 5px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        
+        .perc-blue { background-color: rgba(59, 130, 246, 0.1); color: #1d4ed8; }
+        .perc-purple { background-color: rgba(139, 92, 246, 0.1); color: #6d28d9; }
+        .perc-green { background-color: rgba(16, 185, 129, 0.1); color: #047857; }
+        .perc-amber { background-color: rgba(245, 158, 114, 0.1); color: #b45309; }
+
+        .container-graficos {
+            max-width: 1240px; margin: 10px auto 20px auto; padding: 0 15px;
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;
+        }
+        
+        .grafico-wrapper {
+            background: #ffffff; border-radius: 8px; padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02); box-sizing: border-box;
+        }
+        
+        .grafico-box { width: 100%; height: 350px; }
+        .grafico-full { grid-column: span 2; }
+
+        @media (max-width: 1024px) {
+            .container-cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .container-graficos { grid-template-columns: 1fr; }
+            .grafico-wrapper { grid-column: span 1; }
+        }
+
+        @media (max-width: 768px) {
+            .painel-exportacao { flex-direction: column-reverse; align-items: center; gap: 15px; }
+            .painel-exportacao div { justify-content: center; }
+        }
+
+        @media (max-width: 480px) {
+            .painel-filtros { flex-direction: column; gap: 12px; }
+            .filtro-grupo select { width: 100%; max-width: 280px; }
+            .container-cards { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="painel-filtros">
+        <div class="filtro-grupo">
+            <label for="filtroAno">Ano de Abertura:</label>
+            <select id="filtroAno"><option value="Todos">Todos</option></select>
+        </div>
+        <div class="filtro-grupo">
+            <label for="filtroMes">Mês de Abertura:</label>
+            <select id="filtroMes"><option value="Todos">Todos</option></select>
+        </div>
+    </div>
+
+    <div class="painel-exportacao">
+        <div class="badge-atualizacao">
+            <span class="ponto-azul"></span>
+            <span id="txtAtualizacao">Carregando atualização...</span>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span>Exportar Período:</span>
+            <button class="btn-export" onclick="exportarCSV()">CSV</button>
+            <button class="btn-export" onclick="exportarXLSX()">XLSX</button>
+            <button class="btn-export" onclick="exportarJSON()">JSON</button>
+            <button class="btn-export" onclick="exportarXML()">XML</button>
+        </div>
+    </div>
+
+    <div class="container-cards">
+        <div class="card total">
+            <div class="card-titulo">Total de Demandas</div>
+            <div class="card-valor" id="kpiTotal">0</div>
+            <span class="card-perc perc-blue">Volume Registrado</span>
+        </div>
+        <div class="card sla">
+            <div class="card-titulo">Tempo Médio de Resposta</div>
+            <div class="card-valor" id="kpiSLA">0,0 dias</div>
+            <span class="card-perc perc-purple" id="lblSlaSub">Média Global SLA</span>
+        </div>
+        <div class="card resolvido">
+            <div class="card-titulo">Demandas Respondidas</div>
+            <div class="card-valor" id="kpiRespondidas">0</div>
+            <span class="card-perc perc-green" id="percRespondidas">0% do total</span>
+        </div>
+        <div class="card pendente">
+            <div class="card-titulo">Demandas Pendentes</div>
+            <div class="card-valor" id="kpiPendentes">0</div>
+            <span class="card-perc perc-amber" id="percPendentes">0% em aberto</span>
+        </div>
+    </div>
+
+    <div class="container-graficos">
+        <div class="grafico-wrapper">
+            <div id="chartTipo" class="grafico-box"></div>
+        </div>
+        
+        <div class="grafico-wrapper">
+            <div id="chartCanal" class="grafico-box"></div>
+        </div>
+        
+        <div class="grafico-wrapper grafico-full">
+            <div id="chartAssunto" class="grafico-box"></div>
+        </div>
+    </div>
+
+    <script>
+        // URL da sua planilha real vinculada diretamente conforme fornecido
+        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTTaV8Dk7ngYuTASW0Md9TrIa4W8_t5MczIFVdo1SnDSRdVd_0Wp7WDXUSbGR5PmM2_GL7xiitMbb4A/pub?output=csv&t=' + new Date().getTime();
+
+        const domElements = {
+            filtroAno: document.getElementById('filtroAno'),
+            filtroMes: document.getElementById('filtroMes'),
+            txtAtualizacao: document.getElementById('txtAtualizacao'),
+            kpiTotal: document.getElementById('kpiTotal'),
+            kpiSLA: document.getElementById('kpiSLA'),
+            kpiRespondidas: document.getElementById('kpiRespondidas'),
+            kpiPendentes: document.getElementById('kpiPendentes'),
+            percRespondidas: document.getElementById('percRespondidas'),
+            percPendentes: document.getElementById('percPendentes')
+        };
+
+        const charts = {
+            tipo: echarts.init(document.getElementById('chartTipo')),
+            canal: echarts.init(document.getElementById('chartCanal')),
+            assunto: echarts.init(document.getElementById('chartAssunto'))
+        };
+
+        let dadosOriginais = [], dadosVisiveis = [];
+        const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+        function converterDataBR(str) {
+            if (!str) return null;
+            const partes = str.trim().split('/');
+            if (partes.length !== 3) return null;
+            const dia = parseInt(partes[0], 10);
+            const mes = parseInt(partes[1], 10) - 1;
+            const ano = parseInt(partes[2], 10);
+            const d = new Date(ano, mes, dia);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        fetch(csvUrl)
+            .then(res => res.text())
+            .then(textoBruto => {
+                const linhas = textoBruto.split(/\r?\n/);
+                const primeiraLinha = linhas[0];
+                
+                // Extração da data de modificação idêntica ao comportamento original
+                let match = primeiraLinha.match(/MODIF_REAL:\s*\d{2}\/\d{2}\/\d{4},\s*\d{2}:\d{2}(:\d{2})?/i);
+                let textoAtualizacao = "";
+                
+                if (match) {
+                    textoAtualizacao = match[0]
+                        .replace(/MODIF_REAL:\s*/i, "Dados atualizados em ")
+                        .replace(",", " às")
+                        .replace(/:\d{2}$/, "");
+                } else {
+                    textoAtualizacao = primeiraLinha.replace(/[",;]+$/, '').replace(/"/g, '').trim();
+                    if (textoAtualizacao.toUpperCase().includes("MODIF_REAL")) {
+                        textoAtualizacao = textoAtualizacao
+                            .replace(/MODIF_REAL:\s*/i, "Dados atualizados em ")
+                            .replace(",", " às")
+                            .replace(/:\d{2}$/, "");
+                    }
+                }
+                
+                if (textoAtualizacao && domElements.txtAtualizacao) {
+                    domElements.txtAtualizacao.textContent = textoAtualizacao;
+                } else {
+                    domElements.txtAtualizacao.textContent = "Conectado à Base de Dados Ativa";
+                }
+
+                // AQUI ESTÁ A CORREÇÃO SOLICITADA: Pula a primeira linha (metadados de data/hora) 
+                // e faz o parse a partir da segunda linha (cabeçalho)
+                const dadosTabelaCsv = linhas.slice(1).join('\n');
+
+                Papa.parse(dadosTabelaCsv, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        dadosOriginais = results.data.map(linha => {
+                            let clean = {};
+                            for (let key in linha) {
+                                let cleanKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+                                clean[cleanKey] = linha[key];
+                            }
+                            
+                            const dataAbertura = clean.datadeabertura;
+                            const dataResp = clean.dataresposta; 
+                            
+                            const objAbertura = converterDataBR(dataAbertura);
+                            const objResposta = converterDataBR(dataResp);
+                            
+                            if (objAbertura) {
+                                clean._anoAbertura = objAbertura.getFullYear().toString();
+                                clean._mesAberturaNome = nomesMeses[objAbertura.getMonth()];
+                            } else {
+                                clean._anoAbertura = "Indefinido";
+                                clean._mesAberturaNome = "Indefinido";
+                            }
+
+                            if (objAbertura && objResposta) {
+                                let diferencaTempo = objResposta.getTime() - objAbertura.getTime();
+                                clean._slaDias = Math.max(0, Math.floor(diferencaTempo / (1000 * 60 * 60 * 24)));
+                                clean._respondido = true;
+                            } else {
+                                clean._slaDias = null;
+                                clean._respondido = false;
+                            }
+
+                            clean.tipo_exibicao = linha["Tipo"] || "Não Informado";
+                            clean.canal_exibicao = linha["Canal de Entrada"] || "Não Informado";
+                            clean.assunto_exibicao = linha["Assunto"] || "Não Informado";
+
+                            return clean;
+                        }).filter(l => l._anoAbertura !== "Indefinido");
+
+                        popularFiltrosDinamicos(dadosOriginais);
+                        aplicarFiltrosEAtualizar();
+                    }
+                });
+            })
+            .catch(err => {
+                console.error("Erro no carregamento dos dados ativos:", err);
+                domElements.txtAtualizacao.textContent = "Erro na sincronização de dados";
+            });
+
+        function popularFiltrosDinamicos(d) {
+            const sAno = domElements.filtroAno, sMes = domElements.filtroMes;
+            
+            const anos = [...new Set(d.map(i => i._anoAbertura))].sort((a,b) => b - a);
+            anos.forEach(a => {
+                let o = document.createElement('option'); o.value = a; o.textContent = a; sAno.appendChild(o);
+            });
+
+            nomesMeses.forEach(m => {
+                let o = document.createElement('option'); o.value = m; o.textContent = m; sMes.appendChild(o);
+            });
+
+            sAno.addEventListener('change', aplicarFiltrosEAtualizar);
+            sMes.addEventListener('change', aplicarFiltrosEAtualizar);
+        }
+
+        function aplicarFiltrosEAtualizar() {
+            const anoSel = domElements.filtroAno.value;
+            const mesSel = domElements.filtroMes.value;
+
+            dadosVisiveis = dadosOriginais.filter(l => {
+                return (anoSel === 'Todos' || l._anoAbertura === anoSel) && 
+                       (mesSel === 'Todos' || l._mesAberturaNome === mesSel);
+            });
+
+            recalcularKPIs(dadosVisiveis);
+            renderizarGraficosOuvidoria(dadosVisiveis);
+        }
+
+        function recalcularKPIs(d) {
+            let total = d.length;
+            let respondidas = 0;
+            let somatorioSLA = 0;
+            let respondidasComSLA = 0;
+
+            d.forEach(l => {
+                if (l._respondido) {
+                    respondidas++;
+                    if (l._slaDias !== null) {
+                        somatorioSLA += l._slaDias;
+                        respondidasComSLA++;
+                    }
+                }
+            });
+
+            let pendentes = total - respondidas;
+            let mediaSLA = respondidasComSLA > 0 ? (somatorioSLA / respondidasComSLA) : 0;
+            
+            let percResp = total > 0 ? ((respondidas / total) * 100).toFixed(1) : "0.0";
+            let percPend = total > 0 ? ((pendentes / total) * 100).toFixed(1) : "0.0";
+
+            domElements.kpiTotal.textContent = total.toLocaleString('pt-BR');
+            domElements.kpiSLA.textContent = mediaSLA.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + " dias";
+            domElements.kpiRespondidas.textContent = respondidas.toLocaleString('pt-BR');
+            domElements.kpiPendentes.textContent = pendentes.toLocaleString('pt-BR');
+            
+            domElements.percRespondidas.textContent = `${percResp}% resolvido`;
+            domElements.percPendentes.textContent = `${percPend}% em aberto`;
+        }
+
+        function renderizarGraficosOuvidoria(d) {
+            let mapaTipo = {};
+            let mapaCanal = {};
+            let mapaAssunto = {};
+
+            d.forEach(l => {
+                mapaTipo[l.tipo_exibicao] = (mapaTipo[l.tipo_exibicao] || 0) + 1;
+                mapaCanal[l.canal_exibicao] = (mapaCanal[l.canal_exibicao] || 0) + 1;
+                mapaAssunto[l.assunto_exibicao] = (mapaAssunto[l.assunto_exibicao] || 0) + 1;
+            });
+
+            let dataTipo = Object.keys(mapaTipo).map(k => ({ name: k, value: mapaTipo[k] }));
+            charts.tipo.setOption({
+                title: { text: 'Distribuição por Tipo', left: 'center', textStyle: { fontSize: 14, color: '#334155' } },
+                tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                legend: { bottom: '0', left: 'center', type: 'scroll' },
+                series: [{
+                    type: 'pie', radius: ['40%', '70%'], avoidLabelOverlap: false,
+                    itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+                    label: { show: false }, data: dataTipo
+                }]
+            }, true);
+
+            let dataCanal = Object.keys(mapaCanal).map(k => ({ name: k, value: mapaCanal[k] }));
+            charts.canal.setOption({
+                title: { text: 'Canais de Entrada Utilizados', left: 'center', textStyle: { fontSize: 14, color: '#334155' } },
+                tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                legend: { bottom: '0', left: 'center', type: 'scroll' },
+                series: [{
+                    type: 'pie', radius: '65%', center: ['50%', '50%'],
+                    data: dataCanal, roseType: 'radius',
+                    itemStyle: { borderRadius: 4 },
+                    label: { show: true, fontSize: 10, formatter: '{b}' }
+                }]
+            }, true);
+
+            let dadosAssuntosOrdenados = Object.keys(mapaAssunto)
+                .map(k => ({ assunto: k, total: mapaAssunto[k] }))
+                .sort((a, b) => b.total - a.total)
+                .slice(0, 8);
+
+            charts.assunto.setOption({
+                title: { text: 'Principais Assuntos Recorrentes (Top 8)', left: 'left', textStyle: { fontSize: 14, color: '#334155' } },
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'value', boundaryGap: [0, 0.01] },
+                yAxis: { type: 'category', data: dadosAssuntosOrdenados.map(i => i.assunto).reverse() },
+                series: [{
+                    name: 'Demandas', type: 'bar',
+                    data: dadosAssuntosOrdenados.map(i => i.total).reverse(),
+                    itemStyle: { color: '#3b82f6', borderRadius: [0, 4, 4, 0] },
+                    label: { show: true, position: 'right', fontSize: 10 }
+                }]
+            }, true);
+        }
+
+        window.addEventListener('resize', () => {
+            charts.tipo.resize();
+            charts.canal.resize();
+            charts.assunto.resize();
+        });
+
+        function prepararMatrizExportacao() {
+            return dadosVisiveis.map(l => ({
+                "Tipo": l.tipo_exibicao,
+                "Assunto": l.assunto_exibicao,
+                "Canal de Entrada": l.canal_exibicao,
+                "Ano Abertura": l._anoAbertura,
+                "Mês Abertura": l._mesAberturaNome,
+                "Tempo Resposta (Dias)": l._respondido ? l._slaDias : "Pendente",
+                "Status": l._respondido ? "Respondido" : "Em Aberto"
+            }));
+        }
+
+        function gerarNomeArquivo() {
+            const a = domElements.filtroAno.value;
+            const m = domElements.filtroMes.value;
+            return `relatorio_ouvidoria_${a !== 'Todos' ? a : 'global'}_${m !== 'Todos' ? m.toLowerCase() : 'ano_completo'}`;
+        }
+
+        function exportarCSV() {
+            const csv = Papa.unparse(prepararMatrizExportacao(), { delimiter: ";" });
+            descarregarArquivo("\uFEFF" + csv, `${gerarNomeArquivo()}.csv`, "text/csv;charset=utf-8;");
+        }
+
+        function exportarXLSX() {
+            const ws = XLSX.utils.json_to_sheet(prepararMatrizExportacao());
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Manifestações");
+            XLSX.writeFile(wb, `${gerarNomeArquivo()}.xlsx`);
+        }
+
+        function exportarJSON() {
+            descarregarArquivo(JSON.stringify(prepararMatrizExportacao(), null, 2), `${gerarNomeArquivo()}.json`, "application/json");
+        }
+
+        function exportarXML() {
+            let xml = '<?xml version="1.0" encoding="UTF-8"?><ouvidoria>';
+            prepararMatrizExportacao().forEach(l => {
+                xml += '<registro>';
+                for(let k in l) {
+                    let tag = k.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w]/g,'');
+                    xml += `<${tag}>${l[k]}</${tag}>`;
+                }
+                xml += '</registro>';
+            });
+            xml += '</ouvidoria>';
+            descarregarArquivo(xml, `${gerarNomeArquivo()}.xml`, "application/xml");
+        }
+
+        function descarregarArquivo(conteudo, nome, tipo) {
+            const b = new Blob([conteudo], { type: tipo });
+            const u = URL.createObjectURL(b);
+            const a = document.createElement('a');
+            a.href = u; a.download = nome; a.click();
+            URL.revokeObjectURL(u);
+        }
+    </script>
+</body>
+</html>
