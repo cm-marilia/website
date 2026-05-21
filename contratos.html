@@ -70,6 +70,14 @@
         .info-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
         .info-valor { font-size: 13px; font-weight: 700; color: #1e293b; word-break: break-word; }
 
+        /* ESTILOS DOS NOVOS BOTÕES DE LINKS EXTERNOS */
+        .container-links { display: flex; flex-wrap: wrap; gap: 12px; width: 100%; }
+        .btn-link-externo { flex: 1; min-width: 200px; display: flex; align-items: center; justify-content: center; gap: 8px; height: 42px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; text-transform: uppercase; transition: 0.2s ease-in-out; box-sizing: border-box; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .btn-pdf { background: #fef2f2; color: #991b1b; border: 1px solid #fee2e2; }
+        .btn-pdf:hover { background: #fee2e2; border-color: #fca5a5; }
+        .btn-sapl { background: #f0fdf4; color: #166534; border: 1px solid #dcfce7; }
+        .btn-sapl:hover { background: #dcfce7; border-color: #86efac; }
+
         /* PAGINAÇÃO */
         .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px;}
         .dataTables_wrapper .dataTables_info { padding-top: 0 !important; color: #475569; font-size: 13px; font-weight: 500; margin-bottom: 0 !important; }
@@ -85,7 +93,7 @@
         #cabecalho-impressao { display: none; }
 
         @media print {
-            .topo, fieldset, .dt-bottom-controls { display: none !important; }
+            .topo, fieldset, .dt-bottom-controls, .container-links { display: none !important; }
             #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
             .card-info { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; }
             .container { display: block !important; margin: 0; }
@@ -281,6 +289,9 @@
                     else if (h.includes("modalidade")) obj.modalidade = val;
                     else if (h.includes("fiscal")) obj.fiscal = val;
                     else if (h.includes("situacao") || h.includes("status")) obj.situacao = val;
+                    // REQUISITO: Captação das duas novas colunas adicionadas à planilha
+                    else if (h.includes("link_pdf")) obj.link_pdf = val;
+                    else if (h.includes("link_sapl")) obj.link_sapl = val;
                 });
                 
                 obj.timestamp_contrato = converterDataParaTimestamp(obj.data_contrato);
@@ -311,7 +322,6 @@
         
         let htmlStatus = '<option value="">Situação (Todas)</option>';
         [...statuses].sort().forEach(s => {
-            // Verifica se a opção é Vigente/Ativo para a deixar pré-selecionada
             let selected = (s.toLowerCase().includes('vigente') || s.toLowerCase().includes('ativo')) ? 'selected' : '';
             htmlStatus += `<option value="${s}" ${selected}>${s}</option>`;
         });
@@ -346,7 +356,6 @@
             return matchTexto && matchSit && matchData;
         });
 
-        // Ordenação: Vigentes/Ativos primeiro, Encerrados no final, e cronologicamente
         res.sort((a, b) => {
             const sitA = (a.situacao || "").toLowerCase();
             const sitB = (b.situacao || "").toLowerCase();
@@ -376,6 +385,22 @@
                     const statusClass = (sitNormalizado.includes('encerrado') || sitNormalizado.includes('inativo') || sitNormalizado.includes('suspenso')) ? 'status-desligado' : 'status-ativo';
                     
                     const objetoFormatado = d.objeto_contrato ? d.objeto_contrato.replace(/\n/g, '<br>') : '-';
+
+                    // REQUISITO: Montagem condicional dos botões de links externos (não renderiza botão se o link estiver vazio)
+                    let htmlBotoesLinks = '';
+                    const temPdf = d.link_pdf && d.link_pdf.trim() !== '' && d.link_pdf.trim() !== '-';
+                    const temSapl = d.link_sapl && d.link_sapl.trim() !== '' && d.link_sapl.trim() !== '-';
+
+                    if (temPdf || temSapl) {
+                        htmlBotoesLinks += `<div class="info-row" style="margin-top: 4px;"><div class="container-links">`;
+                        if (temPdf) {
+                            htmlBotoesLinks += `<a href="${d.link_pdf}" target="_blank" class="btn-link-externo btn-pdf">📄 Ir para o contrato</a>`;
+                        }
+                        if (temSapl) {
+                            htmlBotoesLinks += `<a href="${d.link_sapl}" target="_blank" class="btn-link-externo btn-sapl">📁 Ir para a pasta do contrato</a>`;
+                        }
+                        htmlBotoesLinks += `</div></div>`;
+                    }
 
                     return `
                         <div class="card-info">
@@ -423,6 +448,8 @@
                                         <span class="info-valor" style="font-weight: 500; font-size: 12.5px; text-transform: uppercase;">${objetoFormatado}</span>
                                     </div>
                                 </div>
+
+                                ${htmlBotoesLinks}
                             </div>
                         </div>`;
                 }
@@ -497,14 +524,11 @@
         $('#filtroTexto').val(''); 
         $('select').val(''); 
         
-        // Retorna o filtro de status para "Vigente" (ou Ativo) por padrão ao limpar
         let statusOpt = $('#filtroStatus option').filter(function() {
             return $(this).text().toLowerCase().includes('vigente') || $(this).text().toLowerCase().includes('ativo');
         }).first().val();
         
-        if(statusOpt) {
-            $('#filtroStatus').val(statusOpt);
-        }
+        if(statusOpt) $('#filtroStatus').val(statusOpt);
         
         aplicarFiltros(); 
     }
