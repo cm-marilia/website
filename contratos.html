@@ -395,12 +395,7 @@
                                 </div>
                                 <div class="info-col">
                                     <span class="info-label">Modalidade</span>
-                                    <span class="info-valor">${d.modalidade || '-'}</span>
-                                </div>
-                                
-                                <div class="info-col full-width">
-                                    <span class="info-label">Objeto do Contrato</span>
-                                    <span class="info-valor" style="font-weight: 500; font-size: 12.5px;">${objetoFormatado}</span>
+                                    <span class="info-valor" style="white-space: nowrap;">${d.modalidade || '-'}</span>
                                 </div>
                                 <div class="info-col">
                                     <span class="info-label">Valor do Contrato</span>
@@ -417,6 +412,11 @@
                                 <div class="info-col">
                                     <span class="info-label">Fiscal</span>
                                     <span class="info-valor">${d.fiscal || '-'}</span>
+                                </div>
+                                
+                                <div class="info-col full-width">
+                                    <span class="info-label">Objeto do Contrato</span>
+                                    <span class="info-valor" style="font-weight: 500; font-size: 12.5px; text-transform: uppercase;">${objetoFormatado}</span>
                                 </div>
                             </div>
                         </div>`;
