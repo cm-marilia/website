@@ -463,8 +463,15 @@
                     const statusClass = (sitNormalizado.includes('encerrado') || sitNormalizado.includes('inativo') || sitNormalizado.includes('suspenso')) ? 'status-desligado' : 'status-ativo';
                     
                     const objetoFormatado = d.objeto_contrato ? d.objeto_contrato.replace(/\n/g, '<br>') : '-';
+                    
+                    // Lógica Dinâmica para exibir CPF ou CNPJ de forma elegante
+                    let numLimpo = (d.cpf_cnpj || '').replace(/\D/g, '');
+                    let labelDoc = "CNPJ/CPF";
+                    if (numLimpo.length === 11) labelDoc = "CPF";
+                    else if (numLimpo.length >= 14) labelDoc = "CNPJ";
+
                     const cpfCnpjMascarado = mascararCPF(d.cpf_cnpj);
-                    const docFormatado = cpfCnpjMascarado && cpfCnpjMascarado !== '-' ? `<span style="font-size: 11px; color: #64748b; font-weight: 600; letter-spacing: 0.5px;">CNPJ/CPF: ${cpfCnpjMascarado}</span>` : '';
+                    const docFormatado = cpfCnpjMascarado && cpfCnpjMascarado !== '-' ? `<span style="font-size: 11px; color: #64748b; font-weight: 600; letter-spacing: 0.5px;">${labelDoc}: ${cpfCnpjMascarado}</span>` : '';
 
                     let htmlBotoesLinks = '';
                     const temPdf = d.link_pdf && d.link_pdf.trim() !== '' && d.link_pdf.trim() !== '-';
