@@ -366,15 +366,16 @@
             }, true);
 
             // GRÁFICO 3: ASSUNTOS (COLUNAS VERTICAIS COM SCROLL HORIZONTAL)
+            // GRÁFICO 3: ASSUNTOS (COLUNAS VERTICAIS COM SCROLL HORIZONTAL CORRIGIDO)
             let dadosAssuntosOrdenados = Object.keys(mapaAssunto)
                 .map(k => ({ assunto: k, total: mapaAssunto[k] }))
-                .sort((a, b) => b.total - a.total); // Maior para o menor
+                .sort((a, b) => b.total - a.total); 
 
             const chartAssuntoDOM = document.getElementById('chartAssunto');
-            chartAssuntoDOM.style.height = '400px'; 
+            // AUMENTAMOS A ALTURA TOTAL DO GRÁFICO PARA DAR ESPAÇO AOS TEXTOS E AO SCROLL
+            chartAssuntoDOM.style.height = '450px'; 
             charts.assunto.resize(); 
 
-            // Calcula a porcentagem do zoom para exibir até 8 itens por vez
             const itensNaTela = Math.min(dadosAssuntosOrdenados.length, 8);
             const zoomEnd = dadosAssuntosOrdenados.length > 8 ? 
                 (itensNaTela / dadosAssuntosOrdenados.length) * 100 : 100;
@@ -382,34 +383,33 @@
             charts.assunto.setOption({
                 title: { text: 'Todos os Assuntos Recorrentes', left: 'center', textStyle: { fontSize: 14, color: '#334155' } },
                 tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-                // Grid com um "bottom" maior para acomodar a barra de rolagem e os textos inclinados
-                grid: { left: '3%', right: '3%', bottom: '25%', top: '50px', containLabel: true },
                 
-                // O eixo X agora recebe os nomes (categorias)
+                // AJUSTE CRÍTICO: 'bottom' aumentado para 35% (abre mais espaço para os textos inclinados)
+                grid: { left: '3%', right: '3%', bottom: '35%', top: '50px', containLabel: true },
+                
                 xAxis: { 
                     type: 'category', 
-                    data: dadosAssuntosOrdenados.map(i => i.assunto), // Não inverte mais (.reverse) para os maiores ficarem na esquerda
+                    data: dadosAssuntosOrdenados.map(i => i.assunto),
                     axisLabel: { 
-                        width: 120, 
+                        width: 150, // Permite textos um pouco mais largos
                         overflow: 'truncate', 
-                        interval: 0, // Força a exibição de todos os textos
-                        rotate: 35 // Inclina em 35 graus para caber direitinho
+                        interval: 0,
+                        rotate: 45 // Inclinação ajustada para 45 graus para economizar espaço horizontal
                     } 
                 },
                 
-                // O eixo Y agora recebe os valores numéricos
                 yAxis: { type: 'value' },
                 
-                // BARRA DE ROLAGEM HORIZONTAL
+                // BARRA DE ROLAGEM HORIZONTAL REPOSICIONADA
                 dataZoom: [
                     {
                         type: 'slider',
                         show: dadosAssuntosOrdenados.length > 8,
-                        xAxisIndex: [0], // <-- Aplica o scroll no eixo X (Horizontal)
-                        bottom: 0, // Gruda a barra bem no rodapé do gráfico
-                        start: 0, // Começa focando na esquerda (maiores valores)
-                        end: zoomEnd, // Vai até a proporção dos 8 primeiros itens
-                        height: 20,
+                        xAxisIndex: [0], 
+                        bottom: 10, // Define a distância fixa do rodapé da DIV (desgruda dos textos)
+                        start: 0, 
+                        end: zoomEnd, 
+                        height: 20, // Altura da barra de rolagem
                         zoomLock: true
                     },
                     {
@@ -432,9 +432,9 @@
                     colorBy: 'data', 
                     data: dadosAssuntosOrdenados.map(i => i.total),
                     itemStyle: { 
-                        borderRadius: [4, 4, 0, 0] // Arredonda a borda de cima da coluna
+                        borderRadius: [4, 4, 0, 0]
                     },
-                    label: { show: true, position: 'top', fontSize: 10 } // Número em cima da coluna
+                    label: { show: true, position: 'top', fontSize: 10 } 
                 }]
             }, true);
         }
