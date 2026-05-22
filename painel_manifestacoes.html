@@ -177,13 +177,12 @@
         let dadosOriginais = [], dadosVisiveis = [];
         const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
-        // Função conversora ultra-robusta de datas
         function limparEConverterData(str) {
             if (!str) return null;
             let strLimpa = String(str).trim();
             if (strLimpa === "") return null;
 
-            let apenasData = strLimpa.split(' ')[0]; // Corta qualquer horário que venha junto
+            let apenasData = strLimpa.split(' ')[0];
             
             if (apenasData.includes('/')) {
                 let partes = apenasData.split('/');
@@ -193,9 +192,9 @@
             } else if (apenasData.includes('-')) {
                 let partes = apenasData.split('-');
                 if (partes.length === 3) {
-                    if (partes[0].length === 4) { // Formato YYYY-MM-DD
+                    if (partes[0].length === 4) { 
                         return new Date(parseInt(partes[0], 10), parseInt(partes[1], 10) - 1, parseInt(partes[2], 10));
-                    } else { // Formato DD-MM-YYYY
+                    } else { 
                         return new Date(parseInt(partes[2], 10), parseInt(partes[1], 10) - 1, parseInt(partes[0], 10));
                     }
                 }
@@ -218,8 +217,6 @@
                                 clean[cleanKey] = linha[key];
                             }
                             
-                            // DETECTOR INTELIGENTE DE COLUNAS: 
-                            // Escaneia os cabeçalhos procurando palavras-chave ao invés de nomes exatos.
                             let chaveAbertura = Object.keys(clean).find(k => k.includes('abertura') || k.includes('cadastro') || k.includes('criacao'));
                             let chaveResposta = Object.keys(clean).find(k => k.includes('resposta') || k.includes('fechamento') || k.includes('conclusao'));
                             
@@ -241,11 +238,9 @@
                                 clean._mesAberturaNome = "Indefinido";
                             }
 
-                            // Define como respondido se a célula da coluna "resposta" tiver texto válido
                             const estaRespondido = dataResp && String(dataResp).trim() !== "";
                             clean._respondido = estaRespondido;
 
-                            // SLA: Calculado apenas se tiver data de abertura E de resposta válidas
                             if (objAbertura && objResposta) {
                                 let diferencaTempo = objResposta.getTime() - objAbertura.getTime();
                                 clean._slaDias = Math.max(0, Math.floor(diferencaTempo / (1000 * 60 * 60 * 24)));
@@ -253,7 +248,6 @@
                                 clean._slaDias = null;
                             }
 
-                            // Extrai os textos preservando a formatação original da planilha
                             clean.tipo_exibicao = chaveTipo && clean[chaveTipo] ? clean[chaveTipo] : "Não Informado";
                             clean.canal_exibicao = chaveCanal && clean[chaveCanal] ? clean[chaveCanal] : "Não Informado";
                             clean.assunto_exibicao = chaveAssunto && clean[chaveAssunto] ? clean[chaveAssunto] : "Não Informado";
@@ -366,27 +360,20 @@
                     data: dataCanal, 
                     itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
                     label: { 
-                        show: false // Esta é a linha que desativa os textos nas fatias
+                        show: false 
                     }
                 }]
             }, true);
 
-            // GRÁFICO 3: ASSUNTOS (COM BARRA DE ROLAGEM INTERNA)
             let dadosAssuntosOrdenados = Object.keys(mapaAssunto)
                 .map(k => ({ assunto: k, total: mapaAssunto[k] }))
                 .sort((a, b) => b.total - a.total);
 
-            // Volta a ter altura fixa e controlada, ideal para o Iframe
             const chartAssuntoDOM = document.getElementById('chartAssunto');
             chartAssuntoDOM.style.height = '400px'; 
             charts.assunto.resize(); 
 
-            // Calcula dinamicamente quantos itens mostrar na tela para não espremer
-            // Mostra no máximo 8 itens de uma vez, mas se tiver menos, mostra o que tem.
             const itensNaTela = Math.min(dadosAssuntosOrdenados.length, 8);
-            
-            // O ECharts funciona de baixo para cima quando a barra é horizontal.
-            // Para ver os maiores primeiro no topo, começamos o zoom do final do array
             const zoomStart = dadosAssuntosOrdenados.length > 8 ? 
                 ((dadosAssuntosOrdenados.length - itensNaTela) / dadosAssuntosOrdenados.length) * 100 : 0;
 
@@ -400,20 +387,19 @@
                     data: dadosAssuntosOrdenados.map(i => i.assunto).reverse(),
                     axisLabel: { width: 200, overflow: 'truncate' } 
                 },
-                // ADIÇÃO DO SCROLL BAR VERTICAL (DATAZOOM)
                 dataZoom: [
                     {
                         type: 'slider',
-                        show: dadosAssuntosOrdenados.length > 8, // Só mostra se tiver mais que 8 itens
-                        yAxisIndex: [0], // Aplica o scroll no eixo Y (vertical)
-                        left: '93%', // Posiciona no cantinho direito
-                        start: zoomStart, // Inicia focando no topo da lista (maiores valores)
-                        end: 100, // Vai até o fim do gráfico
-                        width: 20, // Largura da barrinha
-                        zoomLock: true // Trava o tamanho do "thumb", assim a pessoa só desliza
+                        show: dadosAssuntosOrdenados.length > 8,
+                        yAxisIndex: [0],
+                        left: '93%',
+                        start: zoomStart,
+                        end: 100,
+                        width: 20,
+                        zoomLock: true
                     },
                     {
-                        type: 'inside', // Permite rolar com o scroll do mouse ou touch
+                        type: 'inside',
                         yAxisIndex: [0],
                         start: zoomStart,
                         end: 100,
@@ -437,6 +423,7 @@
                     label: { show: true, position: 'right', fontSize: 10 }
                 }]
             }, true);
+        } // <-- A CHAVE QUE ESTAVA FALTANDO!
 
         window.addEventListener('resize', () => {
             charts.tipo.resize();
