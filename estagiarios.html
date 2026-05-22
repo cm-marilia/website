@@ -245,7 +245,7 @@
     function processarCSV(str) {
         const linhas = str.trim().split("\n");
         const match = linhas[0].match(/(\d{2}\/\d{2}\/\d{4},?\s*\d{2}:\d{2})/);
-        carimboAtualizacao = match ? `Atualizado em ${match[1].replace(',', '')}` : "Dados Sincronizados";
+        carimboAtualizacao = match ? `Dados atualizados em ${match[1].replace(',', '')}` : "Dados Sincronizados";
 
         const headers = linhas[1].split(",").map(h => h.trim().replace(/"/g, '').toLowerCase());
         
