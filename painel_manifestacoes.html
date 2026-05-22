@@ -358,19 +358,15 @@
                 title: { text: 'Canais de Entrada', left: 'center', textStyle: { fontSize: 14, color: '#334155' } },
                 tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
                 legend: { bottom: '0', left: 'center', type: 'scroll' },
-                // Paleta de cores vibrantes forçada para garantir contraste
                 color: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'],
                 series: [{
                     type: 'pie', 
-                    radius: ['40%', '70%'], // Define o formato "Donut" igual ao primeiro gráfico
+                    radius: ['40%', '70%'],
                     center: ['50%', '50%'],
                     data: dataCanal, 
-                    // Removido o roseType que escondia os menores
                     itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
                     label: { 
-                        show: true, 
-                        formatter: '{b}\n{c}', // Mostra o nome do canal e a quantidade
-                        fontSize: 10 
+                        show: false // Esta é a linha que desativa os textos nas fatias
                     }
                 }]
             }, true);
