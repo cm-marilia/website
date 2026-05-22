@@ -292,7 +292,7 @@
             
             if(linhasMatriz.length > 0 && linhasMatriz[0][0]) {
                 const match = linhasMatriz[0][0].match(/(\d{2}\/\d{2}\/\d{4},?\s*\d{2}:\d{2})/);
-                carimboAtualizacao = match ? `Atualizado em ${match[1].replace(',', '')}` : "Dados Sincronizados";
+                carimboAtualizacao = match ? `Dados atualizados em ${match[1].replace(',', '')}` : "Dados Sincronizados";
             }
 
             let indexCabecalho = 1;
