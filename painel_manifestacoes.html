@@ -43,7 +43,8 @@
 
         .container-cards {
             width: 100%; margin: 15px auto 10px auto; padding: 0 15px;
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+            /* Alterado para 3 colunas iguais e mantido na mesma linha no iframe */
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
         }
 
         .card {
@@ -56,7 +57,6 @@
         .card.total     { border-left-color: #3b82f6; }
         .card.sla       { border-left-color: #8b5cf6; }
         .card.resolvido { border-left-color: #10b981; }
-        .card.pendente  { border-left-color: #f59e0b; }
 
         .card-titulo { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: bold; margin-bottom: 5px; }
         .card-valor { font-size: 18px; font-weight: bold; color: #0f172a; }
@@ -65,7 +65,6 @@
         .perc-blue { background-color: rgba(59, 130, 246, 0.1); color: #1d4ed8; }
         .perc-purple { background-color: rgba(139, 92, 246, 0.1); color: #6d28d9; }
         .perc-green { background-color: rgba(16, 185, 129, 0.1); color: #047857; }
-        .perc-amber { background-color: rgba(245, 158, 114, 0.1); color: #b45309; }
 
         .container-graficos {
             width: 100%; margin: 10px auto 20px auto; padding: 0 15px;
@@ -81,7 +80,7 @@
         .grafico-full { grid-column: span 2; }
 
         @media (max-width: 860px) {
-            .container-cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            /* Removida a quebra dos cards para que fiquem na mesma linha no iframe de 850px */
             .container-graficos { grid-template-columns: 1fr; }
             .grafico-full { grid-column: span 1; }
             .painel-exportacao { justify-content: center; }
@@ -90,7 +89,7 @@
         @media (max-width: 480px) {
             .painel-filtros { flex-direction: column; gap: 12px; }
             .filtro-grupo select { width: 100%; max-width: 280px; }
-            .container-cards { grid-template-columns: 1fr; }
+            .container-cards { grid-template-columns: 1fr; } /* Apenas quebra no celular */
         }
     </style>
 </head>
@@ -133,11 +132,6 @@
             <div class="card-valor" id="kpiRespondidas">0</div>
             <span class="card-perc perc-green" id="percRespondidas">0% do total</span>
         </div>
-        <div class="card pendente">
-            <div class="card-titulo">Demandas Pendentes</div>
-            <div class="card-valor" id="kpiPendentes">0</div>
-            <span class="card-perc perc-amber" id="percPendentes">0% em aberto</span>
-        </div>
     </div>
 
     <div class="container-graficos">
@@ -163,9 +157,7 @@
             kpiTotal: document.getElementById('kpiTotal'),
             kpiSLA: document.getElementById('kpiSLA'),
             kpiRespondidas: document.getElementById('kpiRespondidas'),
-            kpiPendentes: document.getElementById('kpiPendentes'),
-            percRespondidas: document.getElementById('percRespondidas'),
-            percPendentes: document.getElementById('percPendentes')
+            percRespondidas: document.getElementById('percRespondidas')
         };
 
         const charts = {
@@ -213,12 +205,10 @@
                             let clean = {};
                             for (let key in linha) {
                                 if(!key) continue;
-                                // Remove pontuações e converte para minúsculas
                                 let cleanKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
                                 clean[cleanKey] = linha[key];
                             }
                             
-                            // EXTRAÇÃO EXATA BASEADA NO SEU CABEÇALHO 
                             const dataAbertura = clean.dataabertura || null;
                             const dataResp = clean.dataconclusao || null; 
                             
@@ -233,7 +223,6 @@
                                 clean._mesAberturaNome = "Indefinido";
                             }
 
-                            // Define como respondido se a célula tem qualquer conteúdo válido
                             const estaRespondido = dataResp && String(dataResp).trim() !== "";
                             clean._respondido = estaRespondido;
 
@@ -244,7 +233,6 @@
                                 clean._slaDias = null;
                             }
 
-                            // Higienização para exibição
                             clean.tipo_exibicao = linha["tipo"] || "Não Informado";
                             clean.canal_exibicao = linha["canal_entrada"] || "Não Informado";
                             clean.assunto_exibicao = linha["assuntos"] || "Não Informado";
@@ -306,19 +294,13 @@
                 }
             });
 
-            let pendentes = total - respondidas;
             let mediaSLA = respondidasComSLA > 0 ? (somatorioSLA / respondidasComSLA) : 0;
-            
             let percResp = total > 0 ? ((respondidas / total) * 100).toFixed(1) : "0.0";
-            let percPend = total > 0 ? ((pendentes / total) * 100).toFixed(1) : "0.0";
 
             domElements.kpiTotal.textContent = total.toLocaleString('pt-BR');
             domElements.kpiSLA.textContent = mediaSLA.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + " dias";
             domElements.kpiRespondidas.textContent = respondidas.toLocaleString('pt-BR');
-            domElements.kpiPendentes.textContent = pendentes.toLocaleString('pt-BR');
-            
             domElements.percRespondidas.textContent = `${percResp}% resolvido`;
-            domElements.percPendentes.textContent = `${percPend}% em aberto`;
         }
 
         function renderizarGraficosOuvidoria(d) {
@@ -332,7 +314,6 @@
                 mapaAssunto[l.assunto_exibicao] = (mapaAssunto[l.assunto_exibicao] || 0) + 1;
             });
 
-            // GRÁFICO 1
             let dataTipo = Object.keys(mapaTipo).map(k => ({ name: k, value: mapaTipo[k] }));
             charts.tipo.setOption({
                 title: { text: 'Distribuição por Tipo', left: 'center', textStyle: { fontSize: 14, color: '#334155' } },
@@ -345,7 +326,6 @@
                 }]
             }, true);
 
-            // GRÁFICO 2
             let dataCanal = Object.keys(mapaCanal).map(k => ({ name: k, value: mapaCanal[k] }));
             charts.canal.setOption({
                 title: { text: 'Canais de Entrada', left: 'center', textStyle: { fontSize: 14, color: '#334155' } },
@@ -362,7 +342,6 @@
                 }]
             }, true);
 
-            // GRÁFICO 3 (Assuntos Verticais com Scroll)
             let dadosAssuntosOrdenados = Object.keys(mapaAssunto)
                 .map(k => ({ assunto: k, total: mapaAssunto[k] }))
                 .sort((a, b) => b.total - a.total);
