@@ -365,44 +365,58 @@
                 }]
             }, true);
 
+            // GRÁFICO 3: ASSUNTOS (COLUNAS VERTICAIS COM SCROLL HORIZONTAL)
             let dadosAssuntosOrdenados = Object.keys(mapaAssunto)
                 .map(k => ({ assunto: k, total: mapaAssunto[k] }))
-                .sort((a, b) => b.total - a.total);
+                .sort((a, b) => b.total - a.total); // Maior para o menor
 
             const chartAssuntoDOM = document.getElementById('chartAssunto');
             chartAssuntoDOM.style.height = '400px'; 
             charts.assunto.resize(); 
 
+            // Calcula a porcentagem do zoom para exibir até 8 itens por vez
             const itensNaTela = Math.min(dadosAssuntosOrdenados.length, 8);
-            const zoomStart = dadosAssuntosOrdenados.length > 8 ? 
-                ((dadosAssuntosOrdenados.length - itensNaTela) / dadosAssuntosOrdenados.length) * 100 : 0;
+            const zoomEnd = dadosAssuntosOrdenados.length > 8 ? 
+                (itensNaTela / dadosAssuntosOrdenados.length) * 100 : 100;
 
             charts.assunto.setOption({
-                title: { text: 'Todos os Assuntos Recorrentes', left: 'left', textStyle: { fontSize: 14, color: '#334155' } },
+                title: { text: 'Todos os Assuntos Recorrentes', left: 'center', textStyle: { fontSize: 14, color: '#334155' } },
                 tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-                grid: { left: '3%', right: '12%', bottom: '3%', top: '50px', containLabel: true },
-                xAxis: { type: 'value', boundaryGap: [0, 0.01] },
-                yAxis: { 
+                // Grid com um "bottom" maior para acomodar a barra de rolagem e os textos inclinados
+                grid: { left: '3%', right: '3%', bottom: '25%', top: '50px', containLabel: true },
+                
+                // O eixo X agora recebe os nomes (categorias)
+                xAxis: { 
                     type: 'category', 
-                    data: dadosAssuntosOrdenados.map(i => i.assunto).reverse(),
-                    axisLabel: { width: 200, overflow: 'truncate' } 
+                    data: dadosAssuntosOrdenados.map(i => i.assunto), // Não inverte mais (.reverse) para os maiores ficarem na esquerda
+                    axisLabel: { 
+                        width: 120, 
+                        overflow: 'truncate', 
+                        interval: 0, // Força a exibição de todos os textos
+                        rotate: 35 // Inclina em 35 graus para caber direitinho
+                    } 
                 },
+                
+                // O eixo Y agora recebe os valores numéricos
+                yAxis: { type: 'value' },
+                
+                // BARRA DE ROLAGEM HORIZONTAL
                 dataZoom: [
                     {
                         type: 'slider',
                         show: dadosAssuntosOrdenados.length > 8,
-                        yAxisIndex: [0],
-                        left: '93%',
-                        start: zoomStart,
-                        end: 100,
-                        width: 20,
+                        xAxisIndex: [0], // <-- Aplica o scroll no eixo X (Horizontal)
+                        bottom: 0, // Gruda a barra bem no rodapé do gráfico
+                        start: 0, // Começa focando na esquerda (maiores valores)
+                        end: zoomEnd, // Vai até a proporção dos 8 primeiros itens
+                        height: 20,
                         zoomLock: true
                     },
                     {
                         type: 'inside',
-                        yAxisIndex: [0],
-                        start: zoomStart,
-                        end: 100,
+                        xAxisIndex: [0],
+                        start: 0,
+                        end: zoomEnd,
                         zoomOnMouseWheel: false,
                         moveOnMouseWheel: true
                     }
@@ -416,14 +430,13 @@
                     name: 'Demandas', 
                     type: 'bar',
                     colorBy: 'data', 
-                    data: dadosAssuntosOrdenados.map(i => i.total).reverse(),
+                    data: dadosAssuntosOrdenados.map(i => i.total),
                     itemStyle: { 
-                        borderRadius: [0, 4, 4, 0] 
+                        borderRadius: [4, 4, 0, 0] // Arredonda a borda de cima da coluna
                     },
-                    label: { show: true, position: 'right', fontSize: 10 }
+                    label: { show: true, position: 'top', fontSize: 10 } // Número em cima da coluna
                 }]
             }, true);
-        } // <-- A CHAVE QUE ESTAVA FALTANDO!
 
         window.addEventListener('resize', () => {
             charts.tipo.resize();
