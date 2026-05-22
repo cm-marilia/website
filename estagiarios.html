@@ -1,191 +1,190 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Relatório de Estagiários</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Relatório de Estagiários</title>
 
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
-    
-    <style>
-        /* =========================================
-           1. ESTILOS GERAIS E BASE
-           ========================================= */
-        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden;}
-        #wrapper { padding-bottom: 40px; padding: 15px; } 
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    
+    <style>
+        /* =========================================
+           1. ESTILOS GERAIS E BASE
+           ========================================= */
+        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden;}
+        #wrapper { padding-bottom: 40px; padding: 15px; } 
 
-        .topo { background: #003b75; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .topo h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
-        .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-        .texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
+        .topo { background: #003b75; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .topo h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
+        .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
 
-        .brasao {
-            max-width: 100%;
-            height: auto;
-            object-fit: contain;
-        }
-        
-        .painel-grupo { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .titulo-painel { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
-        .badge-atualizacao { position: absolute; top: -10px; right: 20px; font-size: 10px; background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
+        .brasao {
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        
+        .painel-grupo { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .titulo-painel { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
+        .badge-atualizacao { position: absolute; top: -10px; right: 20px; font-size: 10px; background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
 
-        /* ELEMENTOS DE FORMULÁRIO */
-        select, input { height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box; width: 100%; }
-        button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; width: 100%; }
-        button.btn-filtro:hover { background: #00274d; }
+        /* ELEMENTOS DE FORMULÁRIO */
+        select, input { height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box; width: 100%; }
+        button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; width: 100%; }
+        button.btn-filtro:hover { background: #00274d; }
 
-        /* FILTROS RESPONSIVOS */
-        .painel-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+        /* FILTROS RESPONSIVOS */
+        .painel-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
 
-        /* EXPORTAÇÃO RESPONSIVA */
-        .painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
-        .painel-exportacao button { flex: 1; min-width: 100px; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .painel-exportacao button:hover { background: #00274d; }
-        .painel-exportacao .btn-acao { background: #0284c7; }
-        .painel-exportacao::-webkit-scrollbar { height: 6px; }
-        .painel-exportacao::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        /* EXPORTAÇÃO RESPONSIVA */
+        .painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
+        .painel-exportacao button { flex: 1; min-width: 100px; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .painel-exportacao button:hover { background: #00274d; }
+        .painel-exportacao .btn-acao { background: #0284c7; }
+        .painel-exportacao::-webkit-scrollbar { height: 6px; }
+        .painel-exportacao::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-        /* CABEÇALHO VISUALIZAÇÃO */
-        .dt-custom-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 5px 0; }
-        .badge-contagem { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid #bae6fd; }
+        /* CABEÇALHO VISUALIZAÇÃO */
+        .dt-custom-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 5px 0; }
+        .badge-contagem { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid #bae6fd; }
 
-        /* CORREÇÃO DO MENU "EXIBIR X RESULTADOS" */
-        .dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; margin: 0; white-space: nowrap; }
-        .dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
+        /* CORREÇÃO DO MENU "EXIBIR X RESULTADOS" */
+        .dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; margin: 0; white-space: nowrap; }
+        .dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
 
-        /* TABELA BASE E CARDS */
-        #tabela thead { display: none !important; }
-        table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
-        
-        .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        .card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; display: flex; justify-content: space-between; align-items: center; }
-        .card-header-texto { display: flex; flex-direction: column; gap: 2px; }
-        .nome-principal { font-size: 16px; font-weight: 800; color: #003b75; text-transform: uppercase; }
-        .subtitulo-card { font-size: 12px; color: #64748b; font-weight: 500; text-transform: uppercase; }
-        
-        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
-        .status-ativo { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-        .status-desligado { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-        
-        .card-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); padding: 12px 15px; gap: 10px; }
-        .info-col { display: flex; flex-direction: column; }
-        .info-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
-        .info-valor { font-size: 13px; font-weight: 700; color: #1e293b; }
+        /* TABELA BASE E CARDS */
+        #tabela thead { display: none !important; }
+        table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
+        
+        .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; display: flex; justify-content: space-between; align-items: center; }
+        .card-header-texto { display: flex; flex-direction: column; gap: 2px; }
+        .nome-principal { font-size: 16px; font-weight: 800; color: #003b75; text-transform: uppercase; }
+        .subtitulo-card { font-size: 12px; color: #64748b; font-weight: 500; text-transform: uppercase; }
+        
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+        .status-ativo { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .status-desligado { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        
+        .card-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); padding: 12px 15px; gap: 10px; }
+        .info-col { display: flex; flex-direction: column; }
+        .info-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
+        .info-valor { font-size: 13px; font-weight: 700; color: #1e293b; }
 
-        /* PAGINAÇÃO */
-        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px;}
-        .dataTables_wrapper .dataTables_info { padding-top: 0 !important; color: #475569; font-size: 13px; font-weight: 500; margin-bottom: 0 !important; }
-        .dataTables_wrapper .dataTables_paginate { display: flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 0 !important; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 6px 12px !important; border-radius: 6px !important; margin: 0 !important; border: 1px solid transparent !important; color: #475569 !important; font-weight: 600; font-size: 13px; background: transparent !important; cursor: pointer; transition: 0.2s; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border-color: #003b75 !important; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #003b75 !important; }
+        /* PAGINAÇÃO */
+        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px;}
+        .dataTables_wrapper .dataTables_info { padding-top: 0 !important; color: #475569; font-size: 13px; font-weight: 500; margin-bottom: 0 !important; }
+        .dataTables_wrapper .dataTables_paginate { display: flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 0 !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 6px 12px !important; border-radius: 6px !important; margin: 0 !important; border: 1px solid transparent !important; color: #475569 !important; font-weight: 600; font-size: 13px; background: transparent !important; cursor: pointer; transition: 0.2s; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border-color: #003b75 !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #003b75 !important; }
 
-        #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #003b75; font-weight: bold; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #003b75; font-weight: bold; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        #cabecalho-impressao { display: none; }
+        #cabecalho-impressao { display: none; }
 
-        /* =========================================
-           4. TELA PEQUENA (CELULAR) E IMPRESSÃO
-           ========================================= */
-        @media (max-width: 600px) {
-            .topo { flex-direction: column; gap: 10px; text-align: center; }
-            .card-header { flex-direction: column; text-align: center; gap: 10px; }
-            .card-body { grid-template-columns: 1fr 1fr; }
-            .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
-            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
-        }
+        /* =========================================
+           4. TELA PEQUENA (CELULAR) E IMPRESSÃO
+           ========================================= */
+        @media (max-width: 600px) {
+            .topo { flex-direction: column; gap: 10px; text-align: center; }
+            .card-header { flex-direction: column; text-align: center; gap: 10px; }
+            .card-body { grid-template-columns: 1fr 1fr; }
+            .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
+            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
+        }
 
-        @media print {
-            .topo, fieldset, .dt-bottom-controls { display: none !important; }
-            #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
-            .card-info { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; }
-            .container { display: block !important; margin: 0; }
-        }
-    </style>
+        @media print {
+            .topo, fieldset, .dt-bottom-controls { display: none !important; }
+            #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
+            .card-info { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; }
+            .container { display: block !important; margin: 0; }
+        }
+    </style>
 </head>
 <body>
 
 <div id="wrapper">
-    <header class="topo">
-        <h1>Relatório de Estagiários</h1>
-        <div class="logo-container">
-            <img src="Brasão_de_Marília.png" alt="Brasão de Marília" width="50" height="50" class="brasao">
-            <span class="texto-camara">Câmara Municipal de Marília</span>
-        </div>
-    </header>
+    <header class="topo">
+        <h1>Relatório de Estagiários</h1>
+        <div class="logo-container">
+            <img src="Brasão_de_Marília.png" alt="Brasão de Marília" width="50" height="50" class="brasao">
+            <span class="texto-camara">Câmara Municipal de Marília</span>
+        </div>
+    </header>
 
-    <div id="cabecalho-impressao">
-        <img src="Brasão_de_Marília.png" width="63" height="70" alt="Brasão de Marília">
-        <div>
-            <h1 style="margin:0; color:#003b75;">Relatório de Estagiários</h1>
-            <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
-        </div>
-    </div>
+    <div id="cabecalho-impressao">
+        <img src="Brasão_de_Marília.png" width="63" height="70" alt="Brasão de Marília">
+        <div>
+            <h1 style="margin:0; color:#003b75;">Relatório de Estagiários</h1>
+            <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
+        </div>
+    </div>
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <span>Carregando base de dados...</span>
-    </div>
+    <div id="loader">
+        <div class="spinner"></div>
+        <span>Carregando base de dados...</span>
+    </div>
 
-    <main class="container" id="main-container" style="display: none;">
-        <fieldset class="painel-grupo">
-            <legend class="titulo-painel">Filtros de Pesquisa</legend>
-            <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
-            
-            <div class="painel-filtros" style="margin-bottom: 10px;">
-                <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off" aria-label="Pesquisar por nome">
-                <select id="filtroStatus" aria-label="Filtrar por Situação">
-                    <option value="">Situação</option>
-                    <option value="Ativo" selected>Ativos</option>
-                    <option value="Desligado">Desligados</option>
-                </select>
-                <select id="filtroTipoData" aria-label="Filtrar por Tipo de Data">
-                    <option value="">Filtrar período por...</option>
-                    <option value="admissao">Admissão</option>
-                    <option value="demissao">Demissão</option>
-                </select>
-            </div>
-            
-            <div class="painel-filtros">
-                <select id="filtroMes" aria-label="Filtrar por Mês">
-                    <option value="">Mês</option>
-                    <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
-                    <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
-                    <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
-                    <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-                </select>
-                <select id="filtroAno" aria-label="Filtrar por Ano"><option value="">Ano</option></select>
-                <button class="btn-filtro" onclick="limparFiltros()">Limpar filtros</button>
-            </div>
-        </fieldset>
+    <main class="container" id="main-container" style="display: none;">
+        <fieldset class="painel-grupo">
+            <legend class="titulo-painel">Filtros de Pesquisa</legend>
+            <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
+            
+            <div class="painel-filtros" style="margin-bottom: 10px;">
+                <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off" aria-label="Pesquisar por nome">
+                <select id="filtroStatus" aria-label="Filtrar por Situação">
+                    <option value="">Situação</option>
+                    <option value="Ativo" selected>Ativos</option>
+                    <option value="Desligado">Desligados</option>
+                </select>
+                <select id="filtroTipoData" aria-label="Filtrar por Tipo de Data">
+                    <option value="">Filtrar período por...</option>
+                    <option value="admissao">Admissão</option>
+                    <option value="demissao">Demissão</option>
+                </select>
+            </div>
+            
+            <div class="painel-filtros">
+                <select id="filtroMes" aria-label="Filtrar por Mês">
+                    <option value="">Mês</option>
+                    <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+                    <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+                    <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+                    <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                </select>
+                <select id="filtroAno" aria-label="Filtrar por Ano"><option value="">Ano</option></select>
+                <button class="btn-filtro" onclick="limparFiltros()">Limpar filtros</button>
+            </div>
+        </fieldset>
 
-        <fieldset class="painel-grupo">
-            <legend class="titulo-painel">Exportação e Impressão</legend>
-            <div class="painel-exportacao">
-                <button onclick="exportarCSV()">⬇️ CSV</button>
-                <button onclick="exportarXLSX()">⬇️ Excel</button>
-                <button onclick="exportarJSON()">⬇️ JSON</button>
-                <button onclick="exportarXML()">⬇️ XML</button>
-                <button class="btn-acao" onclick="imprimirSeguro()">🖨️ Imprimir</button>
-                <button class="btn-acao" onclick="carregarDados()">🔄 Atualizar</button>
-            </div>
-        </fieldset>
+        <fieldset class="painel-grupo">
+            <legend class="titulo-painel">Exportação e Impressão</legend>
+            <div class="painel-exportacao">
+                <button onclick="exportarCSV()">⬇️ CSV</button>
+                <button onclick="exportarXLSX()">⬇️ Excel</button>
+                <button onclick="exportarJSON()">⬇️ JSON</button>
+                <button onclick="exportarXML()">⬇️ XML</button>
+                <button class="btn-acao" onclick="imprimirSeguro()">🖨️ Imprimir</button>
+            </div>
+        </fieldset>
 
-        <fieldset class="painel-grupo" id="painel-visualizacao" style="padding: 10px 15px;">
-            <legend class="titulo-painel">Visualização</legend>
-            <div class="dt-custom-header">
-                <div id="comprimento-tabela"></div> 
-                <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
-            </div>
-        </fieldset>
+        <fieldset class="painel-grupo" id="painel-visualizacao" style="padding: 10px 15px;">
+            <legend class="titulo-painel">Visualização</legend>
+            <div class="dt-custom-header">
+                <div id="comprimento-tabela"></div> 
+                <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
+            </div>
+        </fieldset>
 
-        <table id="tabela" style="width:100%" role="presentation">
-            <thead><tr><th>Dados</th></tr></thead>
-            <tbody></tbody>
-        </table>
-    </main>
+        <table id="tabela" style="width:100%" role="presentation">
+            <thead><tr><th>Dados</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </main>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -193,232 +192,232 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
-    const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTK8EGvu2R21KpD3-E3SFDVC5qfWSihafXCpj_Y-ZnpM9DNBEb_Gimw0TboxkpiuMqJQ01WNNHm8-FA/pub?output=csv";
-    
-    let tabela;
-    let dadosGlobais = [];
-    let carimboAtualizacao = "";
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTK8EGvu2R21KpD3-E3SFDVC5qfWSihafXCpj_Y-ZnpM9DNBEb_Gimw0TboxkpiuMqJQ01WNNHm8-FA/pub?output=csv";
+    
+    let tabela;
+    let dadosGlobais = [];
+    let carimboAtualizacao = "";
 
-    // INFRAESTRUTURA
-    function enviarAlturaIframe() {
-        setTimeout(() => {
-            const wrapper = document.getElementById('wrapper');
-            if (wrapper) {
-                const h = wrapper.offsetHeight + 40; 
-                window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
-            }
-        }, 200); 
-    }
+    // INFRAESTRUTURA
+    function enviarAlturaIframe() {
+        setTimeout(() => {
+            const wrapper = document.getElementById('wrapper');
+            if (wrapper) {
+                const h = wrapper.offsetHeight + 40; 
+                window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
+            }
+        }, 200); 
+    }
 
-    function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
+    function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
 
-    // OTIMIZADO: Agora retorna os milissegundos para facilitar e tornar segura a matemática de ordenação
-    function parseDataBR(str) {
-        if (!str || str === "-") return null;
-        const p = str.split('/');
-        return new Date(p[2], p[1] - 1, p[0]).getTime();
-    }
+    // OTIMIZADO: Agora retorna os milissegundos para facilitar e tornar segura a matemática de ordenação
+    function parseDataBR(str) {
+        if (!str || str === "-") return null;
+        const p = str.split('/');
+        return new Date(p[2], p[1] - 1, p[0]).getTime();
+    }
 
-    function gerarNomeArquivoBase() {
-        let partes = ["estagiarios"];
-        const nome = $('#filtroNome').val().trim();
-        if (nome) partes.push(nome.replace(/\s+/g, '_'));
-        if ($('#filtroStatus').val()) partes.push($('#filtroStatus').val());
-        if ($('#filtroAno').val()) partes.push($('#filtroAno').val());
-        return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '');
-    }
+    function gerarNomeArquivoBase() {
+        let partes = ["estagiarios"];
+        const nome = $('#filtroNome').val().trim();
+        if (nome) partes.push(nome.replace(/\s+/g, '_'));
+        if ($('#filtroStatus').val()) partes.push($('#filtroStatus').val());
+        if ($('#filtroAno').val()) partes.push($('#filtroAno').val());
+        return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '');
+    }
 
-    // CARREGAMENTO E PROCESSAMENTO
-    async function carregarDados() {
-        $('#loader').show(); $('#main-container').hide();
-        try {
-            const response = await fetch(`${SHEET_URL}&cache=${Date.now()}`);
-            const text = await response.text();
-            dadosGlobais = processarCSV(text);
-            popularFiltroAno();
-            aplicarFiltros();
-            $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
-            $('#loader').hide();
-            $('#main-container').fadeIn(400, () => enviarAlturaIframe());
-        } catch (e) { console.error(e); }
-    }
+    // CARREGAMENTO E PROCESSAMENTO
+    async function carregarDados() {
+        $('#loader').show(); $('#main-container').hide();
+        try {
+            const response = await fetch(`${SHEET_URL}&cache=${Date.now()}`);
+            const text = await response.text();
+            dadosGlobais = processarCSV(text);
+            popularFiltroAno();
+            aplicarFiltros();
+            $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
+            $('#loader').hide();
+            $('#main-container').fadeIn(400, () => enviarAlturaIframe());
+        } catch (e) { console.error(e); }
+    }
 
-    function processarCSV(str) {
-        const linhas = str.trim().split("\n");
-        const match = linhas[0].match(/(\d{2}\/\d{2}\/\d{4},?\s*\d{2}:\d{2})/);
-        carimboAtualizacao = match ? `Atualizado em ${match[1].replace(',', '')}` : "Dados Sincronizados";
+    function processarCSV(str) {
+        const linhas = str.trim().split("\n");
+        const match = linhas[0].match(/(\d{2}\/\d{2}\/\d{4},?\s*\d{2}:\d{2})/);
+        carimboAtualizacao = match ? `Dados atualizados em ${match[1].replace(',', '')}` : "Dados Sincronizados";
 
-        const headers = linhas[1].split(",").map(h => h.trim().replace(/"/g, '').toLowerCase());
-        
-        return linhas.slice(2).map(row => {
-            const colunas = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            let obj = {};
-            
-            headers.forEach((h, i) => {
-                let val = colunas[i] ? colunas[i].replace(/"/g, '').trim() : "";
-                if (h.includes("nome")) obj.nome = val;
-                if (h.includes("admissao")) obj.admissao = val;
-                if (h.includes("desligamento")) obj.desligamento = val;
-            });
-            
-            obj.situacao = (!obj.desligamento || obj.desligamento === "-") ? "Ativo" : "Desligado";
-            
-            // OTIMIZADO: Criando o campo de busca normalizado apenas uma vez
-            obj.busca_nome = obj.nome ? removerAcentos(obj.nome.toLowerCase()) : "";
-            
-            return obj;
-        }).filter(d => d.nome);
-    }
+        const headers = linhas[1].split(",").map(h => h.trim().replace(/"/g, '').toLowerCase());
+        
+        return linhas.slice(2).map(row => {
+            const colunas = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            let obj = {};
+            
+            headers.forEach((h, i) => {
+                let val = colunas[i] ? colunas[i].replace(/"/g, '').trim() : "";
+                if (h.includes("nome")) obj.nome = val;
+                if (h.includes("admissao")) obj.admissao = val;
+                if (h.includes("desligamento")) obj.desligamento = val;
+            });
+            
+            obj.situacao = (!obj.desligamento || obj.desligamento === "-") ? "Ativo" : "Desligado";
+            
+            // OTIMIZADO: Criando o campo de busca normalizado apenas uma vez
+            obj.busca_nome = obj.nome ? removerAcentos(obj.nome.toLowerCase()) : "";
+            
+            return obj;
+        }).filter(d => d.nome);
+    }
 
-    function popularFiltroAno() {
-        let anos = new Set();
-        dadosGlobais.forEach(d => {
-            if (d.admissao) anos.add(d.admissao.split('/')[2]);
-            if (d.desligamento && d.desligamento !== "-") anos.add(d.desligamento.split('/')[2]);
-        });
-        anos = [...anos].filter(a => a && a.length === 4).sort((a,b) => b-a);
-        
-        $('#filtroAno').html('<option value="">Ano</option>');
-        anos.forEach(a => $('#filtroAno').append(new Option(a, a)));
-    }
+    function popularFiltroAno() {
+        let anos = new Set();
+        dadosGlobais.forEach(d => {
+            if (d.admissao) anos.add(d.admissao.split('/')[2]);
+            if (d.desligamento && d.desligamento !== "-") anos.add(d.desligamento.split('/')[2]);
+        });
+        anos = [...anos].filter(a => a && a.length === 4).sort((a,b) => b-a);
+        
+        $('#filtroAno').html('<option value="">Ano</option>');
+        anos.forEach(a => $('#filtroAno').append(new Option(a, a)));
+    }
 
-    // LÓGICA DE FILTRO E RENDER
-    function aplicarFiltros() {
-        const txt = removerAcentos($('#filtroNome').val().toLowerCase());
-        const sit = $('#filtroStatus').val();
-        const tipoData = $('#filtroTipoData').val();
-        const mes = $('#filtroMes').val();
-        const ano = $('#filtroAno').val();
+    // LÓGICA DE FILTRO E RENDER
+    function aplicarFiltros() {
+        const txt = removerAcentos($('#filtroNome').val().toLowerCase());
+        const sit = $('#filtroStatus').val();
+        const tipoData = $('#filtroTipoData').val();
+        const mes = $('#filtroMes').val();
+        const ano = $('#filtroAno').val();
 
-        const res = dadosGlobais.filter(d => {
-            // OTIMIZADO: Usa o campo pré-processado, deixando a digitação super rápida
-            const matchNome = !txt || d.busca_nome.includes(txt);
-            const matchSit = !sit || d.situacao === sit;
+        const res = dadosGlobais.filter(d => {
+            // OTIMIZADO: Usa o campo pré-processado, deixando a digitação super rápida
+            const matchNome = !txt || d.busca_nome.includes(txt);
+            const matchSit = !sit || d.situacao === sit;
 
-            let matchData = true;
-            if (tipoData || mes || ano) {
-                const mAdm = d.admissao ? (!mes || d.admissao.split('/')[1] === mes) && (!ano || d.admissao.split('/')[2] === ano) : false;
-                const mDem = (d.desligamento && d.desligamento !== "-") ? (!mes || d.desligamento.split('/')[1] === mes) && (!ano || d.desligamento.split('/')[2] === ano) : false;
+            let matchData = true;
+            if (tipoData || mes || ano) {
+                const mAdm = d.admissao ? (!mes || d.admissao.split('/')[1] === mes) && (!ano || d.admissao.split('/')[2] === ano) : false;
+                const mDem = (d.desligamento && d.desligamento !== "-") ? (!mes || d.desligamento.split('/')[1] === mes) && (!ano || d.desligamento.split('/')[2] === ano) : false;
 
-                if (tipoData === 'admissao') matchData = mAdm;
-                else if (tipoData === 'demissao') matchData = mDem;
-                else matchData = mAdm || mDem;
-            }
-            return matchNome && matchSit && matchData;
-        });
+                if (tipoData === 'admissao') matchData = mAdm;
+                else if (tipoData === 'demissao') matchData = mDem;
+                else matchData = mAdm || mDem;
+            }
+            return matchNome && matchSit && matchData;
+        });
 
-        res.sort((a, b) => {
-            if (a.situacao !== b.situacao) return a.situacao === "Ativo" ? -1 : 1;
-            // Ordenação alfabética pelo nome
-            return (a.nome || "").localeCompare(b.nome || "");
-        });
+        res.sort((a, b) => {
+            if (a.situacao !== b.situacao) return a.situacao === "Ativo" ? -1 : 1;
+            // Ordenação alfabética pelo nome
+            return (a.nome || "").localeCompare(b.nome || "");
+        });
 
-        renderizar(res);
-    }
+        renderizar(res);
+    }
 
-    function renderizar(dados) {
-        if (tabela) { tabela.destroy(); $('#comprimento-tabela').empty(); }
+    function renderizar(dados) {
+        if (tabela) { tabela.destroy(); $('#comprimento-tabela').empty(); }
 
-        tabela = $('#tabela').DataTable({
-            data: dados,
-            pageLength: 10,
-            ordering: false,
-            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
-            dom: 'lrt<"dt-bottom-controls"ip>',
-            columns: [{
-                data: null,
-                render: function(d) {
-                    const statusClass = d.situacao === 'Ativo' ? 'status-ativo' : 'status-desligado';
-                    return `
-                        <div class="card-info">
-                            <div class="card-header">
-                                <div class="card-header-texto">
-                                    <span class="nome-principal">${d.nome}</span>
-                                    <span class="subtitulo-card">Estagiário(a)</span>
-                                </div>
-                                <span class="status-badge ${statusClass}">${d.situacao}</span>
-                            </div>
-                            <div class="card-body">
-                                <div class="info-col"><span class="info-label">Lotação</span><span class="info-valor">Câmara Municipal</span></div>
-                                <div class="info-col"><span class="info-label">Admissão</span><span class="info-valor">${d.admissao}</span></div>
-                                <div class="info-col"><span class="info-label">Desligamento</span><span class="info-valor">${d.desligamento || '-'}</span></div>
-                            </div>
-                        </div>`;
-                }
-            }],
-            initComplete: function() { $('.dataTables_length').appendTo('#comprimento-tabela'); enviarAlturaIframe(); },
-            drawCallback: function() { 
-                const total = this.api().rows({ filter: 'applied' }).count();
-                $('#contagem-registros').html(`<b>${total}</b> registros encontrados`);
-                enviarAlturaIframe(); 
-            }
-        });
+        tabela = $('#tabela').DataTable({
+            data: dados,
+            pageLength: 10,
+            ordering: false,
+            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
+            dom: 'lrt<"dt-bottom-controls"ip>',
+            columns: [{
+                data: null,
+                render: function(d) {
+                    const statusClass = d.situacao === 'Ativo' ? 'status-ativo' : 'status-desligado';
+                    return `
+                        <div class="card-info">
+                            <div class="card-header">
+                                <div class="card-header-texto">
+                                    <span class="nome-principal">${d.nome}</span>
+                                    <span class="subtitulo-card">Estagiário(a)</span>
+                                </div>
+                                <span class="status-badge ${statusClass}">${d.situacao}</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="info-col"><span class="info-label">Lotação</span><span class="info-valor">Câmara Municipal</span></div>
+                                <div class="info-col"><span class="info-label">Admissão</span><span class="info-valor">${d.admissao}</span></div>
+                                <div class="info-col"><span class="info-label">Desligamento</span><span class="info-valor">${d.desligamento || '-'}</span></div>
+                            </div>
+                        </div>`;
+                }
+            }],
+            initComplete: function() { $('.dataTables_length').appendTo('#comprimento-tabela'); enviarAlturaIframe(); },
+            drawCallback: function() { 
+                const total = this.api().rows({ filter: 'applied' }).count();
+                $('#contagem-registros').html(`<b>${total}</b> registros encontrados`);
+                enviarAlturaIframe(); 
+            }
+        });
 
-        tabela.on('page.dt', function () {
-            setTimeout(function() {
-                document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
-        });
-    }
+        tabela.on('page.dt', function () {
+            setTimeout(function() {
+                document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        });
+    }
 
-    // EXPORTAÇÃO
-    function exportarCSV() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        let csv = "\ufeffNome,Situacao,Admissao,Desligamento\n";
-        data.forEach(d => { csv += `"${d.nome}","${d.situacao}","${d.admissao}","${d.desligamento}"\n`; });
-        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv");
-    }
+    // EXPORTAÇÃO
+    function exportarCSV() {
+        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+        let csv = "\ufeffNome,Situacao,Admissao,Desligamento\n";
+        data.forEach(d => { csv += `"${d.nome}","${d.situacao}","${d.admissao}","${d.desligamento}"\n`; });
+        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv");
+    }
 
-    function exportarXLSX() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Estagiários");
-        XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx");
-    }
+    function exportarXLSX() {
+        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Estagiários");
+        XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx");
+    }
 
-    function exportarJSON() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        downloadFile(JSON.stringify(data, null, 2), gerarNomeArquivoBase() + ".json", "application/json");
-    }
+    function exportarJSON() {
+        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+        downloadFile(JSON.stringify(data, null, 2), gerarNomeArquivoBase() + ".json", "application/json");
+    }
 
-    function exportarXML() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        let xml = '<?xml version="1.0" encoding="UTF-8"?><estagiarios>';
-        data.forEach(d => {
-            xml += '<estagiario>';
-            for (let k in d) {
-                // Apenas renderiza chaves que não sejam objetos complexos ou campos internos
-                if(typeof d[k] !== 'object' && k !== 'busca_nome') {
-                     xml += `<${k}>${d[k]}</${k}>`;
-                }
-            }
-            xml += '</estagiario>';
-        });
-        xml += '</estagiarios>';
-        downloadFile(xml, gerarNomeArquivoBase() + ".xml", "application/xml");
-    }
+    function exportarXML() {
+        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+        let xml = '<?xml version="1.0" encoding="UTF-8"?><estagiarios>';
+        data.forEach(d => {
+            xml += '<estagiario>';
+            for (let k in d) {
+                // Apenas renderiza chaves que não sejam objetos complexos ou campos internos
+                if(typeof d[k] !== 'object' && k !== 'busca_nome') {
+                     xml += `<${k}>${d[k]}</${k}>`;
+                }
+            }
+            xml += '</estagiario>';
+        });
+        xml += '</estagiarios>';
+        downloadFile(xml, gerarNomeArquivoBase() + ".xml", "application/xml");
+    }
 
-    function downloadFile(content, fileName, mime) {
-        const blob = new Blob([content], { type: mime });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = fileName; a.click();
-    }
+    function downloadFile(content, fileName, mime) {
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = fileName; a.click();
+    }
 
-    function imprimirSeguro() {
-        const len = tabela.page.len();
-        tabela.page.len(-1).draw('page');
-        setTimeout(() => { window.print(); tabela.page.len(len).draw('page'); }, 500);
-    }
+    function imprimirSeguro() {
+        const len = tabela.page.len();
+        tabela.page.len(-1).draw('page');
+        setTimeout(() => { window.print(); tabela.page.len(len).draw('page'); }, 500);
+    }
 
-    function limparFiltros() { $('#filtroNome').val(''); $('select').val(''); $('#filtroStatus').val('Ativo'); aplicarFiltros(); }
-    
-    $(document).ready(function() {
-        $('#filtroNome').on('input', aplicarFiltros);
-        $('select').on('change', aplicarFiltros);
-        carregarDados();
-    });
+    function limparFiltros() { $('#filtroNome').val(''); $('select').val(''); $('#filtroStatus').val('Ativo'); aplicarFiltros(); }
+    
+    $(document).ready(function() {
+        $('#filtroNome').on('input', aplicarFiltros);
+        $('select').on('change', aplicarFiltros);
+        carregarDados();
+    });
 </script>
 </body>
 </html>
