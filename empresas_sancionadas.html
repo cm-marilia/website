@@ -206,6 +206,41 @@
 
     function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
 
+    function verificarSancaoAtiva(dataStr) {
+        if (!dataStr || dataStr.trim() === "" || dataStr === "—") return true;
+        
+        let dia, mes, ano;
+        const strLimpa = dataStr.trim();
+        
+        if (strLimpa.includes('/')) {
+            const partes = strLimpa.split('/');
+            dia = parseInt(partes[0], 10);
+            mes = parseInt(partes[1], 10) - 1;
+            ano = parseInt(partes[2], 10);
+        } else if (strLimpa.includes('-')) {
+            const partes = strLimpa.split('-');
+            if (partes[0].length === 4) {
+                ano = parseInt(partes[0], 10);
+                mes = parseInt(partes[1], 10) - 1;
+                dia = parseInt(partes[2], 10);
+            } else {
+                dia = parseInt(partes[0], 10);
+                mes = parseInt(partes[1], 10) - 1;
+                ano = parseInt(partes[2], 10);
+            }
+        } else {
+            return true;
+        }
+        
+        if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return true;
+        
+        // Define o limite como o último segundo do dia informado
+        const dataFim = new Date(ano, mes, dia, 23, 59, 59);
+        const hoje = new Date();
+        
+        return hoje <= dataFim;
+    }
+
     window.toggleObservacao = function(idBotao) {
         const conteudo = document.getElementById(idBotao);
         if (conteudo) {
@@ -284,8 +319,9 @@
         let filtrados = dadosGlobais.filter(d => {
             const matchTexto = !buscaOriginal || d.busca_nome.includes(buscaOriginal) || d.busca_nome.includes(buscaTexto);
             const matchContrato = !buscaContrato || (d.numero_contrato && removerAcentos(d.numero_contrato.toLowerCase()).includes(buscaContrato));
+            const matchSancao = verificarSancaoAtiva(d.fim_sancao);
 
-            return matchTexto && matchContrato;
+            return matchTexto && matchContrato && matchSancao;
         });
 
         renderizarTabela(filtrados);
