@@ -263,7 +263,7 @@
             linhaCabecalho = 1;
             let matchDataHora = primeiraLinhaTexto.match(/(\d{1,2}\/\d{1,2}\/\d{4})[^\d]*(\d{1,2}:\d{2})/);
             if (matchDataHora) {
-                carimboAtualizacao = `Atualizado em ${matchDataHora[1]} às ${matchDataHora[2]}`;
+                carimboAtualizacao = `Dados atualizados em ${matchDataHora[1]} às ${matchDataHora[2]}`;
             } else {
                 carimboAtualizacao = String(linhasMatriz[0][0]).replace(/MODIF_REAL:\s*/i, "Atualizado em ");
             }
