@@ -167,13 +167,6 @@
             </div>
         </fieldset>
 
-        <!-- ESTE TRECHO DE CÓDIGO É REFERENTE AO CARD DE SOMATÓRIA DAS DIÁRIAS
-        <div class="totais-container">
-            <div class="total-box"><label>Soma das Diárias Filtradas</label><span id="txt-total-diarias">R$ 0,00</span></div>
-            <div class="total-box" style="border-left-color:#0284c7;"><label>Soma dos Adiantamentos Filtrados</label><span id="txt-total-adiantamentos">R$ 0,00</span></div>
-        </div>
-        -->
-        
         <fieldset class="painel" id="painel-visualizacao" style="padding: 10px 15px;">
             <legend class="painel-titulo">Visualização</legend>
             <div class="dt-header-flex">
@@ -207,12 +200,12 @@
     }
 
     function processarDados(csv) {
-        const linhas = csv.trim().split("\n");
+        const lines = csv.trim().split("\n");
         const match = csv.match(/MODIF_REAL:\s*(\d{2}\/\d{2}\/\d{4}[^\d]+\d{2}:\d{2})/i);
         if(match) $('#sync-info').text(`🟢 Dados atualizados em: ${match[1]}`);
-        const cab = linhas[1].split(',').map(c => c.replace(/"/g, '').toLowerCase().trim());
+        const cab = lines[1].split(',').map(c => c.replace(/"/g, '').toLowerCase().trim());
         
-        dadosBrutos = linhas.slice(2).map(l => {
+        dadosBrutos = lines.slice(2).map(l => {
             const cols = l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
             let o = {}; cab.forEach((c, i) => o[c] = (cols[i] || "").replace(/"/g, '').trim());
             if(o.servidor) o.servidor = o.servidor.toUpperCase();
@@ -331,11 +324,22 @@
         return partes.join('_').normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
     }
     
-    function exportarExcel() { const ws = XLSX.utils.json_to_sheet(grid.rows({filter:'applied'}).data().toArray()); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Diarias"); XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx"); }
+    function exportarExcel() { 
+        const parse = v => parseFloat((v || "0").replace(/R\$\s?|[.]/g, '').replace(',', '.')) || 0;
+        const dadosTratados = grid.rows({filter:'applied'}).data().toArray().map(d => ({
+            ...d,
+            valor_diarias: parse(d.valor_diarias),
+            valor_adiantamento: parse(d.valor_adiantamento)
+        }));
+        const ws = XLSX.utils.json_to_sheet(dadosTratados); 
+        const wb = XLSX.utils.book_new(); 
+        XLSX.utils.book_append_sheet(wb, ws, "Diarias"); 
+        XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx"); 
+    }
+    
     function exportarCSV() { let csv = "\ufeffServidor,Cargo,Diarias,Partida,Retorno,Valor,Adiantamento\n"; grid.rows({filter:'applied'}).data().each(d => { csv += `"${d.servidor}","${d.cargo}","${d.qtde_diarias}","${d.data_partida}","${d.data_retorno}","${d.valor_diarias}","${d.valor_adiantamento}"\n`; }); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = gerarNomeArquivoBase() + ".csv"; link.click(); }
     function exportarJSON() { const blob = new Blob([JSON.stringify(grid.rows({filter:'applied'}).data().toArray(), null, 2)], {type: 'application/json'}); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = gerarNomeArquivoBase() + ".json"; link.click(); }
     
-    /* Bug do XML corrigido aqui */
     function exportarXML() { let xml = '<?xml version="1.0" encoding="UTF-8"?><relatorio>'; grid.rows({filter:'applied'}).data().each(d => { xml += `<registro><servidor>${d.servidor}</servidor><valor>${d.valor_diarias}</valor></registro>`; }); xml += '</relatorio>'; const blob = new Blob([xml], { type: 'application/xml' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = gerarNomeArquivoBase() + ".xml"; link.click(); }
 
     function imprimirSeguro() {
