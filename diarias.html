@@ -228,7 +228,7 @@
 
     function popularSelects() {
         $('#selGabinete').html('<option value="">Gabinete</option>');
-        [...new Set(listaGabinetes)].sort().forEach(g => $('#selGabinete').append(new Option(g, g)));
+        [...new Set(listaGabinetes)].forEach(g => $('#selGabinete').append(new Option(g, g)));
         
         $('#selServidor').html('<option value="">Servidor</option>');
         [...new Set(dadosBrutos.map(d => d.servidor))].sort().forEach(s => $('#selServidor').append(new Option(s, s)));
