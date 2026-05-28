@@ -264,6 +264,20 @@
                             return (d > 0 || e > 0 || liq > 0 || p > 0 || prev > 0);
                         });
 
+                        // ORDENAÇÃO CRONOLÓGICA (Mais antigo para o mais novo)
+                        const obterMesNum = (mesStr) => {
+                            const m = mesStr.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                            const mapa = { 'JANEIRO': 1, 'FEVEREIRO': 2, 'MARCO': 3, 'ABRIL': 4, 'MAIO': 5, 'JUNHO': 6, 'JULHO': 7, 'AGOSTO': 8, 'SETEMBRO': 9, 'OUTUBRO': 10, 'NOVEMBRO': 11, 'DEZEMBRO': 12 };
+                            return mapa[m] || 0;
+                        };
+
+                        dadosOriginais.sort((a, b) => {
+                            const anoA = parseInt(a.ano);
+                            const anoB = parseInt(b.ano);
+                            if (anoA !== anoB) return anoA - anoB;
+                            return obterMesNum(a.mes) - obterMesNum(b.mes);
+                        });
+
                         popularFiltros(dadosOriginais);
                         aplicarFiltros();
                     }
