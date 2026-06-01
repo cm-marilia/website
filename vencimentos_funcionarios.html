@@ -32,7 +32,7 @@
         button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; padding: 0 20px; white-space: nowrap; }
         button.btn-filtro:hover { background: #00274d; }
 
-        /* FILTROS RESPONSIVOS - ADAPTADO PARA RECEBER O MÊS/ANO */
+        /* FILTROS RESPONSIVOS */
         .painel-filtros { display: grid; grid-template-columns: 2fr 2fr 1.5fr auto; gap: 10px; margin-bottom: 5px; }
         
         @media (max-width: 750px) {
@@ -146,12 +146,12 @@
         
         <div id="alerta-aba-errada" class="alerta-erro">
             ⚠️ ATENÇÃO: O sistema não encontrou os cabeçalhos corretos (Nome, Cargo, etc.). 
-            Por favor, publique a aba principal de dados no Google Sheets e atualize a variável CSV_URL no código.
+            Por favor, certifique-se de publicar a aba chamada exatamente de "planilha" no Google Sheets e atualize a variável CSV_URL no código.
         </div>
 
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
-            <div id="badge-atualizacao" class="badge-atualizacao">🟢 Atualizado mensalmente</div>
+            <div id="badge-atualizacao" class="badge-atualizacao">🟢 Atualizado em tempo real</div>
             
             <div class="painel-filtros">
                 <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off" aria-label="Pesquisar por nome">
@@ -194,7 +194,8 @@
 
 <script>
     // ============================================================================
-    // 🔴 COLE AQUI O LINK DA SUA NOVA ABA "BASE" CUMULATIVA DO GOOGLE SHEETS
+    // 🔴 COLE AQUI O LINK DA SUA ABA "planilha" DO GOOGLE SHEETS
+    // Lembre-se de adicionar &single=true&gid=NUMERO_DA_ABA_PLANILHA no final
     // ============================================================================
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQbCGibK-aCEzCk-9SDeaAl9NFrRVfs0AQBpXAYjzW3WfUUSphH5F7L9eopRr9h5SrOgOLTz1MX6puZ/pub?output=csv";
     
@@ -247,9 +248,8 @@
         let cabecalhos = [];
         let indices = {};
 
-        // Localiza a linha do cabeçalho
         for (let i = 0; i < Math.min(15, linhas.length); i++) {
-            let cols = linhas[i].map(h => removerAcentos(String(h).trim().toLowerCase()));
+            let cols = lines[i].map(h => removerAcentos(String(h).trim().toLowerCase()));
             let temNome = cols.some(c => c.includes("nome") || c.includes("servidor"));
             let temBruto = cols.some(c => c.includes("bruto") || c.includes("liquido") || c.includes("vencimento"));
 
@@ -289,7 +289,7 @@
                 redutor: procurarColuna(["redutor", "teto"]),
                 desc_legais: procurarColuna(["descontos legais", "previdencia"]),
                 desc_eventuais: procurarColuna(["descontos eventuais", "eventual"]),
-                mes_ano: procurarColuna(["mes/ano", "mes", "periodo", "ano"]) // Mapeamento da nova coluna
+                mes_ano: procurarColuna(["mes/ano", "mes", "periodo", "ano"])
             };
         }
 
@@ -303,6 +303,7 @@
             if (!col || col.length < 3) continue;
 
             let nomeVal = indices.nome !== -1 && col[indices.nome] ? col[indices.nome].trim() : "";
+            
             if (!nomeVal || nomeVal === "-" || nomeVal.toLowerCase().includes("total") || nomeVal.toLowerCase() === "nome") continue;
 
             let extrairValor = (idx) => (idx !== -1 && col[idx]) ? col[idx].trim() : "-";
@@ -322,7 +323,7 @@
                 redutor: extrairValor(indices.redutor),
                 desc_legais: extrairValor(indices.desc_legais),
                 desc_eventuais: extrairValor(indices.desc_eventuais),
-                mes_ano: extrairValor(indices.mes_ano) // Salva o mês/ano no objeto
+                mes_ano: extrairValor(indices.mes_ano)
             };
             
             obj.busca_nome = removerAcentos(obj.nome.toLowerCase());
@@ -331,17 +332,14 @@
     }
 
     function popularFiltrosDynamic() {
-        // Alimenta Dropdown de Cargos
         const cargos = [...new Set(dadosGlobais.map(d => d.cargo))].filter(c => c && c !== "-").sort();
         $('#filtroCargo').html('<option value="">Todos os Cargos</option>');
         cargos.forEach(c => $('#filtroCargo').append(`<option value="${c}">${c}</option>`));
 
-        // Alimenta Dropdown de Mês/Ano dinamicamente
         const meses = [...new Set(dadosGlobais.map(d => d.mes_ano))].filter(m => m && m !== "-").sort().reverse();
         $('#filtroMesAno').html('<option value="">Todos os Meses</option>');
         meses.forEach(m => $('#filtroMesAno').append(`<option value="${m}">${m}</option>`));
         
-        // Seleciona automaticamente o mês mais recente disponível como padrão, se houver meses cadastrados
         if(meses.length > 0) {
             $('#filtroMesAno').val(meses[0]);
         }
@@ -387,25 +385,25 @@
                             <div class="card-body">
                                 <div class="info-row-grid">
                                     <div class="info-col"><span class="info-label">Vencimentos Brutos</span><span class="info-valor">${d.venc_bruto}</span></div>
-                                    <div class="info-col"><span class="info-label">Vencimentos Líquidos</span><span class="info-valor">${d.venc_liquido}</span></div>
                                     <div class="info-col"><span class="info-label">Referência</span><span class="info-valor">${d.referencia}</span></div>
+                                    <div class="info-col"><span class="info-label">Vantagens Pessoais</span><span class="info-valor">${d.vantagens}</span></div>
                                 </div>
                                 
                                 <div class="info-row-grid">
-                                    <div class="info-col"><span class="info-label">Vantagens Pessoais</span><span class="info-valor">${d.vantagens}</span></div>
                                     <div class="info-col"><span class="info-label">Outras Verbas Remuneratórias Legais ou judiciais</span><span class="info-valor">${d.outras_verbas}</span></div>
                                     <div class="info-col"><span class="info-label">Verbas Indenizatórias e/ou Eventuais</span><span class="info-valor">${d.indenizatorias}</span></div>
+                                    <div class="info-col"><span class="info-label">Auxílio saúde/alimentação</span><span class="info-valor">${d.auxilio}</span></div>
                                 </div>
 
                                 <div class="info-row-grid">
-                                    <div class="info-col"><span class="info-label">Auxílio saúde/alimentação</span><span class="info-valor">${d.auxilio}</span></div>
                                     <div class="info-col"><span class="info-label">Abono de Permanência</span><span class="info-valor">${d.abono}</span></div>
                                     <div class="info-col"><span class="info-label">Redutor</span><span class="info-valor">${d.redutor}</span></div>
+                                    <div class="info-col"><span class="info-label">Descontos Legais</span><span class="info-valor">${d.desc_legais}</span></div>
                                 </div>
 
                                 <div class="info-row-grid">
-                                    <div class="info-col"><span class="info-label">Descontos Legais</span><span class="info-valor">${d.desc_legais}</span></div>
                                     <div class="info-col"><span class="info-label">Descontos Eventuais</span><span class="info-valor">${d.desc_eventuais}</span></div>
+                                    <div class="info-col" style="background: #f8fafc; border: 1px solid #cbd5e1;"><span class="info-label" style="color: #003b75;">Vencimentos Líquidos</span><span class="info-valor" style="color: #003b75; font-size: 13px;">${d.venc_liquido}</span></div>
                                 </div>
                             </div>
                         </div>
@@ -446,9 +444,9 @@
 
     function exportarCSV() {
         const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        let csv = "\ufeffMatricula,Nome,Cargo,Vencimentos Brutos,Vencimentos Liquidos,Referencia,Vantagens Pessoais,Outras Verbas Remuneratorias Legais ou judiciais,Verbas Indenizatorias e/ou Eventuais,Auxilio saude/alimentacao,Abono de Permanencia,Redutor,Descontos Legais,Descontos Eventuais,Mes_Ano\n";
+        let csv = "\ufeffMatricula,Nome,Cargo,Vencimentos Brutos,Referencia,Vantagens Pessoais,Outras Verbas Remuneratorias Legais ou judiciais,Verbas Indenizatorias e/ou Eventuais,Auxilio saude/alimentacao,Abono de Permanencia,Redutor,Descontos Legais,Descontos Eventuais,Vencimentos Liquidos,Mes_Ano\n";
         data.forEach(d => { 
-            csv += `"${d.matricula}","${d.nome}","${d.cargo}","${d.venc_bruto}","${d.venc_liquido}","${d.referencia}","${d.vantagens}","${d.outras_verbas}","${d.indenizatorias}","${d.auxilio}","${d.abono}","${d.redutor}","${d.desc_legais}","${d.desc_eventuais}","${d.mes_ano}"\n`; 
+            csv += `"${d.matricula}","${d.nome}","${d.cargo}","${d.venc_bruto}","${d.referencia}","${d.vantagens}","${d.outras_verbas}","${d.indenizatorias}","${d.auxilio}","${d.abono}","${d.redutor}","${d.desc_legais}","${d.desc_eventuais}","${d.venc_liquido}","${d.mes_ano}"\n`; 
         });
         downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv");
     }
@@ -499,7 +497,6 @@
         a.href = url; a.download = fileName; a.click();
     }
 
-    // Impressão segura respeitando o filtro ativo
     function imprimirSeguro() {
         if(!tabela) return;
         const len = tabela.page.len();
