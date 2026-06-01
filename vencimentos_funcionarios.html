@@ -132,7 +132,7 @@
     <main id="main-container" style="display:none;">
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
-            <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
+            <div id="badge-atualizacao" class="badge-atualizacao">🟢 Atualizado em tempo real</div>
             
             <div class="painel-filtros">
                 <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off" aria-label="Pesquisar por nome">
@@ -177,7 +177,6 @@
     
     let tabela;
     let dadosGlobais = [];
-    let carimboAtualizacao = "Atualização em tempo real";
 
     function enviarAlturaIframe() {
         setTimeout(() => {
@@ -204,7 +203,6 @@
                     popularFiltrosDynamic();
                     aplicarFiltros();
                     
-                    $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
                     $('#loader').hide();
                     $('#main-container').fadeIn(400, () => enviarAlturaIframe());
                 } catch (err) {
@@ -219,38 +217,15 @@
         });
     }
 
-    // === NOVO MAPEADOR DINÂMICO DE COLUNAS ===
+    // === MAPEADOR DINÂMICO A PARTIR DA PRIMEIRA LINHA ===
     function processarDadosMapeados(linhas) {
         if(linhas.length < 2) return;
         
-        // Pega a data/hora se existir na primeira célula
-        let primeiraCelula = String(linhas[0][0] || "");
-        let matchDataHora = primeiraCelula.match(/(\d{1,2}\/\d{1,2}\/\d{4})[^\d]*(\d{1,2}:\d{2})/);
+        // 1. Força a leitura do cabeçalho estritamente na primeira linha (índice 0)
+        const headerIndex = 0;
         
-        if (matchDataHora) {
-            carimboAtualizacao = `Atualizado em ${matchDataHora[1]} às ${matchDataHora[2]}`;
-        } else if (primeiraCelula.toUpperCase().includes("MODIF_REAL")) {
-            carimboAtualizacao = primeiraCelula.replace(/MODIF_REAL:\s*/i, "Atualizado em ");
-        }
-
-        // 1. Descobrir dinamicamente qual linha é a do cabeçalho
-        let headerIndex = -1;
-        for (let i = 0; i < Math.min(10, linhas.length); i++) {
-            let textoLinha = linhas[i].join(" ").toLowerCase();
-            // Procura a linha que contém o título das principais colunas
-            if (textoLinha.includes("nome") && (textoLinha.includes("cargo") || textoLinha.includes("matricula") || textoLinha.includes("bruto"))) {
-                headerIndex = i;
-                break;
-            }
-        }
-
-        if (headerIndex === -1) {
-            console.error("Não foi possível identificar a linha de cabeçalho na planilha.");
-            return;
-        }
-
-        // 2. Normalizar os nomes das colunas da planilha para encontrar a posição delas
-        const cabecalhos = linhas[headerIndex].map(h => removerAcentos(h.trim().toLowerCase()));
+        // Normaliza os nomes das colunas da primeira linha
+        const cabecalhos = linhas[headerIndex].map(h => removerAcentos(String(h).trim().toLowerCase()));
 
         const procurarColuna = (palavrasChave) => {
             for (let palavra of palavrasChave) {
@@ -260,7 +235,7 @@
             return -1;
         };
 
-        // 3. Mapear os índices reais onde os dados estão
+        // 2. Mapeia os índices reais baseados na primeira linha
         const indices = {
             matricula: procurarColuna(["matricula", "mat."]),
             nome: procurarColuna(["nome", "servidor", "funcionario"]),
@@ -280,15 +255,16 @@
 
         dadosGlobais = [];
 
-        // 4. Varre os dados a partir da linha seguinte ao cabeçalho usando os índices dinâmicos
-        for (let i = headerIndex + 1; i < linhas.length; i++) {
+        // 3. Varre os dados a partir da SEGUNDA linha (índice 1)
+        for (let i = 1; i < linhas.length; i++) {
             const col = linhas[i];
             
             if (!col || col.length < 3) continue;
 
-            let nomeVal = indices.nome !== -1 ? col[indices.nome].trim() : "";
+            let nomeVal = indices.nome !== -1 ? col[indices.nome] : "";
+            if (nomeVal) nomeVal = nomeVal.trim();
             
-            // Ignorar linhas vazias ou de totalizadores (que não têm nome de funcionário)
+            // Ignorar linhas vazias ou de totalizadores
             if (!nomeVal || nomeVal === "-" || nomeVal.toLowerCase().includes("total")) continue;
 
             let extrairValor = (idx) => (idx !== -1 && col[idx]) ? col[idx].trim() : "-";
