@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Relatório de Remuneração de Funcionários</title>
+    <title>Relatório de Remuneração</title>
 
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
     
@@ -69,7 +69,18 @@
         .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
         .status-matricula { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
         
-        .card-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); padding: 12px 15px; gap: 12px; background: #fafaf9; }
+        /* AJUSTES PARA DUAS LINHAS NO CORPO DO CARD */
+        .card-body { display: flex; flex-direction: column; padding: 0; background: #fafaf9; }
+        
+        .info-row-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            padding: 12px 15px; 
+            gap: 12px; 
+        }
+        
+        .info-row-grid:first-child { border-bottom: 1px solid #e5e7eb; } 
+
         .info-col { display: flex; flex-direction: column; background: #fff; padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb; }
         .info-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 3px; }
         .info-valor { font-size: 12px; font-weight: 700; color: #1e293b; }
@@ -94,7 +105,7 @@
         @media (max-width: 600px) {
             .topo { flex-direction: column; gap: 10px; text-align: center; }
             .card-header { flex-direction: column; text-align: center; gap: 10px; }
-            .card-body { grid-template-columns: 1fr 1fr; }
+            .info-row-grid { grid-template-columns: 1fr 1fr; }
             .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
             .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
         }
@@ -128,15 +139,15 @@
 
     <div id="loader">
         <div class="spinner"></div>
-        <span>A sincronizar a base de dados...</span>
+        <span>Sincronizando base de dados...</span>
     </div>
 
     <main id="main-container" style="display:none;">
         
         <div id="alerta-aba-errada" class="alerta-erro">
             ⚠️ ATENÇÃO: O sistema não encontrou os cabeçalhos corretos (Nome, Cargo, etc.). 
-            Parece que o link não está a apontar para o separador "abril/2026". 
-            Por favor, publique o separador correto no Google Sheets e atualize a variável CSV_URL no código.
+            Parece que o link não está apontando para a aba correta. 
+            Por favor, publique a aba de abril/2026 no Google Sheets e atualize a variável CSV_URL no código.
         </div>
 
         <fieldset class="painel-grupo">
@@ -165,7 +176,7 @@
             <legend class="titulo-painel">Visualização</legend>
             <div class="dt-custom-header">
                 <div id="comprimento-tabela"></div> 
-                <div id="contagem-registros" class="badge-contagem">0 registos encontrados</div>
+                <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
             </div>
         </fieldset>
 
@@ -183,9 +194,8 @@
 
 <script>
     // ============================================================================
-    // 🔴 PASSO ÚNICO: COLE AQUI O SEU NOVO LINK COM O SEPARADOR "abril/2026"
-    // Ele deve conter no final: &single=true&gid=...
-    // Substitua o endereço entre as aspas:
+    // 🔴 IMPORTANTE: COLE AQUI O SEU LINK DA PLANILHA FINANCEIRA (aba abril/2026)
+    // O link abaixo é o genérico financeiro. Lembre-se de adicionar &single=true&gid=NUMERO
     // ============================================================================
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQbCGibK-aCEzCk-9SDeaAl9NFrRVfs0AQBpXAYjzW3WfUUSphH5F7L9eopRr9h5SrOgOLTz1MX6puZ/pub?output=csv";
     
@@ -208,7 +218,6 @@
         $('#loader').show();
         $('#main-container').hide();
         
-        // Cachebuster para garantir que lê sempre os dados atualizados
         Papa.parse(`${CSV_URL}&t=${new Date().getTime()}`, {
             download: true,
             skipEmptyLines: true,
@@ -222,12 +231,12 @@
                     $('#main-container').fadeIn(400, () => enviarAlturaIframe());
                 } catch (err) {
                     console.error("Erro interno ao processar colunas: ", err);
-                    $('#loader').html('<b style="color:red">Erro ao organizar os dados. Verifique o ficheiro fonte.</b>');
+                    $('#loader').html('<b style="color:red">Erro ao organizar os dados. Verifique o arquivo fonte.</b>');
                 }
             },
             error: function(err) {
                 console.error("Erro no PapaParse: ", err);
-                $('#loader').html('<b style="color:red">Erro ao baixar o ficheiro CSV do Google.</b>');
+                $('#loader').html('<b style="color:red">Erro ao baixar o arquivo CSV do Google.</b>');
             }
         });
     }
@@ -243,7 +252,6 @@
         for (let i = 0; i < Math.min(15, linhas.length); i++) {
             let cols = linhas[i].map(h => removerAcentos(String(h).trim().toLowerCase()));
             
-            // Verifica se a linha tem colunas típicas da sua tabela de funcionários
             let temNome = cols.some(c => c.includes("nome") || c.includes("servidor"));
             let temBruto = cols.some(c => c.includes("bruto") || c.includes("liquido") || c.includes("vencimento"));
 
@@ -263,10 +271,9 @@
             return -1;
         };
 
-        // EXIBE O ALERTA SE ELE NÃO ACHAR A TABELA CERTA
         if (headerIndex === -1) {
             $('#alerta-aba-errada').show();
-            // Plano B de emergência: Assume ordem exata da imagem caso o cabeçalho não exista
+            // Plano B de emergência: Ordem exata da imagem financeira
             indices = { matricula: 0, nome: 1, cargo: 2, venc_bruto: 3, venc_liquido: 4, referencia: 5, vantagens: 6, outras_verbas: 7, indenizatorias: 8, auxilio: 9, abono: 10, redutor: 11, desc_legais: 12, desc_eventuais: 13 };
         } else {
             $('#alerta-aba-errada').hide();
@@ -289,12 +296,10 @@
             };
         }
 
-        // Força o índice caso o reconhecimento por palavras falhe
         if(indices.nome === -1) indices.nome = 1; 
 
         dadosGlobais = [];
 
-        // Lê os dados
         let startIndex = headerIndex !== -1 ? headerIndex + 1 : 0;
 
         for (let i = startIndex; i < linhas.length; i++) {
@@ -303,7 +308,6 @@
 
             let nomeVal = indices.nome !== -1 && col[indices.nome] ? col[indices.nome].trim() : "";
             
-            // Ignora linhas que não parecem funcionários
             if (!nomeVal || nomeVal === "-" || nomeVal.toLowerCase().includes("total") || nomeVal.toLowerCase() === "nome") continue;
 
             let extrairValor = (idx) => (idx !== -1 && col[idx]) ? col[idx].trim() : "-";
@@ -371,18 +375,23 @@
                                 </div>
                                 <span class="status-badge status-matricula">Matrícula: ${d.matricula}</span>
                             </div>
-                            <div class="card-body-1">
-                                <div class="info-col"><span class="info-label">Venc. Brutos</span><span class="info-valor">${d.venc_bruto}</span></div>
-                                <div class="info-col"><span class="info-label">Venc. Líquidos</span><span class="info-valor">${d.venc_liquido}</span></div>
-                                <div class="info-col"><span class="info-label">Referência</span><span class="info-valor">${d.referencia}</span></div>
-                                <div class="info-col"><span class="info-label">Vantagens Pessoais</span><span class="info-valor">${d.vantagens}</span></div>
-                                <div class="info-col"><span class="info-label">Outras Verbas</span><span class="info-valor">${d.outras_verbas}</span></div>
-                                <div class="info-col"><span class="info-label">Indenizatórias</span><span class="info-valor">${d.indenizatorias}</span></div>
-                                <div class="info-col"><span class="info-label">Aux. Saúde/Alim.</span><span class="info-valor">${d.auxilio}</span></div>
-                                <div class="info-col"><span class="info-label">Abono Permanência</span><span class="info-valor">${d.abono}</span></div>
-                                <div class="info-col"><span class="info-label">Redutor</span><span class="info-valor">${d.redutor}</span></div>
-                                <div class="info-col"><span class="info-label">Desc. Legais</span><span class="info-valor">${d.desc_legais}</span></div>
-                                <div class="info-col"><span class="info-label">Desc. Eventuais</span><span class="info-valor">${d.desc_eventuais}</span></div>
+                            <div class="card-body">
+                                <div class="info-row-grid">
+                                    <div class="info-col"><span class="info-label">Vencimentos Brutos</span><span class="info-valor">${d.venc_bruto}</span></div>
+                                    <div class="info-col"><span class="info-label">Vencimentos Líquidos</span><span class="info-valor">${d.venc_liquido}</span></div>
+                                    <div class="info-col"><span class="info-label">Referência</span><span class="info-valor">${d.referencia}</span></div>
+                                    <div class="info-col"><span class="info-label">Vantagens Pessoais</span><span class="info-valor">${d.vantagens}</span></div>
+                                    <div class="info-col"><span class="info-label">Outras Verbas Remuneratórias Legais ou judiciais</span><span class="info-valor">${d.outras_verbas}</span></div>
+                                    <div class="info-col"><span class="info-label">Verbas Indenizatórias e/ou Eventuais</span><span class="info-valor">${d.indenizatorias}</span></div>
+                                </div>
+                                
+                                <div class="info-row-grid">
+                                    <div class="info-col"><span class="info-label">Auxílio saúde/alimentação</span><span class="info-valor">${d.auxilio}</span></div>
+                                    <div class="info-col"><span class="info-label">Abono de Permanência</span><span class="info-valor">${d.abono}</span></div>
+                                    <div class="info-col"><span class="info-label">Redutor</span><span class="info-valor">${d.redutor}</span></div>
+                                    <div class="info-col"><span class="info-label">Descontos Legais</span><span class="info-valor">${d.desc_legais}</span></div>
+                                    <div class="info-col"><span class="info-label">Descontos Eventuais</span><span class="info-valor">${d.desc_eventuais}</span></div>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -394,7 +403,7 @@
             },
             drawCallback: function() {
                 const totalFiltrado = this.api().rows({ filter: 'applied' }).count();
-                $('#contagem-registros').html(`<b>${totalFiltrado}</b> registos encontrados`);
+                $('#contagem-registros').html(`<b>${totalFiltrado}</b> registros encontrados`);
                 enviarAlturaIframe();
             }
         });
@@ -421,7 +430,7 @@
 
     function exportarCSV() {
         const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        let csv = "\ufeffMatricula,Nome,Cargo,Vencimentos Brutos,Vencimentos Liquidos,Referencia,Vantagens Pessoais,Outras Verbas,Verbas Indenizatorias,Auxilio Saude/Alimentacao,Abono Permanencia,Redutor,Descontos Legais,Descontos Eventuais\n";
+        let csv = "\ufeffMatricula,Nome,Cargo,Vencimentos Brutos,Vencimentos Liquidos,Referencia,Vantagens Pessoais,Outras Verbas Remuneratorias Legais ou judiciais,Verbas Indenizatorias e/ou Eventuais,Auxilio saude/alimentacao,Abono de Permanencia,Redutor,Descontos Legais,Descontos Eventuais\n";
         data.forEach(d => { 
             csv += `"${d.matricula}","${d.nome}","${d.cargo}","${d.venc_bruto}","${d.venc_liquido}","${d.referencia}","${d.vantagens}","${d.outras_verbas}","${d.indenizatorias}","${d.auxilio}","${d.abono}","${d.redutor}","${d.desc_legais}","${d.desc_eventuais}"\n`; 
         });
