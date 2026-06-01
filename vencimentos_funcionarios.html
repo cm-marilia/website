@@ -195,7 +195,6 @@
 <script>
     // ============================================================================
     // 🔴 COLE AQUI O LINK DA SUA ABA "planilha" DO GOOGLE SHEETS
-    // Lembre-se de adicionar &single=true&gid=NUMERO_DA_ABA_PLANILHA no final
     // ============================================================================
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQbCGibK-aCEzCk-9SDeaAl9NFrRVfs0AQBpXAYjzW3WfUUSphH5F7L9eopRr9h5SrOgOLTz1MX6puZ/pub?output=csv";
     
@@ -248,8 +247,9 @@
         let cabecalhos = [];
         let indices = {};
 
+        // AQUI ESTAVA O ERRO DE DIGITAÇÃO. Corrigido de lines[i] para linhas[i].
         for (let i = 0; i < Math.min(15, linhas.length); i++) {
-            let cols = lines[i].map(h => removerAcentos(String(h).trim().toLowerCase()));
+            let cols = linhas[i].map(h => removerAcentos(String(h).trim().toLowerCase()));
             let temNome = cols.some(c => c.includes("nome") || c.includes("servidor"));
             let temBruto = cols.some(c => c.includes("bruto") || c.includes("liquido") || c.includes("vencimento"));
 
