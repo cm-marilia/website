@@ -30,7 +30,7 @@
         button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; padding: 0 20px; white-space: nowrap; }
         button.btn-filtro:hover { background: #00274d; }
 
-        /* FILTROS RESPONSIVOS - ADAPTADO PARA APENAS 2 FILTROS */
+        /* FILTROS RESPONSIVOS */
         .painel-filtros { display: grid; grid-template-columns: 2fr 2fr auto; gap: 10px; margin-bottom: 5px; }
         
         @media (max-width: 650px) {
@@ -171,8 +171,9 @@
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
 <script>
-    // Nova URL do Google Sheets fornecida
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQbCGibK-aCEzCk-9SDeaAl9NFrRVfs0AQBpXAYjzW3WfUUSphH5F7L9eopRr9h5SrOgOLTz1MX6puZ/pub?output=csv";
     
     let tabela;
@@ -191,87 +192,86 @@
 
     function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
 
-    function limparAspas(str) {
-        if (!str) return "";
-        let limpo = str.trim();
-        if (limpo.startsWith('"') && limpo.endsWith('"')) {
-            limpo = limpo.substring(1, limpo.length - 1);
-        }
-        return limpo.replace(/""/g, '"');
+    function carregarDados() {
+        $('#loader').show();
+        $('#main-container').hide();
+        
+        // Uso do PapaParse garante o processamento correto das colunas, mesmo com enters nas células
+        Papa.parse(`${CSV_URL}&cache=${Date.now()}`, {
+            download: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                try {
+                    processarDadosParsed(results.data);
+                    popularFiltrosDynamic();
+                    aplicarFiltros();
+                    
+                    $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
+                    $('#loader').hide();
+                    $('#main-container').fadeIn(400, () => enviarAlturaIframe());
+                } catch (err) {
+                    console.error("Erro interno ao processar colunas: ", err);
+                    $('#loader').html('<b style="color:red">Erro ao organizar os dados da planilha.</b>');
+                }
+            },
+            error: function(err) {
+                console.error("Erro no PapaParse: ", err);
+                $('#loader').html('<b style="color:red">Erro ao baixar o arquivo CSV do Google.</b>');
+            }
+        });
     }
 
-    function processarCSV(csvText) {
-        const linhas = csvText.split(/\r?\n/);
+    function processarDadosParsed(linhas) {
+        if(linhas.length < 2) return;
         
         // Tentativa de obter a data de atualização da primeira linha
-        let textoPrimeiraLinha = linhas[0].replace(/"/g, '');
-        let matchDataHora = textoPrimeiraLinha.match(/(\d{1,2}\/\d{1,2}\/\d{4})[^\d]*(\d{1,2}:\d{2})/);
+        let primeiraCelula = String(linhas[0][0] || "");
+        let matchDataHora = primeiraCelula.match(/(\d{1,2}\/\d{1,2}\/\d{4})[^\d]*(\d{1,2}:\d{2})/);
         
         if (matchDataHora) {
             carimboAtualizacao = `Dados atualizados em ${matchDataHora[1]} às ${matchDataHora[2]}`;
-        } else if (textoPrimeiraLinha.toUpperCase().includes("MODIF_REAL")) {
-            carimboAtualizacao = textoPrimeiraLinha.split(',')[0].replace(/MODIF_REAL:\s*/i, "Dados atualizados em ");
+        } else if (primeiraCelula.toUpperCase().includes("MODIF_REAL")) {
+            carimboAtualizacao = primeiraCelula.replace(/MODIF_REAL:\s*/i, "Dados atualizados em ");
         }
 
-        const lista = [];
+        dadosGlobais = [];
         
-        // Lê os dados a partir da linha 2 (índice 2), ignorando o cabeçalho
-        for (let i = 2; i < linhas.length; i++) {
-            if (!linhas[i].trim()) continue;
+        // Identifica onde os dados reais começam (ignora linhas de cabeçalho ou título)
+        let startIndex = 1;
+        if (String(linhas[1][1]).toLowerCase().includes("nome") || String(linhas[1][0]).toLowerCase().includes("matricula")) {
+            startIndex = 2; // Pula o cabeçalho se ele estiver na linha 1
+        }
+
+        for (let i = startIndex; i < linhas.length; i++) {
+            const col = linhas[i];
             
-            // Regex que separa as colunas ignorando vírgulas dentro de aspas duplas
-            const colunas = linhas[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            // Segurança: pula a linha se não tiver ao menos um nome válido
+            if (!col || col.length < 3 || !col[1] || col[1].trim() === "") continue;
             
-            // Mapeamento fixo de acordo com a ordem da imagem do cabeçalho
             let obj = {
-                matricula: limparAspas(colunas[0]),
-                nome: limparAspas(colunas[1]),
-                cargo: limparAspas(colunas[2]),
-                venc_bruto: limparAspas(colunas[3]),
-                venc_liquido: limparAspas(colunas[4]),
-                referencia: limparAspas(colunas[5]),
-                vantagens: limparAspas(colunas[6]),
-                outras_verbas: limparAspas(colunas[7]),
-                indenizatorias: limparAspas(colunas[8]),
-                auxilio: limparAspas(colunas[9]),
-                abono: limparAspas(colunas[10]),
-                redutor: limparAspas(colunas[11]),
-                desc_legais: limparAspas(colunas[12]),
-                desc_eventuais: limparAspas(colunas[13])
+                matricula: col[0] ? col[0].trim() : "-",
+                nome: col[1] ? col[1].trim() : "-",
+                cargo: col[2] ? col[2].trim() : "-",
+                venc_bruto: col[3] ? col[3].trim() : "-",
+                venc_liquido: col[4] ? col[4].trim() : "-",
+                referencia: col[5] ? col[5].trim() : "-",
+                vantagens: col[6] ? col[6].trim() : "-",
+                outras_verbas: col[7] ? col[7].trim() : "-",
+                indenizatorias: col[8] ? col[8].trim() : "-",
+                auxilio: col[9] ? col[9].trim() : "-",
+                abono: col[10] ? col[10].trim() : "-",
+                redutor: col[11] ? col[11].trim() : "-",
+                desc_legais: col[12] ? col[12].trim() : "-",
+                desc_eventuais: col[13] ? col[13].trim() : "-"
             };
             
-            // Campo auxiliar para facilitar a busca ignorando acentos
             obj.busca_nome = removerAcentos(obj.nome.toLowerCase());
-            
-            // Só adiciona se tiver um nome válido
-            if(obj.nome) lista.push(obj);
-        }
-        return lista;
-    }
-
-    async function carregarDados() {
-        $('#loader').show();
-        $('#main-container').hide();
-        try {
-            const response = await fetch(`${CSV_URL}&cache=${Date.now()}`);
-            const text = await response.text();
-            
-            dadosGlobais = processarCSV(text);
-            popularFiltrosDynamic();
-            aplicarFiltros();
-            
-            $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
-            $('#loader').hide();
-            $('#main-container').fadeIn(400, () => enviarAlturaIframe());
-        } catch (error) {
-            console.error(error);
-            $('#loader').html('<b style="color:red">Erro ao carregar dados. Verifique sua conexão ou a permissão do Google Sheets.</b>');
+            dadosGlobais.push(obj);
         }
     }
 
     function popularFiltrosDynamic() {
-        // Extrai cargos únicos para o filtro
-        const cargos = [...new Set(dadosGlobais.map(d => d.cargo))].filter(Boolean).sort();
+        const cargos = [...new Set(dadosGlobais.map(d => d.cargo))].filter(c => c !== "-").sort();
         $('#filtroCargo').html('<option value="">Todos os Cargos</option>');
         cargos.forEach(c => $('#filtroCargo').append(`<option value="${c}">${c}</option>`));
     }
@@ -286,9 +286,7 @@
             return matchNome && matchCargo;
         });
 
-        // Ordena por ordem alfabética do Nome
         filtrados.sort((a, b) => a.nome.localeCompare(b.nome));
-
         renderizarTabela(filtrados);
     }
 
@@ -298,7 +296,7 @@
         tabela = $('#tabela').DataTable({
             data: dados,
             pageLength: 10,
-            ordering: false, // Ordem já tratada na função de filtro
+            ordering: false,
             language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
             dom: 'lrt<"dt-bottom-controls"ip>',
             columns: [{
@@ -308,23 +306,23 @@
                         <div class="card-info">
                             <div class="card-header">
                                 <div class="card-header-texto">
-                                    <span class="nome-principal">${d.nome || "-"}</span>
-                                    <span class="subtitulo-card">${d.cargo || "-"}</span>
+                                    <span class="nome-principal">${d.nome}</span>
+                                    <span class="subtitulo-card">${d.cargo}</span>
                                 </div>
-                                <span class="status-badge status-matricula">Matrícula: ${d.matricula || "-"}</span>
+                                <span class="status-badge status-matricula">Matrícula: ${d.matricula}</span>
                             </div>
                             <div class="card-body">
-                                <div class="info-col"><span class="info-label">Venc. Brutos</span><span class="info-valor">${d.venc_bruto || "-"}</span></div>
-                                <div class="info-col"><span class="info-label">Venc. Líquidos</span><span class="info-valor">${d.venc_liquido || "-"}</span></div>
-                                <div class="info-col"><span class="info-label">Referência</span><span class="info-valor">${d.referencia || "-"}</span></div>
-                                <div class="info-col"><span class="info-label">Vantagens Pessoais</span><span class="info-valor">${d.vantagens || "-"}</span></div>
-                                <div class="info-col"><span class="info-label">Outras Verbas</span><span class="info-valor">${d.outras_verbas || "-"}</span></div>
-                                <div class="info-col"><span class="info-label">Indenizatórias</span><span class="info-valor">${d.indenizatorias || "-"}</span></div>
-                                <div class="info-col"><span class="info-label">Aux. Saúde/Alim.</span><span class="info-valor">${d.auxilio || "-"}</span></div>
-                                <div class="info-col"><span class="info-label">Abono Permanência</span><span class="info-valor">${d.abono || "-"}</span></div>
-                                <div class="info-col"><span class="info-label">Redutor</span><span class="info-valor">${d.redutor || "-"}</span></div>
-                                <div class="info-col"><span class="info-label">Desc. Legais</span><span class="info-valor">${d.desc_legais || "-"}</span></div>
-                                <div class="info-col"><span class="info-label">Desc. Eventuais</span><span class="info-valor">${d.desc_eventuais || "-"}</span></div>
+                                <div class="info-col"><span class="info-label">Venc. Brutos</span><span class="info-valor">${d.venc_bruto}</span></div>
+                                <div class="info-col"><span class="info-label">Venc. Líquidos</span><span class="info-valor">${d.venc_liquido}</span></div>
+                                <div class="info-col"><span class="info-label">Referência</span><span class="info-valor">${d.referencia}</span></div>
+                                <div class="info-col"><span class="info-label">Vantagens Pessoais</span><span class="info-valor">${d.vantagens}</span></div>
+                                <div class="info-col"><span class="info-label">Outras Verbas</span><span class="info-valor">${d.outras_verbas}</span></div>
+                                <div class="info-col"><span class="info-label">Indenizatórias</span><span class="info-valor">${d.indenizatorias}</span></div>
+                                <div class="info-col"><span class="info-label">Aux. Saúde/Alim.</span><span class="info-valor">${d.auxilio}</span></div>
+                                <div class="info-col"><span class="info-label">Abono Permanência</span><span class="info-valor">${d.abono}</span></div>
+                                <div class="info-col"><span class="info-label">Redutor</span><span class="info-valor">${d.redutor}</span></div>
+                                <div class="info-col"><span class="info-label">Desc. Legais</span><span class="info-valor">${d.desc_legais}</span></div>
+                                <div class="info-col"><span class="info-label">Desc. Eventuais</span><span class="info-valor">${d.desc_eventuais}</span></div>
                             </div>
                         </div>
                     `;
@@ -341,7 +339,6 @@
             }
         });
 
-        // Rolar suavemente para o topo da tabela ao mudar de página
         tabela.on('page.dt', function () {
             setTimeout(function() {
                 document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -359,7 +356,6 @@
         const nome = $('#filtroNome').val().trim();
         if (nome) partes.push(nome.replace(/\s+/g, '_'));
         if ($('#filtroCargo').val()) partes.push($('#filtroCargo option:selected').text().replace(/\s+/g, '_'));
-        
         return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
     }
 
@@ -374,7 +370,6 @@
 
     function exportarXLSX() {
         const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        // Remove a propriedade auxiliar antes de exportar
         const dataLimpa = data.map(d => {
             let item = {...d};
             delete item.busca_nome;
