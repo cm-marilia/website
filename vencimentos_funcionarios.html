@@ -194,7 +194,8 @@
         $('#loader').show();
         $('#main-container').hide();
         
-        Papa.parse(`${CSV_URL}&cache=${Date.now()}`, {
+        // Adicionado cachebuster mais forte
+        Papa.parse(`${CSV_URL}&t=${new Date().getTime()}`, {
             download: true,
             skipEmptyLines: true,
             complete: function(results) {
@@ -217,17 +218,31 @@
         });
     }
 
-    // === MAPEADOR DINÂMICO A PARTIR DA PRIMEIRA LINHA ===
+    // === MAPEADOR DINÂMICO À PROVA DE FALHAS ===
     function processarDadosMapeados(linhas) {
-        if(linhas.length < 2) return;
-        
-        // 1. Força a leitura do cabeçalho estritamente na primeira linha (índice 0)
-        const headerIndex = 0;
-        
-        // Normaliza os nomes das colunas da primeira linha
-        const cabecalhos = linhas[headerIndex].map(h => removerAcentos(String(h).trim().toLowerCase()));
+        if (!linhas || linhas.length === 0) return;
+
+        let headerIndex = -1;
+        let cabecalhos = [];
+        let indices = {};
+
+        // 1. Escaneia as primeiras 15 linhas para adivinhar inteligentemente onde está o cabeçalho
+        for (let i = 0; i < Math.min(15, linhas.length); i++) {
+            let cols = linhas[i].map(h => removerAcentos(String(h).trim().toLowerCase()));
+            
+            // O código sabe que achou o cabeçalho se a linha tiver a palavra 'nome' e a palavra 'bruto' ou 'liquido'
+            let temNome = cols.some(c => c.includes("nome") || c.includes("servidor"));
+            let temBruto = cols.some(c => c.includes("bruto") || c.includes("liquido") || c.includes("vencimento"));
+
+            if (temNome && temBruto) {
+                headerIndex = i;
+                cabecalhos = cols;
+                break;
+            }
+        }
 
         const procurarColuna = (palavrasChave) => {
+            if (headerIndex === -1) return -1;
             for (let palavra of palavrasChave) {
                 let index = cabecalhos.findIndex(h => h.includes(palavra));
                 if (index !== -1) return index;
@@ -235,37 +250,51 @@
             return -1;
         };
 
-        // 2. Mapeia os índices reais baseados na primeira linha
-        const indices = {
-            matricula: procurarColuna(["matricula", "mat."]),
-            nome: procurarColuna(["nome", "servidor", "funcionario"]),
-            cargo: procurarColuna(["cargo", "funcao"]),
-            venc_bruto: procurarColuna(["brutos", "bruto", "vencimento bruto"]),
-            venc_liquido: procurarColuna(["liquidos", "liquido", "vencimento liquido"]),
-            referencia: procurarColuna(["referencia", "ref."]),
-            vantagens: procurarColuna(["vantagem", "pessoais"]),
-            outras_verbas: procurarColuna(["outras verbas"]),
-            indenizatorias: procurarColuna(["indenizatoria"]),
-            auxilio: procurarColuna(["auxilio", "saude", "alimentacao"]),
-            abono: procurarColuna(["abono", "permanencia"]),
-            redutor: procurarColuna(["redutor"]),
-            desc_legais: procurarColuna(["descontos legais"]),
-            desc_eventuais: procurarColuna(["descontos eventuais"])
-        };
+        // 2. Se achou o cabeçalho, mapeia. Se não achou, usa a ordem padrão.
+        if (headerIndex !== -1) {
+            indices = {
+                matricula: procurarColuna(["matricula", "mat.", "mat "]),
+                nome: procurarColuna(["nome", "servidor", "funcionario"]),
+                cargo: procurarColuna(["cargo", "funcao", "emprego"]),
+                venc_bruto: procurarColuna(["brutos", "bruto", "vencimento bruto"]),
+                venc_liquido: procurarColuna(["liquidos", "liquido", "vencimento liquido"]),
+                referencia: procurarColuna(["referencia", "ref.", "ref "]),
+                vantagens: procurarColuna(["vantagens", "pessoais"]),
+                outras_verbas: procurarColuna(["outras verbas", "remuneratorias"]),
+                indenizatorias: procurarColuna(["indenizatorias", "indenizatoria"]),
+                auxilio: procurarColuna(["auxilio", "saude", "alimentacao"]),
+                abono: procurarColuna(["abono", "permanencia"]),
+                redutor: procurarColuna(["redutor", "teto"]),
+                desc_legais: procurarColuna(["descontos legais", "previdencia"]),
+                desc_eventuais: procurarColuna(["descontos eventuais", "eventual"])
+            };
+        } else {
+            // Plano B de emergência: Assume ordem exata da imagem caso o cabeçalho tenha sido deletado
+            indices = {
+                matricula: 0, nome: 1, cargo: 2, venc_bruto: 3, venc_liquido: 4,
+                referencia: 5, vantagens: 6, outras_verbas: 7, indenizatorias: 8,
+                auxilio: 9, abono: 10, redutor: 11, desc_legais: 12, desc_eventuais: 13
+            };
+        }
+
+        // Força a buscar o nome na coluna 1 caso as palavras chave falhem
+        if(indices.nome === -1) indices.nome = 1; 
 
         dadosGlobais = [];
 
-        // 3. Varre os dados a partir da SEGUNDA linha (índice 1)
-        for (let i = 1; i < linhas.length; i++) {
+        // 3. Lê os dados ignorando o cabeçalho
+        let startIndex = headerIndex !== -1 ? headerIndex + 1 : 0;
+
+        for (let i = startIndex; i < linhas.length; i++) {
             const col = linhas[i];
             
+            // Pula linhas muito curtas
             if (!col || col.length < 3) continue;
 
-            let nomeVal = indices.nome !== -1 ? col[indices.nome] : "";
-            if (nomeVal) nomeVal = nomeVal.trim();
+            let nomeVal = indices.nome !== -1 && col[indices.nome] ? col[indices.nome].trim() : "";
             
-            // Ignorar linhas vazias ou de totalizadores
-            if (!nomeVal || nomeVal === "-" || nomeVal.toLowerCase().includes("total")) continue;
+            // Pula a linha se o nome estiver vazio, for um traço, ou se for a palavra "Nome" (cabeçalho duplo)
+            if (!nomeVal || nomeVal === "-" || nomeVal.toLowerCase().includes("total") || nomeVal.toLowerCase() === "nome") continue;
 
             let extrairValor = (idx) => (idx !== -1 && col[idx]) ? col[idx].trim() : "-";
 
