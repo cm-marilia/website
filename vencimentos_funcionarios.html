@@ -32,10 +32,10 @@
         button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; padding: 0 20px; white-space: nowrap; }
         button.btn-filtro:hover { background: #00274d; }
 
-        /* FILTROS RESPONSIVOS */
-        .painel-filtros { display: grid; grid-template-columns: 2fr 2fr auto; gap: 10px; margin-bottom: 5px; }
+        /* FILTROS RESPONSIVOS - ADAPTADO PARA RECEBER O MÊS/ANO */
+        .painel-filtros { display: grid; grid-template-columns: 2fr 2fr 1.5fr auto; gap: 10px; margin-bottom: 5px; }
         
-        @media (max-width: 650px) {
+        @media (max-width: 750px) {
             .painel-filtros { grid-template-columns: 1fr; }
             button.btn-filtro { width: 100%; }
         }
@@ -69,7 +69,7 @@
         .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
         .status-matricula { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
         
-        /* AJUSTES PARA AS 4 LINHAS NO CORPO DO CARD */
+        /* CORPO DO CARD DIVIDIDO EM 4 LINHAS PARA IFRAME */
         .card-body { display: flex; flex-direction: column; padding: 0; background: #fafaf9; }
         
         .info-row-grid { 
@@ -79,7 +79,6 @@
             gap: 12px; 
         }
         
-        /* Coloca uma borda em todas as linhas, exceto na última */
         .info-row-grid:not(:last-child) { border-bottom: 1px solid #e5e7eb; } 
 
         .info-col { display: flex; flex-direction: column; background: #fff; padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb; }
@@ -106,7 +105,7 @@
         @media (max-width: 600px) {
             .topo { flex-direction: column; gap: 10px; text-align: center; }
             .card-header { flex-direction: column; text-align: center; gap: 10px; }
-            .info-row-grid { grid-template-columns: 1fr; } /* Em telas muito pequenas, empilha */
+            .info-row-grid { grid-template-columns: 1fr; } 
             .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
             .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
         }
@@ -147,8 +146,7 @@
         
         <div id="alerta-aba-errada" class="alerta-erro">
             ⚠️ ATENÇÃO: O sistema não encontrou os cabeçalhos corretos (Nome, Cargo, etc.). 
-            Parece que o link não está apontando para a aba correta. 
-            Por favor, publique a aba de abril/2026 no Google Sheets e atualize a variável CSV_URL no código.
+            Por favor, publique a aba principal de dados no Google Sheets e atualize a variável CSV_URL no código.
         </div>
 
         <fieldset class="painel-grupo">
@@ -158,6 +156,7 @@
             <div class="painel-filtros">
                 <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off" aria-label="Pesquisar por nome">
                 <select id="filtroCargo" aria-label="Filtrar por Cargo"><option value="">Todos os Cargos</option></select>
+                <select id="filtroMesAno" aria-label="Filtrar por Mês/Ano"><option value="">Todos os Meses</option></select>
                 <button class="btn-filtro" onclick="limparFiltros()">Limpar filtros</button>
             </div>
         </fieldset>
@@ -195,8 +194,7 @@
 
 <script>
     // ============================================================================
-    // 🔴 IMPORTANTE: COLE AQUI O SEU LINK DA PLANILHA FINANCEIRA (aba abril/2026)
-    // O link abaixo é o genérico financeiro. Lembre-se de adicionar &single=true&gid=NUMERO
+    // 🔴 COLE AQUI O LINK DA SUA NOVA ABA "BASE" CUMULATIVA DO GOOGLE SHEETS
     // ============================================================================
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQbCGibK-aCEzCk-9SDeaAl9NFrRVfs0AQBpXAYjzW3WfUUSphH5F7L9eopRr9h5SrOgOLTz1MX6puZ/pub?output=csv";
     
@@ -249,9 +247,9 @@
         let cabecalhos = [];
         let indices = {};
 
+        // Localiza a linha do cabeçalho
         for (let i = 0; i < Math.min(15, linhas.length); i++) {
             let cols = linhas[i].map(h => removerAcentos(String(h).trim().toLowerCase()));
-            
             let temNome = cols.some(c => c.includes("nome") || c.includes("servidor"));
             let temBruto = cols.some(c => c.includes("bruto") || c.includes("liquido") || c.includes("vencimento"));
 
@@ -273,7 +271,7 @@
 
         if (headerIndex === -1) {
             $('#alerta-aba-errada').show();
-            indices = { matricula: 0, nome: 1, cargo: 2, venc_bruto: 3, venc_liquido: 4, referencia: 5, vantagens: 6, outras_verbas: 7, indenizatorias: 8, auxilio: 9, abono: 10, redutor: 11, desc_legais: 12, desc_eventuais: 13 };
+            indices = { matricula: 0, nome: 1, cargo: 2, venc_bruto: 3, venc_liquido: 4, referencia: 5, vantagens: 6, outras_verbas: 7, indenizatorias: 8, auxilio: 9, abono: 10, redutor: 11, desc_legais: 12, desc_eventuais: 13, mes_ano: 14 };
         } else {
             $('#alerta-aba-errada').hide();
             indices = {
@@ -290,14 +288,14 @@
                 abono: procurarColuna(["abono", "permanencia"]),
                 redutor: procurarColuna(["redutor", "teto"]),
                 desc_legais: procurarColuna(["descontos legais", "previdencia"]),
-                desc_eventuais: procurarColuna(["descontos eventuais", "eventual"])
+                desc_eventuais: procurarColuna(["descontos eventuais", "eventual"]),
+                mes_ano: procurarColuna(["mes/ano", "mes", "periodo", "ano"]) // Mapeamento da nova coluna
             };
         }
 
         if(indices.nome === -1) indices.nome = 1; 
 
         dadosGlobais = [];
-
         let startIndex = headerIndex !== -1 ? headerIndex + 1 : 0;
 
         for (let i = startIndex; i < linhas.length; i++) {
@@ -305,7 +303,6 @@
             if (!col || col.length < 3) continue;
 
             let nomeVal = indices.nome !== -1 && col[indices.nome] ? col[indices.nome].trim() : "";
-            
             if (!nomeVal || nomeVal === "-" || nomeVal.toLowerCase().includes("total") || nomeVal.toLowerCase() === "nome") continue;
 
             let extrairValor = (idx) => (idx !== -1 && col[idx]) ? col[idx].trim() : "-";
@@ -324,7 +321,8 @@
                 abono: extrairValor(indices.abono),
                 redutor: extrairValor(indices.redutor),
                 desc_legais: extrairValor(indices.desc_legais),
-                desc_eventuais: extrairValor(indices.desc_eventuais)
+                desc_eventuais: extrairValor(indices.desc_eventuais),
+                mes_ano: extrairValor(indices.mes_ano) // Salva o mês/ano no objeto
             };
             
             obj.busca_nome = removerAcentos(obj.nome.toLowerCase());
@@ -333,19 +331,32 @@
     }
 
     function popularFiltrosDynamic() {
+        // Alimenta Dropdown de Cargos
         const cargos = [...new Set(dadosGlobais.map(d => d.cargo))].filter(c => c && c !== "-").sort();
         $('#filtroCargo').html('<option value="">Todos os Cargos</option>');
         cargos.forEach(c => $('#filtroCargo').append(`<option value="${c}">${c}</option>`));
+
+        // Alimenta Dropdown de Mês/Ano dinamicamente
+        const meses = [...new Set(dadosGlobais.map(d => d.mes_ano))].filter(m => m && m !== "-").sort().reverse();
+        $('#filtroMesAno').html('<option value="">Todos os Meses</option>');
+        meses.forEach(m => $('#filtroMesAno').append(`<option value="${m}">${m}</option>`));
+        
+        // Seleciona automaticamente o mês mais recente disponível como padrão, se houver meses cadastrados
+        if(meses.length > 0) {
+            $('#filtroMesAno').val(meses[0]);
+        }
     }
 
     function aplicarFiltros() {
         const nomeDigitado = removerAcentos($('#filtroNome').val().toLowerCase());
         const cargoSelecionado = $('#filtroCargo').val();
+        const mesAnoSelecionado = $('#filtroMesAno').val();
         
         let filtrados = dadosGlobais.filter(d => {
             const matchNome = !nomeDigitado || d.busca_nome.includes(nomeDigitado);
             const matchCargo = !cargoSelecionado || d.cargo === cargoSelecionado;
-            return matchNome && matchCargo;
+            const matchMesAno = !mesAnoSelecionado || d.mes_ano === mesAnoSelecionado;
+            return matchNome && matchCargo && matchMesAno;
         });
 
         filtrados.sort((a, b) => a.nome.localeCompare(b.nome));
@@ -369,7 +380,7 @@
                             <div class="card-header">
                                 <div class="card-header-texto">
                                     <span class="nome-principal">${d.nome}</span>
-                                    <span class="subtitulo-card">${d.cargo}</span>
+                                    <span class="subtitulo-card">${d.cargo} <span style="color:#94a3b8; font-weight:normal; font-size:11px; margin-left:5px;">(${d.mes_ano})</span></span>
                                 </div>
                                 <span class="status-badge status-matricula">Matrícula: ${d.matricula}</span>
                             </div>
@@ -420,7 +431,7 @@
     }
 
     function limparFiltros() {
-        $('#filtroNome, #filtroCargo').val('');
+        $('#filtroNome, #filtroCargo, #filtroMesAno').val('');
         aplicarFiltros();
     }
 
@@ -429,14 +440,15 @@
         const nome = $('#filtroNome').val().trim();
         if (nome) partes.push(nome.replace(/\s+/g, '_'));
         if ($('#filtroCargo').val()) partes.push($('#filtroCargo option:selected').text().replace(/\s+/g, '_'));
+        if ($('#filtroMesAno').val()) partes.push($('#filtroMesAno').val().replace('/', '_'));
         return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
     }
 
     function exportarCSV() {
         const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        let csv = "\ufeffMatricula,Nome,Cargo,Vencimentos Brutos,Vencimentos Liquidos,Referencia,Vantagens Pessoais,Outras Verbas Remuneratorias Legais ou judiciais,Verbas Indenizatorias e/ou Eventuais,Auxilio saude/alimentacao,Abono de Permanencia,Redutor,Descontos Legais,Descontos Eventuais\n";
+        let csv = "\ufeffMatricula,Nome,Cargo,Vencimentos Brutos,Vencimentos Liquidos,Referencia,Vantagens Pessoais,Outras Verbas Remuneratorias Legais ou judiciais,Verbas Indenizatorias e/ou Eventuais,Auxilio saude/alimentacao,Abono de Permanencia,Redutor,Descontos Legais,Descontos Eventuais,Mes_Ano\n";
         data.forEach(d => { 
-            csv += `"${d.matricula}","${d.nome}","${d.cargo}","${d.venc_bruto}","${d.venc_liquido}","${d.referencia}","${d.vantagens}","${d.outras_verbas}","${d.indenizatorias}","${d.auxilio}","${d.abono}","${d.redutor}","${d.desc_legais}","${d.desc_eventuais}"\n`; 
+            csv += `"${d.matricula}","${d.nome}","${d.cargo}","${d.venc_bruto}","${d.venc_liquido}","${d.referencia}","${d.vantagens}","${d.outras_verbas}","${d.indenizatorias}","${d.auxilio}","${d.abono}","${d.redutor}","${d.desc_legais}","${d.desc_eventuais}","${d.mes_ano}"\n`; 
         });
         downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv");
     }
@@ -487,6 +499,7 @@
         a.href = url; a.download = fileName; a.click();
     }
 
+    // Impressão segura respeitando o filtro ativo
     function imprimirSeguro() {
         if(!tabela) return;
         const len = tabela.page.len();
@@ -495,7 +508,7 @@
     }
 
     $(document).ready(function() {
-        $('#filtroCargo').on('change', aplicarFiltros);
+        $('#filtroCargo, #filtroMesAno').on('change', aplicarFiltros);
         $('#filtroNome').on('input', aplicarFiltros); 
         carregarDados();
     });
