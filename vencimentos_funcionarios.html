@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -24,6 +24,8 @@
         .painel-grupo { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .titulo-painel { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
         .badge-atualizacao { position: absolute; top: -10px; right: 20px; font-size: 10px; background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
+
+        .alerta-erro { display: none; background: #fef08a; color: #854d0e; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; font-weight: 700; text-align: center; border: 1px solid #fde047; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
         /* ELEMENTOS DE FORMULÁRIO */
         select, input { height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box; width: 100%; }
@@ -98,7 +100,7 @@
         }
 
         @media print {
-            .topo, fieldset, .dt-bottom-controls { display: none !important; }
+            .topo, fieldset, .dt-bottom-controls, .alerta-erro { display: none !important; }
             #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
             .card-info { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; page-break-inside: avoid; }
             #main-container { display: block !important; margin: 0; }
@@ -126,10 +128,17 @@
 
     <div id="loader">
         <div class="spinner"></div>
-        <span>Sincronizando base de dados...</span>
+        <span>A sincronizar a base de dados...</span>
     </div>
 
     <main id="main-container" style="display:none;">
+        
+        <div id="alerta-aba-errada" class="alerta-erro">
+            ⚠️ ATENÇÃO: O sistema não encontrou os cabeçalhos corretos (Nome, Cargo, etc.). 
+            Parece que o link não está a apontar para o separador "abril/2026". 
+            Por favor, publique o separador correto no Google Sheets e atualize a variável CSV_URL no código.
+        </div>
+
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
             <div id="badge-atualizacao" class="badge-atualizacao">🟢 Atualizado em tempo real</div>
@@ -156,7 +165,7 @@
             <legend class="titulo-painel">Visualização</legend>
             <div class="dt-custom-header">
                 <div id="comprimento-tabela"></div> 
-                <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
+                <div id="contagem-registros" class="badge-contagem">0 registos encontrados</div>
             </div>
         </fieldset>
 
@@ -173,6 +182,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
 <script>
+    // ============================================================================
+    // 🔴 PASSO ÚNICO: COLE AQUI O SEU NOVO LINK COM O SEPARADOR "abril/2026"
+    // Ele deve conter no final: &single=true&gid=...
+    // Substitua o endereço entre as aspas:
+    // ============================================================================
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQbCGibK-aCEzCk-9SDeaAl9NFrRVfs0AQBpXAYjzW3WfUUSphH5F7L9eopRr9h5SrOgOLTz1MX6puZ/pub?output=csv";
     
     let tabela;
@@ -194,7 +208,7 @@
         $('#loader').show();
         $('#main-container').hide();
         
-        // Adicionado cachebuster mais forte
+        // Cachebuster para garantir que lê sempre os dados atualizados
         Papa.parse(`${CSV_URL}&t=${new Date().getTime()}`, {
             download: true,
             skipEmptyLines: true,
@@ -208,17 +222,16 @@
                     $('#main-container').fadeIn(400, () => enviarAlturaIframe());
                 } catch (err) {
                     console.error("Erro interno ao processar colunas: ", err);
-                    $('#loader').html('<b style="color:red">Erro ao organizar os dados. Verifique a planilha fonte.</b>');
+                    $('#loader').html('<b style="color:red">Erro ao organizar os dados. Verifique o ficheiro fonte.</b>');
                 }
             },
             error: function(err) {
                 console.error("Erro no PapaParse: ", err);
-                $('#loader').html('<b style="color:red">Erro ao baixar o arquivo CSV do Google.</b>');
+                $('#loader').html('<b style="color:red">Erro ao baixar o ficheiro CSV do Google.</b>');
             }
         });
     }
 
-    // === MAPEADOR DINÂMICO À PROVA DE FALHAS ===
     function processarDadosMapeados(linhas) {
         if (!linhas || linhas.length === 0) return;
 
@@ -226,11 +239,11 @@
         let cabecalhos = [];
         let indices = {};
 
-        // 1. Escaneia as primeiras 15 linhas para adivinhar inteligentemente onde está o cabeçalho
+        // Escaneia as primeiras 15 linhas para adivinhar inteligentemente onde está o cabeçalho
         for (let i = 0; i < Math.min(15, linhas.length); i++) {
             let cols = linhas[i].map(h => removerAcentos(String(h).trim().toLowerCase()));
             
-            // O código sabe que achou o cabeçalho se a linha tiver a palavra 'nome' e a palavra 'bruto' ou 'liquido'
+            // Verifica se a linha tem colunas típicas da sua tabela de funcionários
             let temNome = cols.some(c => c.includes("nome") || c.includes("servidor"));
             let temBruto = cols.some(c => c.includes("bruto") || c.includes("liquido") || c.includes("vencimento"));
 
@@ -250,8 +263,14 @@
             return -1;
         };
 
-        // 2. Se achou o cabeçalho, mapeia. Se não achou, usa a ordem padrão.
-        if (headerIndex !== -1) {
+        // EXIBE O ALERTA SE ELE NÃO ACHAR A TABELA CERTA
+        if (headerIndex === -1) {
+            $('#alerta-aba-errada').show();
+            // Plano B de emergência: Assume ordem exata da imagem caso o cabeçalho não exista
+            indices = { matricula: 0, nome: 1, cargo: 2, venc_bruto: 3, venc_liquido: 4, referencia: 5, vantagens: 6, outras_verbas: 7, indenizatorias: 8, auxilio: 9, abono: 10, redutor: 11, desc_legais: 12, desc_eventuais: 13 };
+        } else {
+            $('#alerta-aba-errada').hide();
+            // Mapeia dinamicamente
             indices = {
                 matricula: procurarColuna(["matricula", "mat.", "mat "]),
                 nome: procurarColuna(["nome", "servidor", "funcionario"]),
@@ -262,38 +281,29 @@
                 vantagens: procurarColuna(["vantagens", "pessoais"]),
                 outras_verbas: procurarColuna(["outras verbas", "remuneratorias"]),
                 indenizatorias: procurarColuna(["indenizatorias", "indenizatoria"]),
-                auxilio: procurarColuna(["auxilio", "saude", "alimentacao"]),
+                auxilio: procurarColuna(["auxilio", "saude", "alimentacao", "alimentaçao"]),
                 abono: procurarColuna(["abono", "permanencia"]),
                 redutor: procurarColuna(["redutor", "teto"]),
                 desc_legais: procurarColuna(["descontos legais", "previdencia"]),
                 desc_eventuais: procurarColuna(["descontos eventuais", "eventual"])
             };
-        } else {
-            // Plano B de emergência: Assume ordem exata da imagem caso o cabeçalho tenha sido deletado
-            indices = {
-                matricula: 0, nome: 1, cargo: 2, venc_bruto: 3, venc_liquido: 4,
-                referencia: 5, vantagens: 6, outras_verbas: 7, indenizatorias: 8,
-                auxilio: 9, abono: 10, redutor: 11, desc_legais: 12, desc_eventuais: 13
-            };
         }
 
-        // Força a buscar o nome na coluna 1 caso as palavras chave falhem
+        // Força o índice caso o reconhecimento por palavras falhe
         if(indices.nome === -1) indices.nome = 1; 
 
         dadosGlobais = [];
 
-        // 3. Lê os dados ignorando o cabeçalho
+        // Lê os dados
         let startIndex = headerIndex !== -1 ? headerIndex + 1 : 0;
 
         for (let i = startIndex; i < linhas.length; i++) {
             const col = linhas[i];
-            
-            // Pula linhas muito curtas
             if (!col || col.length < 3) continue;
 
             let nomeVal = indices.nome !== -1 && col[indices.nome] ? col[indices.nome].trim() : "";
             
-            // Pula a linha se o nome estiver vazio, for um traço, ou se for a palavra "Nome" (cabeçalho duplo)
+            // Ignora linhas que não parecem funcionários
             if (!nomeVal || nomeVal === "-" || nomeVal.toLowerCase().includes("total") || nomeVal.toLowerCase() === "nome") continue;
 
             let extrairValor = (idx) => (idx !== -1 && col[idx]) ? col[idx].trim() : "-";
@@ -384,7 +394,7 @@
             },
             drawCallback: function() {
                 const totalFiltrado = this.api().rows({ filter: 'applied' }).count();
-                $('#contagem-registros').html(`<b>${totalFiltrado}</b> registros encontrados`);
+                $('#contagem-registros').html(`<b>${totalFiltrado}</b> registos encontrados`);
                 enviarAlturaIframe();
             }
         });
