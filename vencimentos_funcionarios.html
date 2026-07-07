@@ -218,6 +218,7 @@
     const ORIGEM_PAI = "*";
 
     const ORDEM_MESES = { "janeiro": 1, "fevereiro": 2, "marco": 3, "abril": 4, "maio": 5, "junho": 6, "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12 };
+    const NOMES_MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
     let tabela;
     let dadosGlobais = [];
@@ -244,6 +245,15 @@
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;");
+    }
+
+    // Localiza uma coluna testando, nesta ordem: nome exato, cabeçalho que
+    // começa com o termo e, por fim, cabeçalho que apenas contém o termo
+    function procurarColunaFlexivel(cabecalhos, termos) {
+        for (const t of termos) { const i = cabecalhos.findIndex(h => h === t); if (i !== -1) return i; }
+        for (const t of termos) { const i = cabecalhos.findIndex(h => h.startsWith(t)); if (i !== -1) return i; }
+        for (const t of termos) { const i = cabecalhos.findIndex(h => h.includes(t)); if (i !== -1) return i; }
+        return -1;
     }
 
     // =========================================================================
@@ -325,7 +335,8 @@
 
         if (headerIndex === -1) {
             $('#alerta-aba-errada').show();
-            indices = { matricula: 0, nome: 1, cargo: 2, venc_bruto: 3, venc_liquido: 4, referencia: 5, vantagens: 6, outras_verbas: 7, indenizatorias: 8, auxilio: 9, abono: 10, redutor: 11, desc_legais: 12, desc_eventuais: 13, mes_ano: 14 };
+            // Fallback segue a ordem das colunas da planilha: ano, mês, Matricula, Nome, ...
+            indices = { ano: 0, mes: 1, matricula: 2, nome: 3, venc_bruto: 4, referencia: 5, vantagens: 6, outras_verbas: 7, indenizatorias: 8, auxilio: 9, abono: 10, redutor: 11, desc_legais: 12, desc_eventuais: 13, venc_liquido: 14, cargo: 15 };
         } else {
             $('#alerta-aba-errada').hide();
             indices = {
@@ -343,7 +354,10 @@
                 redutor: procurarColuna(["redutor", "teto"]),
                 desc_legais: procurarColuna(["descontos legais", "previdencia"]),
                 desc_eventuais: procurarColuna(["descontos eventuais", "eventual"]),
-                mes_ano: procurarColuna(["mes/ano", "mes", "periodo", "ano"])
+                // Colunas separadas "ano" e "mês": tenta correspondência exata,
+                // depois cabeçalho que começa com o termo, depois que contém o termo
+                ano: procurarColunaFlexivel(cabecalhos, ["ano", "exercicio"]),
+                mes: procurarColunaFlexivel(cabecalhos, ["mes"])
             };
         }
 
@@ -376,14 +390,14 @@
                 abono: extrairValor(indices.abono),
                 redutor: extrairValor(indices.redutor),
                 desc_legais: extrairValor(indices.desc_legais),
-                desc_eventuais: extrairValor(indices.desc_eventuais),
-                mes_ano: extrairValor(indices.mes_ano)
+                desc_eventuais: extrairValor(indices.desc_eventuais)
             };
 
-            // DIVISÃO MÊS/ANO: "abril/2026" vira mes="abril" e ano="2026"
-            const partes = String(obj.mes_ano).split('/').map(p => p.trim());
-            obj.mes = partes.length >= 2 ? partes[0].toLowerCase() : "-";
-            obj.ano = partes.length >= 2 ? partes[1] : (/^\d{4}$/.test(partes[0]) ? partes[0] : "-");
+            // MÊS E ANO vêm das colunas separadas da planilha.
+            // Aceita mês por extenso ("maio") ou numérico ("5" / "05")
+            obj.mes = extrairValor(indices.mes).toLowerCase();
+            if (/^\d{1,2}$/.test(obj.mes)) obj.mes = NOMES_MESES[parseInt(obj.mes, 10) - 1] || obj.mes;
+            obj.ano = extrairValor(indices.ano);
             obj.mes_num = ORDEM_MESES[removerAcentos(obj.mes)] || 0;
 
             obj.busca_nome = removerAcentos(obj.nome.toLowerCase());
@@ -399,18 +413,21 @@
         $('#filtroCargo').html('<option value="">Todos os Cargos</option>');
         cargos.forEach(c => $('#filtroCargo').append(`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`));
 
-        const anos = [...new Set(dadosGlobais.map(d => d.ano))].filter(a => a && a !== "-").sort().reverse();
+        const anos = [...new Set(dadosGlobais.map(d => d.ano))].filter(a => a && a !== "-").sort((a, b) => Number(b) - Number(a));
         $('#filtroAno').html('<option value="">Todos os Anos</option>');
         anos.forEach(a => $('#filtroAno').append(`<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`));
 
-        // Seleciona por padrão o ano mais recente
+        // PADRÃO: sempre abre no último ano e mês inseridos na planilha
+        // (ano mais recente e, dentro dele, o mês mais avançado do calendário)
         if (anos.length > 0) $('#filtroAno').val(anos[0]);
 
         popularMeses();
 
-        // Seleciona por padrão o mês mais recente do ano selecionado
-        const opcoesMes = $('#filtroMes option').map((_, o) => o.value).get().filter(v => v);
-        if (opcoesMes.length > 0) $('#filtroMes').val(opcoesMes[opcoesMes.length - 1]);
+        const registrosDoAno = anos.length > 0 ? dadosGlobais.filter(d => d.ano === anos[0]) : [];
+        if (registrosDoAno.length > 0) {
+            const maisRecente = registrosDoAno.reduce((max, d) => d.mes_num > max.mes_num ? d : max, registrosDoAno[0]);
+            if (maisRecente.mes && maisRecente.mes !== "-") $('#filtroMes').val(maisRecente.mes);
+        }
     }
 
     // Repopula o filtro de meses de acordo com o ano selecionado,
@@ -470,12 +487,17 @@
             columns: [{
                 data: null,
                 render: function(d) {
+                    // Só mostra o período quando houver mês/ano; evita exibir "(-/-)"
+                    const temPeriodo = (d.mes && d.mes !== "-") || (d.ano && d.ano !== "-");
+                    const periodo = temPeriodo
+                        ? `<span style="color:#94a3b8; font-weight:normal; font-size:11px; margin-left:5px;">(${escapeHtml(capitalizar(d.mes))}/${escapeHtml(d.ano)})</span>`
+                        : "";
                     return `
                         <div class="card-info">
                             <div class="card-header">
                                 <div class="card-header-texto">
                                     <span class="nome-principal">${escapeHtml(d.nome)}</span>
-                                    <span class="subtitulo-card">${escapeHtml(d.cargo)} <span style="color:#94a3b8; font-weight:normal; font-size:11px; margin-left:5px;">(${escapeHtml(capitalizar(d.mes))}/${escapeHtml(d.ano)})</span></span>
+                                    <span class="subtitulo-card">${escapeHtml(d.cargo)} ${periodo}</span>
                                 </div>
                                 <span class="status-badge status-matricula">Matrícula: ${escapeHtml(d.matricula)}</span>
                             </div>
@@ -588,7 +610,7 @@
         data.forEach(d => {
             xml += '<registro>';
             for (let k in d) {
-                if (typeof d[k] !== 'object' && k !== 'busca_nome' && k !== 'mes_ano' && k !== 'mes_num') {
+                if (typeof d[k] !== 'object' && k !== 'busca_nome' && k !== 'mes_num') {
                     xml += `<${k}>${escapeXml(d[k])}</${k}>`;
                 }
             }
