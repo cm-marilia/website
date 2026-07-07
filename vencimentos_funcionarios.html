@@ -558,6 +558,8 @@
     // =========================================================================
     function dadosParaExportar() {
         return tabela.rows().data().toArray().map(d => ({
+            "Ano": d.ano,
+            "Mes": capitalizar(d.mes),
             "Matricula": d.matricula,
             "Nome": d.nome,
             "Cargo": d.cargo,
@@ -571,9 +573,7 @@
             "Redutor": d.redutor,
             "Descontos Legais": d.desc_legais,
             "Descontos Eventuais": d.desc_eventuais,
-            "Vencimentos Liquidos": d.venc_liquido,
-            "Mes": capitalizar(d.mes),
-            "Ano": d.ano
+            "Vencimentos Liquidos": d.venc_liquido
         }));
     }
 
@@ -582,8 +582,15 @@
         const nome = $('#filtroNome').val().trim();
         if (nome) partes.push(nome.replace(/\s+/g, '_'));
         if ($('#filtroCargo').val()) partes.push($('#filtroCargo option:selected').text().replace(/\s+/g, '_'));
-        if ($('#filtroMes').val()) partes.push($('#filtroMes').val());
-        if ($('#filtroAno').val()) partes.push($('#filtroAno').val());
+
+        // Identifica o período no nome do arquivo, mesmo sem filtro de mês
+        const mes = $('#filtroMes').val();
+        const ano = $('#filtroAno').val();
+        if (mes) partes.push(mes);
+        else partes.push("todos_os_meses");
+        if (ano) partes.push(ano);
+        else partes.push("todos_os_anos");
+
         return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
     }
 
@@ -606,14 +613,14 @@
 
     function exportarXML() {
         const data = tabela.rows().data().toArray();
+        // Ordem fixa dos campos, com ano e mês no início (igual à planilha)
+        const campos = ["ano", "mes", "matricula", "nome", "cargo", "venc_bruto", "referencia", "vantagens", "outras_verbas", "indenizatorias", "auxilio", "abono", "redutor", "desc_legais", "desc_eventuais", "venc_liquido"];
         let xml = '<?xml version="1.0" encoding="UTF-8"?><dados>';
         data.forEach(d => {
             xml += '<registro>';
-            for (let k in d) {
-                if (typeof d[k] !== 'object' && k !== 'busca_nome' && k !== 'mes_num') {
-                    xml += `<${k}>${escapeXml(d[k])}</${k}>`;
-                }
-            }
+            campos.forEach(k => {
+                xml += `<${k}>${escapeXml(d[k])}</${k}>`;
+            });
             xml += '</registro>';
         });
         xml += '</dados>';
