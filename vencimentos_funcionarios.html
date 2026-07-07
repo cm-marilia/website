@@ -41,11 +41,16 @@
         /* FILTROS RESPONSIVOS (agora com Mês e Ano separados) */
         .painel-filtros { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr auto; gap: 10px; margin-bottom: 5px; }
 
+        /* Telas médias / iframe: nome e cargo na 1ª linha;
+           mês, ano e botão juntos na 2ª linha */
         @media (max-width: 850px) {
-            .painel-filtros { grid-template-columns: 1fr 1fr; }
+            .painel-filtros { grid-template-columns: repeat(6, 1fr); }
+            #filtroNome, #filtroCargo { grid-column: span 3; }
+            #filtroMes, #filtroAno, .painel-filtros .btn-filtro { grid-column: span 2; }
         }
         @media (max-width: 600px) {
             .painel-filtros { grid-template-columns: 1fr; }
+            #filtroNome, #filtroCargo, #filtroMes, #filtroAno, .painel-filtros .btn-filtro { grid-column: 1 / -1; }
             button.btn-filtro { width: 100%; }
         }
 
@@ -139,9 +144,9 @@
     </header>
 
     <div id="cabecalho-impressao">
-        <img src="Brasão_de_Marília.png" width="63" height="70" alt="Brasão de Marília">
+        <img src="brasao_marilia.png" width="63" height="70" alt="Brasão de Marília">
         <div>
-            <h1 style="margin:0; color:#003b75;">Relatório de Remuneração</h1>
+            <h1 style="margin:0; color:#003b75;">Remuneração Detalhada dos Servidores</h1>
             <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
         </div>
     </div>
