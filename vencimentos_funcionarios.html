@@ -6,13 +6,19 @@
     <title>Remuneração Detalhada dos Servidores</title>
 
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
-    
+
+    <!-- Fonte Inter (antes era referenciada no CSS mas nunca carregada) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
         /* =========================================
            1. ESTILOS GERAIS E BASE
            ========================================= */
         body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden;}
-        #wrapper { padding-bottom: 40px; padding: 15px; } 
+        /* CORRIGIDO: padding-bottom vinha antes e era sobrescrito pelo padding geral */
+        #wrapper { padding: 15px 15px 40px; }
 
         .topo { background: #003b75; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         .topo h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
@@ -20,7 +26,7 @@
         .texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
 
         .brasao { max-width: 100%; height: auto; object-fit: contain; }
-        
+
         .painel-grupo { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .titulo-painel { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
         .badge-atualizacao { position: absolute; top: -10px; right: 20px; font-size: 10px; background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
@@ -32,10 +38,13 @@
         button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; padding: 0 20px; white-space: nowrap; }
         button.btn-filtro:hover { background: #00274d; }
 
-        /* FILTROS RESPONSIVOS */
-        .painel-filtros { display: grid; grid-template-columns: 2fr 2fr 1.5fr auto; gap: 10px; margin-bottom: 5px; }
-        
-        @media (max-width: 750px) {
+        /* FILTROS RESPONSIVOS (agora com Mês e Ano separados) */
+        .painel-filtros { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr auto; gap: 10px; margin-bottom: 5px; }
+
+        @media (max-width: 850px) {
+            .painel-filtros { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 600px) {
             .painel-filtros { grid-template-columns: 1fr; }
             button.btn-filtro { width: 100%; }
         }
@@ -59,27 +68,27 @@
         /* TABELA BASE E CARDS */
         #tabela thead { display: none !important; }
         table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
-        
+
         .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
         .card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; display: flex; justify-content: space-between; align-items: center; }
         .card-header-texto { display: flex; flex-direction: column; gap: 2px; }
         .nome-principal { font-size: 16px; font-weight: 800; color: #003b75; text-transform: uppercase; }
         .subtitulo-card { font-size: 12px; color: #64748b; font-weight: 500; text-transform: uppercase; }
-        
+
         .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
         .status-matricula { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
-        
+
         /* CORPO DO CARD DIVIDIDO EM 4 LINHAS PARA IFRAME */
         .card-body { display: flex; flex-direction: column; padding: 0; background: #fafaf9; }
-        
-        .info-row-grid { 
-            display: grid; 
+
+        .info-row-grid {
+            display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            padding: 12px 15px; 
-            gap: 12px; 
+            padding: 12px 15px;
+            gap: 12px;
         }
-        
-        .info-row-grid:not(:last-child) { border-bottom: 1px solid #e5e7eb; } 
+
+        .info-row-grid:not(:last-child) { border-bottom: 1px solid #e5e7eb; }
 
         .info-col { display: flex; flex-direction: column; background: #fff; padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb; }
         .info-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 3px; }
@@ -105,7 +114,7 @@
         @media (max-width: 600px) {
             .topo { flex-direction: column; gap: 10px; text-align: center; }
             .card-header { flex-direction: column; text-align: center; gap: 10px; }
-            .info-row-grid { grid-template-columns: 1fr; } 
+            .info-row-grid { grid-template-columns: 1fr; }
             .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
             .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
         }
@@ -122,9 +131,9 @@
 
 <div id="wrapper">
     <header class="topo">
-        <h1>Relatório de Remuneração</h1>
+        <h1>Remuneração Detalhada dos Servidores</h1>
         <div class="logo-container">
-            <img src="Brasão_de_Marília.png" alt="Brasão de Marília" width="50" height="50" class="brasao">
+            <img src="brasao_marilia.png" alt="Brasão de Marília" width="50" height="50" class="brasao">
             <span class="texto-camara">Câmara Municipal de Marília</span>
         </div>
     </header>
@@ -143,20 +152,21 @@
     </div>
 
     <main id="main-container" style="display:none;">
-        
+
         <div id="alerta-aba-errada" class="alerta-erro">
-            ⚠️ ATENÇÃO: O sistema não encontrou os cabeçalhos corretos (Nome, Cargo, etc.). 
+            ⚠️ ATENÇÃO: O sistema não encontrou os cabeçalhos corretos (Nome, Cargo, etc.).
             Por favor, certifique-se de publicar a aba chamada exatamente de "planilha" no Google Sheets e atualize a variável CSV_URL no código.
         </div>
 
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
             <div id="badge-atualizacao" class="badge-atualizacao">🟢 Atualizado mensalmente</div>
-            
+
             <div class="painel-filtros">
                 <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off" aria-label="Pesquisar por nome">
                 <select id="filtroCargo" aria-label="Filtrar por Cargo"><option value="">Todos os Cargos</option></select>
-                <select id="filtroMesAno" aria-label="Filtrar por Mês/Ano"><option value="">Todos os Meses</option></select>
+                <select id="filtroMes" aria-label="Filtrar por Mês"><option value="">Todos os Meses</option></select>
+                <select id="filtroAno" aria-label="Filtrar por Ano"><option value="">Todos os Anos</option></select>
                 <button class="btn-filtro" onclick="limparFiltros()">Limpar filtros</button>
             </div>
         </fieldset>
@@ -175,7 +185,7 @@
         <fieldset class="painel-grupo" id="painel-visualizacao" style="padding: 10px 15px;">
             <legend class="titulo-painel">Visualização</legend>
             <div class="dt-custom-header">
-                <div id="comprimento-tabela"></div> 
+                <div id="comprimento-tabela"></div>
                 <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
             </div>
         </fieldset>
@@ -197,27 +207,67 @@
     // 🔴 COLE AQUI O LINK DA SUA ABA "planilha" DO GOOGLE SHEETS
     // ============================================================================
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQbCGibK-aCEzCk-9SDeaAl9NFrRVfs0AQBpXAYjzW3WfUUSphH5F7L9eopRr9h5SrOgOLTz1MX6puZ/pub?output=csv";
-    
+
+    // Se quiser restringir o postMessage apenas ao site que hospeda o iframe,
+    // troque "*" pelo domínio do site pai, ex: "https://www.camar.sp.gov.br"
+    const ORIGEM_PAI = "*";
+
+    const ORDEM_MESES = { "janeiro": 1, "fevereiro": 2, "marco": 3, "abril": 4, "maio": 5, "junho": 6, "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12 };
+
     let tabela;
     let dadosGlobais = [];
 
-    function enviarAlturaIframe() {
-        setTimeout(() => {
-            const wrapper = document.getElementById('wrapper');
-            if (wrapper) {
-                const h = wrapper.offsetHeight + 40; 
-                window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
-            }
-        }, 200); 
-    }
-
+    // =========================================================================
+    // UTILITÁRIOS
+    // =========================================================================
     function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
 
+    function capitalizar(str) { return str ? str.charAt(0).toUpperCase() + str.slice(1) : str; }
+
+    // SEGURANÇA: escapa HTML antes de inserir dados da planilha na página (evita XSS/quebra de layout)
+    function escapeHtml(valor) {
+        return String(valor ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function escapeXml(valor) {
+        return String(valor ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    // =========================================================================
+    // ALTURA DO IFRAME — ResizeObserver envia a altura automaticamente sempre
+    // que o conteúdo muda, sem depender de setTimeout espalhado pelo código.
+    // =========================================================================
+    function enviarAlturaIframe() {
+        const wrapper = document.getElementById('wrapper');
+        if (wrapper) {
+            const h = wrapper.offsetHeight + 40;
+            window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, ORIGEM_PAI);
+        }
+    }
+
+    if ('ResizeObserver' in window) {
+        new ResizeObserver(() => enviarAlturaIframe()).observe(document.getElementById('wrapper'));
+    }
+
+    // =========================================================================
+    // CARREGAMENTO DOS DADOS
+    // =========================================================================
     function carregarDados() {
         $('#loader').show();
         $('#main-container').hide();
-        
-        Papa.parse(`${CSV_URL}&t=${new Date().getTime()}`, {
+
+        // Cache-buster robusto: funciona com ou sem "?" já presente na URL
+        const separador = CSV_URL.includes('?') ? '&' : '?';
+
+        Papa.parse(`${CSV_URL}${separador}t=${Date.now()}`, {
             download: true,
             skipEmptyLines: true,
             complete: function(results) {
@@ -225,7 +275,7 @@
                     processarDadosMapeados(results.data);
                     popularFiltrosDynamic();
                     aplicarFiltros();
-                    
+
                     $('#loader').hide();
                     $('#main-container').fadeIn(400, () => enviarAlturaIframe());
                 } catch (err) {
@@ -247,7 +297,6 @@
         let cabecalhos = [];
         let indices = {};
 
-        // AQUI ESTAVA O ERRO DE DIGITAÇÃO. Corrigido de lines[i] para linhas[i].
         for (let i = 0; i < Math.min(15, linhas.length); i++) {
             let cols = linhas[i].map(h => removerAcentos(String(h).trim().toLowerCase()));
             let temNome = cols.some(c => c.includes("nome") || c.includes("servidor"));
@@ -284,7 +333,7 @@
                 vantagens: procurarColuna(["vantagens", "pessoais"]),
                 outras_verbas: procurarColuna(["outras verbas", "remuneratorias"]),
                 indenizatorias: procurarColuna(["indenizatorias", "indenizatoria"]),
-                auxilio: procurarColuna(["auxilio", "saude", "alimentacao", "alimentaçao"]),
+                auxilio: procurarColuna(["auxilio", "saude", "alimentacao"]),
                 abono: procurarColuna(["abono", "permanencia"]),
                 redutor: procurarColuna(["redutor", "teto"]),
                 desc_legais: procurarColuna(["descontos legais", "previdencia"]),
@@ -293,7 +342,7 @@
             };
         }
 
-        if(indices.nome === -1) indices.nome = 1; 
+        if(indices.nome === -1) indices.nome = 1;
 
         dadosGlobais = [];
         let startIndex = headerIndex !== -1 ? headerIndex + 1 : 0;
@@ -303,7 +352,7 @@
             if (!col || col.length < 3) continue;
 
             let nomeVal = indices.nome !== -1 && col[indices.nome] ? col[indices.nome].trim() : "";
-            
+
             if (!nomeVal || nomeVal === "-" || nomeVal.toLowerCase().includes("total") || nomeVal.toLowerCase() === "nome") continue;
 
             let extrairValor = (idx) => (idx !== -1 && col[idx]) ? col[idx].trim() : "-";
@@ -325,47 +374,90 @@
                 desc_eventuais: extrairValor(indices.desc_eventuais),
                 mes_ano: extrairValor(indices.mes_ano)
             };
-            
+
+            // DIVISÃO MÊS/ANO: "abril/2026" vira mes="abril" e ano="2026"
+            const partes = String(obj.mes_ano).split('/').map(p => p.trim());
+            obj.mes = partes.length >= 2 ? partes[0].toLowerCase() : "-";
+            obj.ano = partes.length >= 2 ? partes[1] : (/^\d{4}$/.test(partes[0]) ? partes[0] : "-");
+            obj.mes_num = ORDEM_MESES[removerAcentos(obj.mes)] || 0;
+
             obj.busca_nome = removerAcentos(obj.nome.toLowerCase());
             dadosGlobais.push(obj);
         }
     }
 
+    // =========================================================================
+    // FILTROS
+    // =========================================================================
     function popularFiltrosDynamic() {
         const cargos = [...new Set(dadosGlobais.map(d => d.cargo))].filter(c => c && c !== "-").sort();
         $('#filtroCargo').html('<option value="">Todos os Cargos</option>');
-        cargos.forEach(c => $('#filtroCargo').append(`<option value="${c}">${c}</option>`));
+        cargos.forEach(c => $('#filtroCargo').append(`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`));
 
-        const meses = [...new Set(dadosGlobais.map(d => d.mes_ano))].filter(m => m && m !== "-").sort().reverse();
-        $('#filtroMesAno').html('<option value="">Todos os Meses</option>');
-        meses.forEach(m => $('#filtroMesAno').append(`<option value="${m}">${m}</option>`));
-        
-        if(meses.length > 0) {
-            $('#filtroMesAno').val(meses[0]);
-        }
+        const anos = [...new Set(dadosGlobais.map(d => d.ano))].filter(a => a && a !== "-").sort().reverse();
+        $('#filtroAno').html('<option value="">Todos os Anos</option>');
+        anos.forEach(a => $('#filtroAno').append(`<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`));
+
+        // Seleciona por padrão o ano mais recente
+        if (anos.length > 0) $('#filtroAno').val(anos[0]);
+
+        popularMeses();
+
+        // Seleciona por padrão o mês mais recente do ano selecionado
+        const opcoesMes = $('#filtroMes option').map((_, o) => o.value).get().filter(v => v);
+        if (opcoesMes.length > 0) $('#filtroMes').val(opcoesMes[opcoesMes.length - 1]);
+    }
+
+    // Repopula o filtro de meses de acordo com o ano selecionado,
+    // ordenando por calendário (janeiro → dezembro) e não alfabeticamente
+    function popularMeses() {
+        const anoSelecionado = $('#filtroAno').val();
+        const mesAtual = $('#filtroMes').val();
+
+        const base = anoSelecionado ? dadosGlobais.filter(d => d.ano === anoSelecionado) : dadosGlobais;
+        const meses = [...new Set(base.map(d => d.mes))]
+            .filter(m => m && m !== "-")
+            .sort((a, b) => (ORDEM_MESES[removerAcentos(a)] || 0) - (ORDEM_MESES[removerAcentos(b)] || 0));
+
+        $('#filtroMes').html('<option value="">Todos os Meses</option>');
+        meses.forEach(m => $('#filtroMes').append(`<option value="${escapeHtml(m)}">${escapeHtml(capitalizar(m))}</option>`));
+
+        // Mantém o mês selecionado se ele ainda existir no novo ano
+        if (mesAtual && meses.includes(mesAtual)) $('#filtroMes').val(mesAtual);
     }
 
     function aplicarFiltros() {
         const nomeDigitado = removerAcentos($('#filtroNome').val().toLowerCase());
         const cargoSelecionado = $('#filtroCargo').val();
-        const mesAnoSelecionado = $('#filtroMesAno').val();
-        
+        const mesSelecionado = $('#filtroMes').val();
+        const anoSelecionado = $('#filtroAno').val();
+
         let filtrados = dadosGlobais.filter(d => {
             const matchNome = !nomeDigitado || d.busca_nome.includes(nomeDigitado);
             const matchCargo = !cargoSelecionado || d.cargo === cargoSelecionado;
-            const matchMesAno = !mesAnoSelecionado || d.mes_ano === mesAnoSelecionado;
-            return matchNome && matchCargo && matchMesAno;
+            const matchMes = !mesSelecionado || d.mes === mesSelecionado;
+            const matchAno = !anoSelecionado || d.ano === anoSelecionado;
+            return matchNome && matchCargo && matchMes && matchAno;
         });
 
         filtrados.sort((a, b) => a.nome.localeCompare(b.nome));
         renderizarTabela(filtrados);
     }
 
-    function renderizarTabela(dados) {
-        if (tabela) { tabela.destroy(); $('#comprimento-tabela').empty(); }
+    function limparFiltros() {
+        $('#filtroNome, #filtroCargo, #filtroAno').val('');
+        popularMeses();
+        $('#filtroMes').val('');
+        aplicarFiltros();
+    }
 
+    // =========================================================================
+    // TABELA — criada UMA única vez; os filtros apenas atualizam os dados
+    // (antes o DataTable era destruído e recriado a cada tecla digitada)
+    // =========================================================================
+    function inicializarTabela() {
         tabela = $('#tabela').DataTable({
-            data: dados,
+            data: [],
             pageLength: 10,
             ordering: false,
             language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
@@ -377,46 +469,45 @@
                         <div class="card-info">
                             <div class="card-header">
                                 <div class="card-header-texto">
-                                    <span class="nome-principal">${d.nome}</span>
-                                    <span class="subtitulo-card">${d.cargo} <span style="color:#94a3b8; font-weight:normal; font-size:11px; margin-left:5px;">(${d.mes_ano})</span></span>
+                                    <span class="nome-principal">${escapeHtml(d.nome)}</span>
+                                    <span class="subtitulo-card">${escapeHtml(d.cargo)} <span style="color:#94a3b8; font-weight:normal; font-size:11px; margin-left:5px;">(${escapeHtml(capitalizar(d.mes))}/${escapeHtml(d.ano)})</span></span>
                                 </div>
-                                <span class="status-badge status-matricula">Matrícula: ${d.matricula}</span>
+                                <span class="status-badge status-matricula">Matrícula: ${escapeHtml(d.matricula)}</span>
                             </div>
                             <div class="card-body">
                                 <div class="info-row-grid">
-                                    <div class="info-col"><span class="info-label">Vencimentos Brutos</span><span class="info-valor">${d.venc_bruto}</span></div>
-                                    <div class="info-col"><span class="info-label">Referência</span><span class="info-valor">${d.referencia}</span></div>
-                                    <div class="info-col"><span class="info-label">Vantagens Pessoais</span><span class="info-valor">${d.vantagens}</span></div>
-                                </div>
-                                
-                                <div class="info-row-grid">
-                                    <div class="info-col"><span class="info-label">Outras Verbas Remuneratórias Legais ou judiciais</span><span class="info-valor">${d.outras_verbas}</span></div>
-                                    <div class="info-col"><span class="info-label">Verbas Indenizatórias e/ou Eventuais</span><span class="info-valor">${d.indenizatorias}</span></div>
-                                    <div class="info-col"><span class="info-label">Auxílio saúde/alimentação</span><span class="info-valor">${d.auxilio}</span></div>
+                                    <div class="info-col"><span class="info-label">Vencimentos Brutos</span><span class="info-valor">${escapeHtml(d.venc_bruto)}</span></div>
+                                    <div class="info-col"><span class="info-label">Referência</span><span class="info-valor">${escapeHtml(d.referencia)}</span></div>
+                                    <div class="info-col"><span class="info-label">Vantagens Pessoais</span><span class="info-valor">${escapeHtml(d.vantagens)}</span></div>
                                 </div>
 
                                 <div class="info-row-grid">
-                                    <div class="info-col"><span class="info-label">Abono de Permanência</span><span class="info-valor">${d.abono}</span></div>
-                                    <div class="info-col"><span class="info-label">Redutor</span><span class="info-valor">${d.redutor}</span></div>
-                                    <div class="info-col"><span class="info-label">Descontos Legais</span><span class="info-valor">${d.desc_legais}</span></div>
+                                    <div class="info-col"><span class="info-label">Outras Verbas Remuneratórias Legais ou judiciais</span><span class="info-valor">${escapeHtml(d.outras_verbas)}</span></div>
+                                    <div class="info-col"><span class="info-label">Verbas Indenizatórias e/ou Eventuais</span><span class="info-valor">${escapeHtml(d.indenizatorias)}</span></div>
+                                    <div class="info-col"><span class="info-label">Auxílio saúde/alimentação</span><span class="info-valor">${escapeHtml(d.auxilio)}</span></div>
                                 </div>
 
                                 <div class="info-row-grid">
-                                    <div class="info-col"><span class="info-label">Descontos Eventuais</span><span class="info-valor">${d.desc_eventuais}</span></div>
-                                    <div class="info-col" style="background: #f8fafc; border: 1px solid #cbd5e1;"><span class="info-label" style="color: #003b75;">Vencimentos Líquidos</span><span class="info-valor" style="color: #003b75; font-size: 13px;">${d.venc_liquido}</span></div>
+                                    <div class="info-col"><span class="info-label">Abono de Permanência</span><span class="info-valor">${escapeHtml(d.abono)}</span></div>
+                                    <div class="info-col"><span class="info-label">Redutor</span><span class="info-valor">${escapeHtml(d.redutor)}</span></div>
+                                    <div class="info-col"><span class="info-label">Descontos Legais</span><span class="info-valor">${escapeHtml(d.desc_legais)}</span></div>
+                                </div>
+
+                                <div class="info-row-grid">
+                                    <div class="info-col"><span class="info-label">Descontos Eventuais</span><span class="info-valor">${escapeHtml(d.desc_eventuais)}</span></div>
+                                    <div class="info-col" style="background: #f8fafc; border: 1px solid #cbd5e1;"><span class="info-label" style="color: #003b75;">Vencimentos Líquidos</span><span class="info-valor" style="color: #003b75; font-size: 13px;">${escapeHtml(d.venc_liquido)}</span></div>
                                 </div>
                             </div>
                         </div>
                     `;
                 }
             }],
-            initComplete: function() { 
-                $('.dataTables_length').appendTo('#comprimento-tabela'); 
-                enviarAlturaIframe(); 
+            initComplete: function() {
+                $('.dataTables_length').appendTo('#comprimento-tabela');
             },
             drawCallback: function() {
-                const totalFiltrado = this.api().rows({ filter: 'applied' }).count();
-                $('#contagem-registros').html(`<b>${totalFiltrado}</b> registros encontrados`);
+                const total = this.api().rows().count();
+                $('#contagem-registros').html(`<b>${total}</b> registros encontrados`);
                 enviarAlturaIframe();
             }
         });
@@ -428,9 +519,35 @@
         });
     }
 
-    function limparFiltros() {
-        $('#filtroNome, #filtroCargo, #filtroMesAno').val('');
-        aplicarFiltros();
+    function renderizarTabela(dados) {
+        if (!tabela) inicializarTabela();
+        tabela.clear();
+        tabela.rows.add(dados);
+        tabela.draw();
+    }
+
+    // =========================================================================
+    // EXPORTAÇÕES (com Mês e Ano em colunas separadas)
+    // =========================================================================
+    function dadosParaExportar() {
+        return tabela.rows().data().toArray().map(d => ({
+            "Matricula": d.matricula,
+            "Nome": d.nome,
+            "Cargo": d.cargo,
+            "Vencimentos Brutos": d.venc_bruto,
+            "Referencia": d.referencia,
+            "Vantagens Pessoais": d.vantagens,
+            "Outras Verbas Remuneratorias Legais ou judiciais": d.outras_verbas,
+            "Verbas Indenizatorias e/ou Eventuais": d.indenizatorias,
+            "Auxilio saude/alimentacao": d.auxilio,
+            "Abono de Permanencia": d.abono,
+            "Redutor": d.redutor,
+            "Descontos Legais": d.desc_legais,
+            "Descontos Eventuais": d.desc_eventuais,
+            "Vencimentos Liquidos": d.venc_liquido,
+            "Mes": capitalizar(d.mes),
+            "Ano": d.ano
+        }));
     }
 
     function gerarNomeArquivoBase() {
@@ -438,50 +555,36 @@
         const nome = $('#filtroNome').val().trim();
         if (nome) partes.push(nome.replace(/\s+/g, '_'));
         if ($('#filtroCargo').val()) partes.push($('#filtroCargo option:selected').text().replace(/\s+/g, '_'));
-        if ($('#filtroMesAno').val()) partes.push($('#filtroMesAno').val().replace('/', '_'));
+        if ($('#filtroMes').val()) partes.push($('#filtroMes').val());
+        if ($('#filtroAno').val()) partes.push($('#filtroAno').val());
         return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
     }
 
     function exportarCSV() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        let csv = "\ufeffMatricula,Nome,Cargo,Vencimentos Brutos,Referencia,Vantagens Pessoais,Outras Verbas Remuneratorias Legais ou judiciais,Verbas Indenizatorias e/ou Eventuais,Auxilio saude/alimentacao,Abono de Permanencia,Redutor,Descontos Legais,Descontos Eventuais,Vencimentos Liquidos,Mes_Ano\n";
-        data.forEach(d => { 
-            csv += `"${d.matricula}","${d.nome}","${d.cargo}","${d.venc_bruto}","${d.referencia}","${d.vantagens}","${d.outras_verbas}","${d.indenizatorias}","${d.auxilio}","${d.abono}","${d.redutor}","${d.desc_legais}","${d.desc_eventuais}","${d.venc_liquido}","${d.mes_ano}"\n`; 
-        });
-        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv");
+        // Papa.unparse cuida do escape de aspas, vírgulas e quebras de linha
+        const csv = "\ufeff" + Papa.unparse(dadosParaExportar());
+        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv;charset=utf-8");
     }
 
     function exportarXLSX() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        const dataLimpa = data.map(d => {
-            let item = {...d};
-            delete item.busca_nome;
-            return item;
-        });
-        const ws = XLSX.utils.json_to_sheet(dataLimpa);
+        const ws = XLSX.utils.json_to_sheet(dadosParaExportar());
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Dados");
         XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx");
     }
 
     function exportarJSON() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        const dataLimpa = data.map(d => {
-            let item = {...d};
-            delete item.busca_nome;
-            return item;
-        });
-        downloadFile(JSON.stringify(dataLimpa, null, 2), gerarNomeArquivoBase() + ".json", "application/json");
+        downloadFile(JSON.stringify(dadosParaExportar(), null, 2), gerarNomeArquivoBase() + ".json", "application/json");
     }
 
     function exportarXML() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+        const data = tabela.rows().data().toArray();
         let xml = '<?xml version="1.0" encoding="UTF-8"?><dados>';
         data.forEach(d => {
             xml += '<registro>';
             for (let k in d) {
-                if(typeof d[k] !== 'object' && k !== 'busca_nome') {
-                     xml += `<${k}>${d[k]}</${k}>`;
+                if (typeof d[k] !== 'object' && k !== 'busca_nome' && k !== 'mes_ano' && k !== 'mes_num') {
+                    xml += `<${k}>${escapeXml(d[k])}</${k}>`;
                 }
             }
             xml += '</registro>';
@@ -495,18 +598,46 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url; a.download = fileName; a.click();
+        // Libera a memória do blob após o download iniciar
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
+    // =========================================================================
+    // IMPRESSÃO — espera o evento draw.dt do DataTables em vez de timeout fixo,
+    // garantindo que todos os registros foram renderizados antes de imprimir
+    // =========================================================================
     function imprimirSeguro() {
-        if(!tabela) return;
+        if (!tabela) return;
         const len = tabela.page.len();
-        tabela.page.len(-1).draw('page'); 
-        setTimeout(() => { window.print(); tabela.page.len(len).draw('page'); }, 500);
+        tabela.one('draw.dt', function() {
+            setTimeout(() => {
+                window.print();
+                tabela.page.len(len).draw('page');
+            }, 100);
+        });
+        tabela.page.len(-1).draw('page');
     }
 
+    // =========================================================================
+    // INICIALIZAÇÃO
+    // =========================================================================
     $(document).ready(function() {
-        $('#filtroCargo, #filtroMesAno').on('change', aplicarFiltros);
-        $('#filtroNome').on('input', aplicarFiltros); 
+        $('#filtroCargo, #filtroMes').on('change', aplicarFiltros);
+
+        // Ao trocar o ano, os meses disponíveis são atualizados
+        $('#filtroAno').on('change', function() {
+            popularMeses();
+            aplicarFiltros();
+        });
+
+        // Debounce: espera 250ms após a última tecla antes de filtrar,
+        // evitando reprocessar a tabela a cada caractere digitado
+        let debounceNome;
+        $('#filtroNome').on('input', function() {
+            clearTimeout(debounceNome);
+            debounceNome = setTimeout(aplicarFiltros, 250);
+        });
+
         carregarDados();
     });
 </script>
