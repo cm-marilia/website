@@ -1,111 +1,198 @@
 <!DOCTYPE html>
+<!-- ===========================================================================
+     DIÁRIAS E ADIANTAMENTOS
+     Câmara Municipal de Marília
+     ===========================================================================
+
+     O QUE É ESTA PÁGINA
+     Portal de transparência que exibe as diárias e adiantamentos concedidos
+     a vereadores e assessores, em formato de cards, com filtros por nome,
+     gabinete, servidor, mês e ano, exportação em CSV, Excel, JSON e XML,
+     e impressão formatada.
+
+     COMO FUNCIONA
+     1. Os dados vêm de DUAS planilhas do Google Sheets exportadas como CSV:
+        - URL_DIARIAS ....... registros de diárias/adiantamentos
+        - URL_GABINETES ..... lista de gabinetes para o filtro
+     2. A página é hospedada no GitHub Pages e exibida dentro de um <iframe>
+        no site oficial: https://www.marilia.sp.leg.br/
+     3. A altura do iframe é ajustada automaticamente via postMessage.
+
+     FORMATO ESPERADO DA PLANILHA DE DIÁRIAS
+     - Linha 1: metadados, contendo "MODIF_REAL: dd/mm/aaaa hh:mm"
+       (data da última atualização, exibida no selo verde)
+     - Linha 2: cabeçalhos das colunas, entre eles:
+       servidor | cargo | qtde_diarias | data_partida | data_retorno |
+       valor_diarias | valor_adiantamento | dotacao | cidade_destino |
+       local_destino | motivacao_viagem
+     - Linha 3 em diante: os registros
+     - Datas no formato dd/mm/aaaa; valores como "R$ 1.234,56" ou "1.234,56"
+
+     MANUTENÇÃO RÁPIDA (o que você normalmente precisa alterar)
+     - Trocar as planilhas ....... URL_DIARIAS e URL_GABINETES (CONFIGURAÇÃO)
+     - Trocar o site que embute .. ORIGEM_PAI (CONFIGURAÇÃO)
+     - Trocar o brasão ........... arquivo brasao_marilia.png no repositório
+     - Ativar o card de totais ... procure por "CARD DE SOMATÓRIA" no HTML
+
+     DEPENDÊNCIAS (carregadas via CDN)
+     jQuery 3.7.1 | DataTables 1.13.6 | SheetJS 0.18.5 | PapaParse 5.4.1
+     =========================================================================== -->
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Relatório de Diárias e Adiantamentos</title>
-    
+
+    <!-- Estilos do DataTables (tabela com paginação) -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
-    
+
+    <!-- Fonte Inter (Google Fonts) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        /* =========================================
-           1. ESTILOS GERAIS E BASE
-           ========================================= */
-        body { font-family: 'Inter', sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; }
-        #wrapper { padding: 15px; padding-bottom: 40px; }
-        
-        /* CABEÇALHO PADRONIZADO */
+        /* ====================================================================
+           ÍNDICE DOS ESTILOS
+           1. Base e layout geral
+           2. Cabeçalho (topo azul e brasão)
+           3. Painéis (filtros, exportação, visualização)
+           4. Formulários e botões
+           5. Totais (card de somatória, quando ativado)
+           6. Barra de exportação
+           7. Cards de diárias
+           8. Tabela e paginação (DataTables)
+           9. Loader (carregamento)
+           10. Responsividade para celular
+           11. Impressão
+           ==================================================================== */
+
+        /* --------------------------------------------------------------------
+           1. BASE E LAYOUT GERAL
+           -------------------------------------------------------------------- */
+        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; }
+
+        /* Padding inferior maior (40px) dá respiro ao conteúdo dentro do iframe */
+        #wrapper { padding: 15px 15px 40px; }
+
+        /* --------------------------------------------------------------------
+           2. CABEÇALHO (topo azul e brasão)
+           -------------------------------------------------------------------- */
         .topo { background: #003b75; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); gap: 20px; }
         .topo h1 { margin: 0; font-size: 1.5rem; font-weight: 800; letter-spacing: 1px; }
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
+        .brasao { max-width: 100%; height: auto; object-fit: contain; }
 
-        .brasao {
-            max-width: 100%;
-            height: auto;
-            object-fit: contain;
-        }
-        
+        /* Cabeçalho exclusivo da versão impressa (oculto na tela; ver seção 11) */
+        #cabecalho-impressao { display: none; }
+
+        /* --------------------------------------------------------------------
+           3. PAINÉIS (caixas brancas de filtros, exportação e visualização)
+           -------------------------------------------------------------------- */
         .painel { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .painel-titulo { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
+
+        /* Selo verde com a data de atualização (lida da planilha, ver MODIF_REAL) */
         .badge-sinc { position: absolute; top: -10px; right: 20px; font-size: 10px; background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
-        
-        /* ELEMENTOS DE FORMULÁRIO */
+
+        /* --------------------------------------------------------------------
+           4. FORMULÁRIOS E BOTÕES
+           -------------------------------------------------------------------- */
         select, input { height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box; width: 100%; }
         button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; width: 100%; }
         button.btn-filtro:hover { background: #00274d; }
 
-        /* FILTROS RESPONSIVOS */
+        /* Grade de filtros: colunas de no mínimo 200px que se reorganizam
+           sozinhas conforme a largura da tela (auto-fit) */
         .painel-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
-        
-        /* EXPORTAÇÃO RESPONSIVA */
-        .painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
-        .painel-exportacao button { 
-            flex: 1; min-width: 100px; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; 
-        }
-        .painel-exportacao button:hover { background: #00274d; }
-        .painel-exportacao .btn-acao { background: #0284c7; }
-        .painel-exportacao::-webkit-scrollbar { height: 6px; }
-        .painel-exportacao::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-        /* TOTAIS E VISUALIZAÇÃO */
+        /* --------------------------------------------------------------------
+           5. TOTAIS (card de somatória — desativado no HTML, ver comentário lá)
+           -------------------------------------------------------------------- */
         .totais-container { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
         .total-box { flex: 1 1 250px; background: white; border: 1px solid #e2e8f0; border-left: 4px solid #003b75; border-radius: 10px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .total-box label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; display: block; }
         .total-box span { font-size: 18px; font-weight: 800; }
 
+        /* --------------------------------------------------------------------
+           6. BARRA DE EXPORTAÇÃO
+           Em telas estreitas os botões deslizam horizontalmente (scroll suave)
+           -------------------------------------------------------------------- */
+        .painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
+        .painel-exportacao button { flex: 1; min-width: 100px; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .painel-exportacao button:hover { background: #00274d; }
+        .painel-exportacao .btn-acao { background: #0284c7; } /* botão Imprimir (azul claro) */
+        .painel-exportacao::-webkit-scrollbar { height: 6px; }
+        .painel-exportacao::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        /* Cabeçalho da área de visualização: menu "Exibir X" + contador de registros */
         .dt-header-flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 5px 0; }
         .badge-count { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid #bae6fd; }
 
-        /* CORREÇÃO DO MENU "EXIBIR X RESULTADOS" */
+        /* Ajuste visual do menu "Exibir X resultados" do DataTables */
         .dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; margin: 0; white-space: nowrap; }
         .dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
 
-        /* TABELA BASE E CARDS */
+        /* --------------------------------------------------------------------
+           7. CARDS DE DIÁRIAS
+           Cada registro vira um card: cabeçalho (servidor/cargo), corpo com
+           datas e valores, e rodapé com destino e motivação da viagem
+           -------------------------------------------------------------------- */
+
+        /* O <thead> fica oculto: a tabela existe só para o DataTables paginar os cards */
         #tabela-base thead { display: none !important; }
         table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
-        
+
         .card-diaria { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
         .card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; }
         .card-nome { font-size: 16px; font-weight: 800; color: #003b75; text-transform: uppercase; }
-        .card-cargo { font-size: 12px; color: #64748b; text-transform: uppercase; display: block; margin-top: 2px;}
+        .card-cargo { font-size: 12px; color: #64748b; text-transform: uppercase; display: block; margin-top: 2px; }
         .card-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); padding: 12px 15px; gap: 10px; }
         .card-body.sep { border-top: 1px dashed #f1f5f9; }
-        .item-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 2px;}
-        .item-valor { font-size: 13px; font-weight: 700; color: #1e293b;}
-        
-        /* RODAPÉ DO CARD */
-        .card-footer { background: #f8fafc; padding: 12px 15px; border-top: 1px solid #edf2f7; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;}
-        .quadro-full { grid-column: 1 / -1; border-top: 1px dashed #e2e8f0; padding-top: 10px; margin-top: 2px;}
+        .item-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 2px; }
+        .item-valor { font-size: 13px; font-weight: 700; color: #1e293b; }
 
-        /* PAGINAÇÃO */
-        .controles-datatable { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px;}
+        /* Rodapé do card: destino e motivação (a motivação ocupa a linha toda) */
+        .card-footer { background: #f8fafc; padding: 12px 15px; border-top: 1px solid #edf2f7; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .quadro-full { grid-column: 1 / -1; border-top: 1px dashed #e2e8f0; padding-top: 10px; margin-top: 2px; }
+
+        /* --------------------------------------------------------------------
+           8. TABELA E PAGINAÇÃO (DataTables)
+           -------------------------------------------------------------------- */
+        .controles-datatable { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px; }
         .dataTables_wrapper .dataTables_info { padding-top: 0 !important; color: #475569; font-size: 13px; font-weight: 500; margin-bottom: 0 !important; }
         .dataTables_wrapper .dataTables_paginate { display: flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 0 !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 6px 12px !important; border-radius: 6px !important; margin: 0 !important; border: 1px solid transparent !important; color: #475569 !important; font-weight: 600; font-size: 13px; background: transparent !important; cursor: pointer; transition: 0.2s; }
         .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border-color: #003b75 !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #003b75 !important; }
-        
+
+        /* --------------------------------------------------------------------
+           9. LOADER (indicador de carregamento inicial)
+           -------------------------------------------------------------------- */
         #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #003b75; font-weight: bold; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* CABEÇALHO IMPRESSÃO */
-        #cabecalho-impressao { display: none; }
-
-        /* =========================================
-           RESPONSIVIDADE CELULAR E IMPRESSÃO
-           ========================================= */
+        /* --------------------------------------------------------------------
+           10. RESPONSIVIDADE PARA CELULAR (≤600px)
+           -------------------------------------------------------------------- */
         @media (max-width: 600px) {
             .topo { flex-direction: column; gap: 10px; text-align: center; }
             .card-body { grid-template-columns: 1fr 1fr; }
             .card-footer { grid-template-columns: 1fr; }
             .dt-header-flex, .controles-datatable { flex-direction: column; text-align: center; }
-            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
+            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important; }
         }
 
+        /* --------------------------------------------------------------------
+           11. IMPRESSÃO
+           Esconde filtros, botões e paginação; mostra o cabeçalho com brasão.
+           (CORRIGIDO: antes escondia ".dt-bottom-controls", classe que não
+           existe nesta página — a paginação aparecia na impressão)
+           -------------------------------------------------------------------- */
         @media print {
-            .topo, fieldset, .dt-bottom-controls { display: none !important; }
+            .topo, fieldset, .controles-datatable { display: none !important; }
             #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
             .totais-container { display: flex !important; flex-direction: row !important; gap: 10px !important; margin-bottom: 20px !important; page-break-inside: avoid; }
             .total-box { border: 1px solid #cbd5e1 !important; border-left: 4px solid #003b75 !important; background: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -116,34 +203,49 @@
 </head>
 <body>
 <div id="wrapper">
+
+    <!-- ================================================================
+         CABEÇALHO DA PÁGINA (visível na tela)
+         ================================================================ -->
     <header class="topo">
         <h1>Diárias e Adiantamentos</h1>
         <div class="logo-container">
-            <img src="Brasão_de_Marília.png" alt="Brasão de Marília" width="50" height="50" class="brasao">
+            <img src="brasao_marilia.png" alt="Brasão de Marília" width="50" height="50" class="brasao">
             <span class="texto-camara">Câmara Municipal de Marília</span>
         </div>
     </header>
 
+    <!-- ================================================================
+         CABEÇALHO DE IMPRESSÃO (visível apenas ao imprimir)
+         ================================================================ -->
     <div id="cabecalho-impressao">
-        <img src="Brasão_de_Marília.png" width="63" height="70" alt="Brasão Câmara">
+        <img src="brasao_marilia.png" width="63" height="70" alt="Brasão de Marília">
         <div>
             <h1 style="margin:0; color:#003b75;">Diárias e Adiantamentos</h1>
             <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
         </div>
     </div>
 
+    <!-- Loader exibido enquanto os CSVs do Google Sheets são baixados -->
     <div id="loader"><div class="spinner"></div><span>Sincronizando dados...</span></div>
 
+    <!-- ================================================================
+         CONTEÚDO PRINCIPAL (exibido após o carregamento dos dados)
+         ================================================================ -->
     <main id="main-content" style="display:none;">
+
+        <!-- Painel: filtros de pesquisa -->
         <fieldset class="painel">
             <legend class="painel-titulo">Filtros de Pesquisa</legend>
             <div id="sync-info" class="badge-sinc">Aguardando...</div>
             <div class="painel-filtros" style="margin-bottom: 10px;">
-                <input type="text" id="buscaNome" placeholder="Pesquisar por nome..." aria-label="Pesquisar por nome">
+                <input type="text" id="buscaNome" placeholder="Pesquisar por nome..." autocomplete="off" aria-label="Pesquisar por nome">
                 <select id="selGabinete" aria-label="Filtrar por Gabinete"><option value="">Gabinete</option></select>
                 <select id="selServidor" aria-label="Filtrar por Servidor"><option value="">Servidor</option></select>
             </div>
             <div class="painel-filtros">
+                <!-- Os valores dos meses (01-12) correspondem ao mês da data de
+                     partida (dd/MM/aaaa) usado no filtro -->
                 <select id="selMes" aria-label="Filtrar por Mês">
                     <option value="">Mês</option>
                     <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
@@ -156,6 +258,7 @@
             </div>
         </fieldset>
 
+        <!-- Painel: botões de exportação e impressão -->
         <fieldset class="painel">
             <legend class="painel-titulo">Exportação e Ações</legend>
             <div class="painel-exportacao">
@@ -167,13 +270,19 @@
             </div>
         </fieldset>
 
-        <!-- ESTE TRECHO DE CÓDIGO É REFERENTE AO CARD DE SOMATÓRIA DAS DIÁRIAS
+        <!-- ================================================================
+             CARD DE SOMATÓRIA (desativado)
+             Mostra a soma das diárias e dos adiantamentos filtrados.
+             Os valores já são calculados pelo script a cada filtro — para
+             ativar, basta remover as marcas de comentário abaixo.
+             ================================================================
         <div class="totais-container">
             <div class="total-box"><label>Soma das Diárias Filtradas</label><span id="txt-total-diarias">R$ 0,00</span></div>
             <div class="total-box" style="border-left-color:#0284c7;"><label>Soma dos Adiantamentos Filtrados</label><span id="txt-total-adiantamentos">R$ 0,00</span></div>
         </div>
         -->
 
+        <!-- Painel: menu "Exibir X resultados" + contador de registros -->
         <fieldset class="painel" id="painel-visualizacao" style="padding: 10px 15px;">
             <legend class="painel-titulo">Visualização</legend>
             <div class="dt-header-flex">
@@ -182,126 +291,349 @@
             </div>
         </fieldset>
 
+        <!-- Tabela-base do DataTables: cada linha renderiza um card completo.
+             O cabeçalho fica oculto via CSS (seção 7) -->
         <table id="tabela-base" style="width:100%" role="presentation"><thead><tr><th>Dados</th></tr></thead><tbody></tbody></table>
     </main>
 </div>
 
+<!-- ====================================================================
+     BIBLIOTECAS EXTERNAS (CDN)
+     jQuery ......... base para o DataTables e manipulação do DOM
+     DataTables ..... paginação e controle de exibição dos cards
+     SheetJS (xlsx) . geração do arquivo Excel
+     PapaParse ...... leitura correta do CSV (aceita vírgulas e quebras de
+                      linha dentro das células, como na motivação da viagem)
+     ==================================================================== -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
 <script>
-    const URL_D = "https://docs.google.com/spreadsheets/d/1XP67Ojd_HK3S1IPvC_9eY32-lf0_qI3jfBfrLzasvQo/export?format=csv";
-    const URL_G = "https://docs.google.com/spreadsheets/d/1GwDig1yn9YIX8FSsHFPHL2iLCtwsZkNnquNjp5D7Oaw/export?format=csv";
-    let dadosBrutos = [], listaGabinetes = [], grid;
+    /* =======================================================================
+       ÍNDICE DO SCRIPT
+       1. Configuração (o que você normalmente altera está aqui)
+       2. Estado global
+       3. Funções utilitárias
+       4. Comunicação com o iframe (altura automática)
+       5. Carregamento dos dados (duas planilhas em paralelo)
+       6. Processamento do CSV de diárias
+       7. Filtros (popular e aplicar)
+       8. Tabela de cards (DataTables)
+       9. Exportações (CSV, Excel, JSON, XML) e nome dos arquivos
+       10. Impressão
+       11. Inicialização (eventos e primeira carga)
+       ======================================================================= */
 
-    async function carregarDados() {
-        $('#loader').show(); $('#main-content').hide();
-        try {
-            const [rD, rG] = await Promise.all([fetch(`${URL_D}&t=${Date.now()}`), fetch(`${URL_G}&t=${Date.now()}`)]);
-            const textoD = await rD.text(); processarDados(textoD);
-            const textoG = await rG.text(); listaGabinetes = textoG.trim().split("\n").slice(1).map(l => l.replace(/"/g, '').trim().toUpperCase());
-            popularSelects(); filtrar();
-            $('#loader').hide(); $('#main-content').fadeIn(400, ajustarIframe);
-        } catch (e) { alert("Erro de conexão com os dados."); }
+    /* =======================================================================
+       1. CONFIGURAÇÃO
+       ======================================================================= */
+
+    // 🔴 PLANILHA DE DIÁRIAS: link de exportação CSV do Google Sheets
+    const URL_DIARIAS = "https://docs.google.com/spreadsheets/d/1XP67Ojd_HK3S1IPvC_9eY32-lf0_qI3jfBfrLzasvQo/export?format=csv";
+
+    // 🔴 PLANILHA DE GABINETES: lista usada no filtro "Gabinete"
+    const URL_GABINETES = "https://docs.google.com/spreadsheets/d/1GwDig1yn9YIX8FSsHFPHL2iLCtwsZkNnquNjp5D7Oaw/export?format=csv";
+
+    // 🔴 SITE QUE HOSPEDA O IFRAME: a altura da página só será enviada para
+    // este domínio (segurança do postMessage). Se o site oficial mudar de
+    // endereço, atualize aqui. Use "*" apenas em testes locais.
+    const ORIGEM_PAI = "https://www.marilia.sp.leg.br";
+
+    /* =======================================================================
+       2. ESTADO GLOBAL
+       ======================================================================= */
+    let grid;                // instância única do DataTables
+    let dadosBrutos = [];    // registros de diárias, já normalizados
+    let listaGabinetes = []; // nomes de gabinetes para o filtro
+
+    /* =======================================================================
+       3. FUNÇÕES UTILITÁRIAS
+       ======================================================================= */
+
+    /** Remove acentos de um texto ("Marília" → "Marilia"). Usada em comparações. */
+    function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
+
+    /**
+     * SEGURANÇA: escapa caracteres HTML antes de inserir dados da planilha
+     * na página. Impede que uma célula contendo tags ou scripts quebre o
+     * layout ou execute código (XSS).
+     */
+    function escapeHtml(valor) {
+        return String(valor ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
     }
 
-    function processarDados(csv) {
-        const lines = csv.trim().split("\n");
-        const match = csv.match(/MODIF_REAL:\s*(\d{2}\/\d{2}\/\d{4}[^\d]+\d{2}:\d{2})/i);
-        if(match) $('#sync-info').text(`🟢 Dados atualizados em: ${match[1]}`);
-        const cab = lines[1].split(',').map(c => c.replace(/"/g, '').toLowerCase().trim());
-        
-        dadosBrutos = lines.slice(2).map(l => {
-            const cols = l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            let o = {}; cab.forEach((c, i) => o[c] = (cols[i] || "").replace(/"/g, '').trim());
-            if(o.servidor) o.servidor = o.servidor.toUpperCase();
-            
-            // Otimização: Pré-processamento de strings para não sobrecarregar a busca
-            o.busca_nome = o.servidor ? o.servidor.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
-            o.busca_cargo = o.cargo ? o.cargo.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
-            o.busca_servidor_upper = o.servidor ? o.servidor.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
-            
-            return o;
-        }).filter(d => d.servidor);
+    /** Escapa os caracteres reservados do XML (&, <, >) na exportação. */
+    function escapeXml(valor) {
+        return String(valor ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
     }
 
-    function popularSelects() {
-        $('#selGabinete').html('<option value="">Gabinete</option>');
-        [...new Set(listaGabinetes)].forEach(g => $('#selGabinete').append(new Option(g, g)));
-        
-        $('#selServidor').html('<option value="">Servidor</option>');
-        [...new Set(dadosBrutos.map(d => d.servidor))].sort().forEach(s => $('#selServidor').append(new Option(s, s)));
-        
-        const anos = [...new Set(dadosBrutos.map(d => d.data_partida.split('/')[2]))].filter(a => a).sort((a,b)=>b-a);
-        $('#selAno').html('<option value="">Ano</option>');
-        anos.forEach(a => $('#selAno').append(new Option(a, a)));
+    /** Exibe um valor monetário com o prefixo "R$" ("1.234,56" → "R$ 1.234,56"). */
+    function formatarMoeda(v) { return (!v || v === "0") ? "R$ 0,00" : (v.includes("R$") ? v : `R$ ${v}`); }
 
-        if(anos.length > 0) {
-            $('#selAno').val(anos[0]);
+    /** Converte texto monetário brasileiro em número ("R$ 1.234,56" → 1234.56).
+        Usado nos totais e na exportação Excel (valores numéricos). */
+    function parseMoeda(v) { return parseFloat((v || "0").replace(/R\$\s?|[.]/g, '').replace(',', '.')) || 0; }
+
+    /** Converte uma data "dd/mm/aaaa" em número ordenável (aaaa mm dd →
+        20260518). Datas inválidas retornam 0 e vão para o fim da lista.
+        Usado na ordenação dos cards e na seleção do período mais recente. */
+    function dataParaNumero(data) {
+        const p = String(data || "").split('/');
+        if (p.length !== 3) return 0;
+        return (parseInt(p[2], 10) || 0) * 10000 + (parseInt(p[1], 10) || 0) * 100 + (parseInt(p[0], 10) || 0);
+    }
+
+    /* =======================================================================
+       4. COMUNICAÇÃO COM O IFRAME (altura automática)
+       A página roda dentro de um <iframe> no site oficial. Sempre que o
+       conteúdo muda de tamanho, enviamos a nova altura para o site pai
+       via postMessage, e ele redimensiona o iframe (sem barra de rolagem).
+       ======================================================================= */
+
+    /** Envia a altura atual do conteúdo para o site que hospeda o iframe. */
+    function ajustarIframe() {
+        const wrapper = document.getElementById('wrapper');
+        if (wrapper) {
+            window.parent.postMessage({ tipo: 'ajustarAltura', valor: wrapper.offsetHeight + 40 }, ORIGEM_PAI);
         }
     }
 
+    // O ResizeObserver detecta qualquer mudança de altura do conteúdo
+    // (troca de página, filtro, cards maiores) e reenvia automaticamente.
+    if ('ResizeObserver' in window) {
+        new ResizeObserver(() => ajustarIframe()).observe(document.getElementById('wrapper'));
+    }
+
+    /* =======================================================================
+       5. CARREGAMENTO DOS DADOS
+       Baixa as duas planilhas em paralelo (Promise.all). O parâmetro
+       t=timestamp evita cache do navegador e garante dados atualizados.
+       ======================================================================= */
+    async function carregarDados() {
+        $('#loader').show();
+        $('#main-content').hide();
+        try {
+            const [rD, rG] = await Promise.all([
+                fetch(`${URL_DIARIAS}&t=${Date.now()}`),
+                fetch(`${URL_GABINETES}&t=${Date.now()}`)
+            ]);
+
+            // Planilha de diárias
+            const textoD = await rD.text();
+            processarDados(textoD);
+
+            // Planilha de gabinetes: uma coluna com os nomes (1ª linha é cabeçalho)
+            const textoG = await rG.text();
+            listaGabinetes = Papa.parse(textoG.trim()).data
+                .slice(1)
+                .map(l => String(l[0] || "").trim().toUpperCase())
+                .filter(g => g);
+
+            popularSelects();
+            filtrar();
+
+            $('#loader').hide();
+            $('#main-content').fadeIn(400, ajustarIframe);
+        } catch (e) {
+            console.error("Erro ao carregar os dados: ", e);
+            $('#loader').html('<b style="color:red">Erro de conexão com os dados. Tente recarregar a página.</b>');
+        }
+    }
+
+    /* =======================================================================
+       6. PROCESSAMENTO DO CSV DE DIÁRIAS
+       ======================================================================= */
+
+    /**
+     * Transforma o CSV bruto em objetos organizados (dadosBrutos).
+     *
+     * Estrutura esperada do arquivo:
+     *   Linha 1 .... metadados com "MODIF_REAL: data" (exibida no selo verde)
+     *   Linha 2 .... cabeçalhos (viram as chaves dos objetos)
+     *   Linha 3+ ... registros
+     *
+     * O PapaParse faz a leitura: diferentemente da separação manual por
+     * vírgula, ele trata corretamente células com vírgulas e QUEBRAS DE
+     * LINHA internas — comum no campo "motivação da viagem".
+     */
+    function processarDados(csv) {
+        // Data de atualização (procurada no texto bruto, antes do parse)
+        const match = csv.match(/MODIF_REAL:\s*(\d{2}\/\d{2}\/\d{4}[^\d]+\d{2}:\d{2})/i);
+        if (match) $('#sync-info').text(`🟢 Dados atualizados em: ${match[1]}`);
+
+        const linhas = Papa.parse(csv.trim()).data;
+        if (linhas.length < 3) { dadosBrutos = []; return; }
+
+        // Cabeçalhos normalizados: viram as chaves dos objetos (ex: "servidor")
+        const cab = linhas[1].map(c => String(c).toLowerCase().trim());
+
+        dadosBrutos = linhas.slice(2).map(cols => {
+            let o = {};
+            cab.forEach((c, i) => o[c] = String(cols[i] || "").trim());
+            if (o.servidor) o.servidor = o.servidor.toUpperCase();
+
+            // Textos de busca pré-calculados (sem acentos/maiúsculas) para
+            // que a filtragem seja rápida mesmo com muitos registros
+            o.busca_nome = removerAcentos((o.servidor || "").toLowerCase());
+            o.busca_cargo = removerAcentos((o.cargo || "").toUpperCase());
+            o.busca_servidor_upper = removerAcentos((o.servidor || "").toUpperCase());
+
+            return o;
+        }).filter(d => d.servidor); // ignora linhas vazias/incompletas
+    }
+
+    /* =======================================================================
+       7. FILTROS
+       ======================================================================= */
+
+    /**
+     * Preenche os filtros de Gabinete, Servidor e Ano com os valores das
+     * planilhas e seleciona por padrão o mês e o ano da diária mais recente.
+     * (Os meses são fixos no HTML, pois o filtro usa o número do mês
+     * da data de partida.)
+     */
+    function popularSelects() {
+        $('#selGabinete').html('<option value="">Gabinete</option>');
+        [...new Set(listaGabinetes)].forEach(g => $('#selGabinete').append(new Option(g, g)));
+
+        $('#selServidor').html('<option value="">Servidor</option>');
+        [...new Set(dadosBrutos.map(d => d.servidor))].sort().forEach(s => $('#selServidor').append(new Option(s, s)));
+
+        // Anos extraídos da data de partida (dd/mm/AAAA), mais recente primeiro
+        const anos = [...new Set(dadosBrutos.map(d => (d.data_partida || "").split('/')[2]))].filter(a => a).sort((a, b) => b - a);
+        $('#selAno').html('<option value="">Ano</option>');
+        anos.forEach(a => $('#selAno').append(new Option(a, a)));
+
+        // Seleção padrão: mês e ano da diária mais recente da planilha
+        selecionarPeriodoMaisRecente();
+    }
+
+    /**
+     * Seleciona nos filtros o mês e o ano da diária mais recente da planilha
+     * (com base na data de partida). Usado na carga inicial da página e
+     * pelo botão "Limpar Filtros".
+     */
+    function selecionarPeriodoMaisRecente() {
+        if (dadosBrutos.length === 0) return;
+        const maisRecente = dadosBrutos.reduce(
+            (max, d) => dataParaNumero(d.data_partida) > dataParaNumero(max.data_partida) ? d : max,
+            dadosBrutos[0]
+        );
+        const p = (maisRecente.data_partida || "").split('/');
+        if (p.length === 3) {
+            $('#selAno').val(p[2]);
+            $('#selMes').val(p[1].padStart(2, '0')); // garante o formato "05"
+        }
+    }
+
+    /**
+     * Aplica os cinco filtros (nome, gabinete, servidor, mês, ano) sobre
+     * dadosBrutos, ordena por data de partida (mais recente primeiro) e
+     * envia o resultado para a tabela.
+     * - A busca por nome ignora acentos e maiúsculas.
+     * - O filtro de gabinete compara com o nome do servidor E com o cargo,
+     *   pois o nome do vereador costuma aparecer no cargo dos assessores.
+     * - Mês e ano são extraídos da data de partida (dd/mm/aaaa).
+     */
     function filtrar() {
-        const n = $('#buscaNome').val().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const g = $('#selGabinete').val() ? $('#selGabinete').val().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+        const n = removerAcentos($('#buscaNome').val().toLowerCase());
+        const g = $('#selGabinete').val() ? removerAcentos($('#selGabinete').val().toUpperCase()) : "";
         const s = $('#selServidor').val(), m = $('#selMes').val(), a = $('#selAno').val();
-        
+
         const res = dadosBrutos.filter(d => {
-            const dp = d.data_partida.split('/');
-            return (!n || d.busca_nome.includes(n)) && 
-                   (!g || d.busca_servidor_upper.includes(g) || d.busca_cargo.includes(g)) && 
-                   (!s || d.servidor === s) && 
-                   (!m || dp[1] === m) && 
+            const dp = (d.data_partida || "").split('/');
+            return (!n || d.busca_nome.includes(n)) &&
+                   (!g || d.busca_servidor_upper.includes(g) || d.busca_cargo.includes(g)) &&
+                   (!s || d.servidor === s) &&
+                   (!m || dp[1] === m) &&
                    (!a || dp[2] === a);
         });
-        
+
+        // Ordena por data de partida, da mais recente para a mais antiga
+        res.sort((a, b) => dataParaNumero(b.data_partida) - dataParaNumero(a.data_partida));
+
         renderizarGrid(res);
     }
 
-    function renderizarGrid(dados) {
-        if (grid) { grid.destroy(); $('#area-length').empty(); }
+    /** Limpa todos os filtros e volta ao estado inicial da página:
+        mês e ano da diária mais recente selecionados. */
+    function resetarFiltros() {
+        $('#buscaNome').val('');
+        $('select').val('');
+        selecionarPeriodoMaisRecente();
+        filtrar();
+    }
+
+    /* =======================================================================
+       8. TABELA DE CARDS (DataTables)
+       A tabela é criada UMA única vez; os filtros apenas trocam os dados
+       (clear + rows.add + draw). Isso mantém a digitação fluida mesmo com
+       muitos registros, pois nada é destruído e recriado.
+       ======================================================================= */
+
+    /** Cria a instância do DataTables e define como cada card é desenhado. */
+    function inicializarGrid() {
         grid = $('#tabela-base').DataTable({
-            data: dados, pageLength: 10, ordering: false,
-            dom: 'lrt<"controles-datatable"ip>',
+            data: [],
+            pageLength: 10,
+            ordering: false, // a ordenação por data de partida é feita em filtrar()
+            dom: 'lrt<"controles-datatable"ip>', // l=menu exibir, r=processando, t=tabela, i=info, p=paginação
             language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
             columns: [{
                 data: null,
                 render: d => `
                     <div class="card-diaria">
-                        <div class="card-header"><span class="card-nome">${d.servidor}</span><span class="card-cargo">${d.cargo || "-"}</span></div>
+                        <div class="card-header"><span class="card-nome">${escapeHtml(d.servidor)}</span><span class="card-cargo">${escapeHtml(d.cargo || "-")}</span></div>
                         <div class="card-body">
-                            <div><label class="item-label">Diárias</label><span class="item-valor">${d.qtde_diarias}</span></div>
-                            <div><label class="item-label">Partida</label><span class="item-valor">${d.data_partida}</span></div>
-                            <div><label class="item-label">Retorno</label><span class="item-valor">${d.data_retorno}</span></div>
+                            <div><label class="item-label">Diárias</label><span class="item-valor">${escapeHtml(d.qtde_diarias)}</span></div>
+                            <div><label class="item-label">Partida</label><span class="item-valor">${escapeHtml(d.data_partida)}</span></div>
+                            <div><label class="item-label">Retorno</label><span class="item-valor">${escapeHtml(d.data_retorno)}</span></div>
                         </div>
                         <div class="card-body sep">
-                            <div><label class="item-label">Valor Diárias</label><span class="item-valor">${formatarMoeda(d.valor_diarias)}</span></div>
-                            <div><label class="item-label">Adiantamento</label><span class="item-valor">${formatarMoeda(d.valor_adiantamento)}</span></div>
-                            <div><label class="item-label">Dotação</label><span class="item-valor">${d.dotacao || "-"}</span></div>
+                            <div><label class="item-label">Valor Diárias</label><span class="item-valor">${escapeHtml(formatarMoeda(d.valor_diarias))}</span></div>
+                            <div><label class="item-label">Adiantamento</label><span class="item-valor">${escapeHtml(formatarMoeda(d.valor_adiantamento))}</span></div>
+                            <div><label class="item-label">Dotação</label><span class="item-valor">${escapeHtml(d.dotacao || "-")}</span></div>
                         </div>
                         <div class="card-footer">
-                            <div><label class="item-label">Cidade de Destino</label><span class="item-valor">${d.cidade_destino || "-"}</span></div>
-                            <div><label class="item-label">Local de Destino</label><span class="item-valor">${d.local_destino || "-"}</span></div>
+                            <div><label class="item-label">Cidade de Destino</label><span class="item-valor">${escapeHtml(d.cidade_destino || "-")}</span></div>
+                            <div><label class="item-label">Local de Destino</label><span class="item-valor">${escapeHtml(d.local_destino || "-")}</span></div>
                             <div class="quadro-full">
                                 <label class="item-label">Motivação da Viagem</label>
-                                <span style="font-size:13px; font-weight:500; color:#334155; display:block; margin-top:4px; line-height:1.4;">${d.motivacao_viagem || "-"}</span>
+                                <span style="font-size:13px; font-weight:500; color:#334155; display:block; margin-top:4px; line-height:1.4;">${escapeHtml(d.motivacao_viagem || "-")}</span>
                             </div>
                         </div>
                     </div>`
             }],
-            initComplete: function() { $('.dataTables_length').appendTo('#area-length'); },
+            initComplete: function() {
+                // Move o menu "Exibir X resultados" para o painel Visualização
+                $('.dataTables_length').appendTo('#area-length');
+            },
             drawCallback: function() {
+                // Soma diárias e adiantamentos dos registros filtrados.
+                // Os totais alimentam o card de somatória (quando ativado no HTML).
                 let sD = 0, sA = 0;
-                const parse = v => parseFloat((v || "0").replace(/R\$\s?|[.]/g, '').replace(',', '.')) || 0;
-                this.api().rows({filter:'applied'}).data().each(d => { sD += parse(d.valor_diarias); sA += parse(d.valor_adiantamento); });
+                this.api().rows().data().each(d => { sD += parseMoeda(d.valor_diarias); sA += parseMoeda(d.valor_adiantamento); });
                 const f = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-                $('#txt-total-diarias').text(f.format(sD)); $('#txt-total-adiantamentos').text(f.format(sA));
-                $('#count-rows').text(this.api().rows({filter:'applied'}).count());
+                $('#txt-total-diarias').text(f.format(sD));
+                $('#txt-total-adiantamentos').text(f.format(sA));
+
+                // Contador de registros e altura do iframe
+                $('#count-rows').text(this.api().rows().count());
                 ajustarIframe();
             }
         });
 
+        // Ao trocar de página, rola suavemente de volta ao topo da lista
         grid.on('page.dt', function () {
             setTimeout(function() {
                 document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -309,56 +641,149 @@
         });
     }
 
-    function formatarMoeda(v) { return (!v || v === "0") ? "R$ 0,00" : (v.includes("R$") ? v : `R$ ${v}`); }
-    function ajustarIframe() { window.parent.postMessage({ tipo: 'ajustarAltura', valor: document.getElementById('wrapper').offsetHeight + 40 }, '*'); }
-    
-    function resetarFiltros() { 
-        $('#buscaNome').val(''); 
-        $('select').not('#selAno').val(''); 
-        const anoMaisRecente = $('#selAno option:eq(1)').val();
-        $('#selAno').val(anoMaisRecente || '');
-        filtrar(); 
+    /** Substitui os dados exibidos na tabela (sem destruí-la). */
+    function renderizarGrid(dados) {
+        if (!grid) inicializarGrid();
+        grid.clear();
+        grid.rows.add(dados);
+        grid.draw();
     }
-    
+
+    /* =======================================================================
+       9. EXPORTAÇÕES (CSV, Excel, JSON, XML)
+       Todas exportam apenas os registros filtrados no momento, com todos
+       os campos do card (antes o CSV e o XML exportavam só uma parte).
+       ======================================================================= */
+
+    /** Converte os registros filtrados para o formato de exportação. */
+    function dadosParaExportar() {
+        return grid.rows().data().toArray().map(d => ({
+            "Servidor": d.servidor,
+            "Cargo": d.cargo,
+            "Qtde Diarias": d.qtde_diarias,
+            "Data Partida": d.data_partida,
+            "Data Retorno": d.data_retorno,
+            "Valor Diarias": d.valor_diarias,
+            "Valor Adiantamento": d.valor_adiantamento,
+            "Dotacao": d.dotacao,
+            "Cidade Destino": d.cidade_destino,
+            "Local Destino": d.local_destino,
+            "Motivacao da Viagem": d.motivacao_viagem
+        }));
+    }
+
+    /**
+     * Monta o nome do arquivo a partir dos filtros ativos, para que o
+     * conteúdo seja identificável pelo próprio nome. Exemplos:
+     *   diarias_maio_2026.csv
+     *   diarias_todos_os_meses_2026.xlsx
+     *   diarias_joao_da_silva_todos_os_meses_2025.json
+     * O período (mês/ano) sempre aparece, mesmo sem filtro selecionado.
+     */
     function gerarNomeArquivoBase() {
         let partes = ["diarias"];
         const serv = $('#selServidor').val();
         const gab = $('#selGabinete').val();
         if (serv) partes.push(serv.replace(/\s+/g, '_'));
         else if (gab) partes.push(gab.replace(/\s+/g, '_'));
-        if ($('#selMes').val()) partes.push($('#selMes option:selected').text());
-        if ($('#selAno').val()) partes.push($('#selAno').val());
-        return partes.join('_').normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+
+        partes.push($('#selMes').val() ? $('#selMes option:selected').text() : "todos_os_meses");
+        partes.push($('#selAno').val() || "todos_os_anos");
+
+        // Normaliza: sem acentos, sem caracteres especiais, tudo minúsculo
+        return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
     }
-    
-    function exportarExcel() { 
-        const parse = v => parseFloat((v || "0").replace(/R\$\s?|[.]/g, '').replace(',', '.')) || 0;
-        const dadosTratados = grid.rows({filter:'applied'}).data().toArray().map(d => ({
+
+    /** Exporta CSV. O PapaParse cuida do escape de aspas, vírgulas e quebras
+        de linha; o prefixo \ufeff (BOM) garante acentos corretos no Excel. */
+    function exportarCSV() {
+        const csv = "\ufeff" + Papa.unparse(dadosParaExportar());
+        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv;charset=utf-8");
+    }
+
+    /** Exporta Excel (.xlsx). Os valores monetários vão como NÚMEROS,
+        permitindo somar e criar fórmulas direto na planilha baixada. */
+    function exportarExcel() {
+        const dadosTratados = dadosParaExportar().map(d => ({
             ...d,
-            valor_diarias: parse(d.valor_diarias),
-            valor_adiantamento: parse(d.valor_adiantamento)
+            "Valor Diarias": parseMoeda(d["Valor Diarias"]),
+            "Valor Adiantamento": parseMoeda(d["Valor Adiantamento"])
         }));
-        const ws = XLSX.utils.json_to_sheet(dadosTratados); 
-        const wb = XLSX.utils.book_new(); 
-        XLSX.utils.book_append_sheet(wb, ws, "Diarias"); 
-        XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx"); 
+        const ws = XLSX.utils.json_to_sheet(dadosTratados);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Diarias");
+        XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx");
     }
-    
-    function exportarCSV() { let csv = "\ufeffServidor,Cargo,Diarias,Partida,Retorno,Valor,Adiantamento\n"; grid.rows({filter:'applied'}).data().each(d => { csv += `"${d.servidor}","${d.cargo}","${d.qtde_diarias}","${d.data_partida}","${d.data_retorno}","${d.valor_diarias}","${d.valor_adiantamento}"\n`; }); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = gerarNomeArquivoBase() + ".csv"; link.click(); }
-    function exportarJSON() { const blob = new Blob([JSON.stringify(grid.rows({filter:'applied'}).data().toArray(), null, 2)], {type: 'application/json'}); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = gerarNomeArquivoBase() + ".json"; link.click(); }
-    
-    function exportarXML() { let xml = '<?xml version="1.0" encoding="UTF-8"?><relatorio>'; grid.rows({filter:'applied'}).data().each(d => { xml += `<registro><servidor>${d.servidor}</servidor><valor>${d.valor_diarias}</valor></registro>`; }); xml += '</relatorio>'; const blob = new Blob([xml], { type: 'application/xml' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = gerarNomeArquivoBase() + ".xml"; link.click(); }
 
+    /** Exporta JSON formatado (2 espaços de indentação). */
+    function exportarJSON() {
+        downloadFile(JSON.stringify(dadosParaExportar(), null, 2), gerarNomeArquivoBase() + ".json", "application/json");
+    }
+
+    /** Exporta XML com todos os campos (antes só servidor e valor saíam)
+        e valores escapados (ver escapeXml). */
+    function exportarXML() {
+        const campos = ["servidor", "cargo", "qtde_diarias", "data_partida", "data_retorno", "valor_diarias", "valor_adiantamento", "dotacao", "cidade_destino", "local_destino", "motivacao_viagem"];
+        let xml = '<?xml version="1.0" encoding="UTF-8"?><relatorio>';
+        grid.rows().data().each(d => {
+            xml += '<registro>';
+            campos.forEach(k => {
+                xml += `<${k}>${escapeXml(d[k])}</${k}>`;
+            });
+            xml += '</registro>';
+        });
+        xml += '</relatorio>';
+        downloadFile(xml, gerarNomeArquivoBase() + ".xml", "application/xml");
+    }
+
+    /** Dispara o download de um arquivo gerado em memória e libera o blob
+        em seguida para não acumular memória. */
+    function downloadFile(content, fileName, mime) {
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = fileName; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    /* =======================================================================
+       10. IMPRESSÃO
+       ======================================================================= */
+
+    /**
+     * Imprime TODOS os registros filtrados (não apenas a página atual):
+     *   1. Expande a paginação para exibir tudo (page.len(-1)).
+     *   2. Espera o evento draw.dt — sinal de que o DataTables terminou de
+     *      renderizar — em vez de um tempo fixo, que falharia com muitos dados.
+     *   3. Abre a janela de impressão e restaura a paginação anterior.
+     */
     function imprimirSeguro() {
-        if(!grid) return;
-        const len = grid.page.len();
-        grid.page.len(-1).draw('page'); 
-        setTimeout(() => { window.print(); grid.page.len(len).draw('page'); }, 500);
+        if (!grid) return;
+        const len = grid.page.len(); // guarda a paginação atual
+        grid.one('draw.dt', function() {
+            setTimeout(() => {
+                window.print();
+                grid.page.len(len).draw('page'); // restaura após imprimir
+            }, 100);
+        });
+        grid.page.len(-1).draw('page'); // -1 = mostrar todos
     }
 
+    /* =======================================================================
+       11. INICIALIZAÇÃO
+       ======================================================================= */
     $(document).ready(function() {
-        $('#buscaNome').on('input', filtrar);
+        // Busca por nome com debounce: espera 250ms após a última tecla,
+        // evitando reprocessar a tabela a cada caractere digitado
+        let debounceNome;
+        $('#buscaNome').on('input', function() {
+            clearTimeout(debounceNome);
+            debounceNome = setTimeout(filtrar, 250);
+        });
+
+        // Filtros de seleção aplicam imediatamente ao mudar
         $('select').on('change', filtrar);
+
         carregarDados();
     });
 </script>
