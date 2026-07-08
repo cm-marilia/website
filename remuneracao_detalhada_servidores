@@ -1,48 +1,116 @@
 <!DOCTYPE html>
+<!-- ===========================================================================
+     REMUNERAÇÃO DETALHADA DOS SERVIDORES
+     Câmara Municipal de Marília
+     ===========================================================================
+
+     O QUE É ESTA PÁGINA
+     Portal de transparência que exibe a remuneração dos servidores em formato
+     de cards, com filtros por nome, cargo, mês e ano, exportação em CSV,
+     Excel, JSON e XML, e impressão formatada.
+
+     COMO FUNCIONA
+     1. Os dados são lidos de uma planilha do Google Sheets publicada como CSV
+        (variável CSV_URL, na seção CONFIGURAÇÃO do script).
+     2. A página é hospedada no GitHub Pages e exibida dentro de um <iframe>
+        no site oficial: https://www.marilia.sp.leg.br/
+     3. A altura do iframe é ajustada automaticamente via postMessage.
+
+     FORMATO ESPERADO DA PLANILHA (aba "planilha")
+     Colunas, nesta ordem:
+     ano | mês | Matricula | Nome | Vencimentos Brutos | Referência |
+     Vantagens Pessoais | Outras Verbas | Verbas Indenizatórias | Auxílio |
+     Abono de Permanência | Redutor | Descontos Legais | Descontos Eventuais |
+     Vencimentos Liquidos | Cargo
+     - "mês" aceita nome por extenso ("maio") ou número ("5" / "05").
+     - "ano" deve ter 4 dígitos ("2026").
+     - Os cabeçalhos podem ter acentos e maiúsculas; a leitura normaliza tudo.
+
+     MANUTENÇÃO RÁPIDA (o que você normalmente precisa alterar)
+     - Trocar a planilha ......... variável CSV_URL   (seção CONFIGURAÇÃO)
+     - Trocar o site que embute .. variável ORIGEM_PAI (seção CONFIGURAÇÃO)
+     - Trocar o brasão ........... arquivo brasao_marilia.png no repositório
+
+     DEPENDÊNCIAS (carregadas via CDN)
+     jQuery 3.7.1 | DataTables 1.13.6 | SheetJS 0.18.5 | PapaParse 5.4.1
+     =========================================================================== -->
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Remuneração Detalhada dos Servidores</title>
 
+    <!-- Estilos do DataTables (tabela com paginação) -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
 
-    <!-- Fonte Inter (antes era referenciada no CSS mas nunca carregada) -->
+    <!-- Fonte Inter (Google Fonts) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
-        /* =========================================
-           1. ESTILOS GERAIS E BASE
-           ========================================= */
-        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden;}
-        /* CORRIGIDO: padding-bottom vinha antes e era sobrescrito pelo padding geral */
+        /* ====================================================================
+           ÍNDICE DOS ESTILOS
+           1. Base e layout geral
+           2. Cabeçalho (topo azul e brasão)
+           3. Painéis (filtros, exportação, visualização)
+           4. Formulários e botões
+           5. Grade de filtros responsiva
+           6. Barra de exportação
+           7. Cards de servidores
+           8. Tabela e paginação (DataTables)
+           9. Loader (carregamento)
+           10. Responsividade para celular
+           11. Impressão
+           ==================================================================== */
+
+        /* --------------------------------------------------------------------
+           1. BASE E LAYOUT GERAL
+           -------------------------------------------------------------------- */
+        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden; }
+
+        /* Padding inferior maior (40px) dá respiro ao conteúdo dentro do iframe */
         #wrapper { padding: 15px 15px 40px; }
 
+        /* --------------------------------------------------------------------
+           2. CABEÇALHO (topo azul e brasão)
+           -------------------------------------------------------------------- */
         .topo { background: #003b75; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         .topo h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
-
         .brasao { max-width: 100%; height: auto; object-fit: contain; }
 
+        /* Cabeçalho exclusivo da versão impressa (oculto na tela; ver seção 11) */
+        #cabecalho-impressao { display: none; }
+
+        /* --------------------------------------------------------------------
+           3. PAINÉIS (caixas brancas de filtros, exportação e visualização)
+           -------------------------------------------------------------------- */
         .painel-grupo { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .titulo-painel { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
+
+        /* Selo verde "Atualizado mensalmente" no canto do painel de filtros */
         .badge-atualizacao { position: absolute; top: -10px; right: 20px; font-size: 10px; background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
 
+        /* Aviso amarelo exibido quando os cabeçalhos da planilha não são encontrados */
         .alerta-erro { display: none; background: #fef08a; color: #854d0e; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; font-weight: 700; text-align: center; border: 1px solid #fde047; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
-        /* ELEMENTOS DE FORMULÁRIO */
+        /* --------------------------------------------------------------------
+           4. FORMULÁRIOS E BOTÕES
+           -------------------------------------------------------------------- */
         select, input { height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box; width: 100%; }
         button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; padding: 0 20px; white-space: nowrap; }
         button.btn-filtro:hover { background: #00274d; }
 
-        /* FILTROS RESPONSIVOS (agora com Mês e Ano separados) */
+        /* --------------------------------------------------------------------
+           5. GRADE DE FILTROS RESPONSIVA
+           Desktop (>850px):  tudo em uma linha
+           Iframe (≤850px):   linha 1 = nome + cargo | linha 2 = mês + ano + botão
+           Celular (≤600px):  cada campo em uma linha
+           -------------------------------------------------------------------- */
         .painel-filtros { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr auto; gap: 10px; margin-bottom: 5px; }
 
-        /* Telas médias / iframe: nome e cargo na 1ª linha;
-           mês, ano e botão juntos na 2ª linha */
         @media (max-width: 850px) {
             .painel-filtros { grid-template-columns: repeat(6, 1fr); }
             #filtroNome, #filtroCargo { grid-column: span 3; }
@@ -54,23 +122,32 @@
             button.btn-filtro { width: 100%; }
         }
 
-        /* EXPORTAÇÃO RESPONSIVA */
+        /* --------------------------------------------------------------------
+           6. BARRA DE EXPORTAÇÃO
+           Em telas estreitas os botões deslizam horizontalmente (scroll suave)
+           -------------------------------------------------------------------- */
         .painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
         .painel-exportacao button { flex: 1; min-width: 100px; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .painel-exportacao button:hover { background: #00274d; }
-        .painel-exportacao .btn-acao { background: #0284c7; }
+        .painel-exportacao .btn-acao { background: #0284c7; } /* botão Imprimir (azul claro) */
         .painel-exportacao::-webkit-scrollbar { height: 6px; }
         .painel-exportacao::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-        /* CABEÇALHO VISUALIZAÇÃO */
+        /* Cabeçalho da área de visualização: menu "Exibir X" + contador de registros */
         .dt-custom-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 5px 0; }
         .badge-contagem { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid #bae6fd; }
 
-        /* CORREÇÃO DO MENU "EXIBIR X RESULTADOS" */
+        /* Ajuste visual do menu "Exibir X resultados" do DataTables */
         .dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; margin: 0; white-space: nowrap; }
         .dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
 
-        /* TABELA BASE E CARDS */
+        /* --------------------------------------------------------------------
+           7. CARDS DE SERVIDORES
+           Cada registro vira um card com cabeçalho (nome/cargo/matrícula)
+           e corpo dividido em 4 linhas de valores
+           -------------------------------------------------------------------- */
+
+        /* O <thead> fica oculto: a tabela existe só para o DataTables paginar os cards */
         #tabela thead { display: none !important; }
         table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
 
@@ -83,47 +160,45 @@
         .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
         .status-matricula { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
 
-        /* CORPO DO CARD DIVIDIDO EM 4 LINHAS PARA IFRAME */
         .card-body { display: flex; flex-direction: column; padding: 0; background: #fafaf9; }
-
-        .info-row-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            padding: 12px 15px;
-            gap: 12px;
-        }
-
+        .info-row-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); padding: 12px 15px; gap: 12px; }
         .info-row-grid:not(:last-child) { border-bottom: 1px solid #e5e7eb; }
-
         .info-col { display: flex; flex-direction: column; background: #fff; padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb; }
         .info-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 3px; }
         .info-valor { font-size: 12px; font-weight: 700; color: #1e293b; }
 
-        /* PAGINAÇÃO */
-        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px;}
+        /* --------------------------------------------------------------------
+           8. TABELA E PAGINAÇÃO (DataTables)
+           -------------------------------------------------------------------- */
+        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px; }
         .dataTables_wrapper .dataTables_info { padding-top: 0 !important; color: #475569; font-size: 13px; font-weight: 500; margin-bottom: 0 !important; }
         .dataTables_wrapper .dataTables_paginate { display: flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 0 !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 6px 12px !important; border-radius: 6px !important; margin: 0 !important; border: 1px solid transparent !important; color: #475569 !important; font-weight: 600; font-size: 13px; background: transparent !important; cursor: pointer; transition: 0.2s; }
         .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border-color: #003b75 !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #003b75 !important; }
 
+        /* --------------------------------------------------------------------
+           9. LOADER (indicador de carregamento inicial)
+           -------------------------------------------------------------------- */
         #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #003b75; font-weight: bold; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        #cabecalho-impressao { display: none; }
-
-        /* =========================================
-           RESPONSIVIDADE CELULAR E IFRAME
-           ========================================= */
+        /* --------------------------------------------------------------------
+           10. RESPONSIVIDADE PARA CELULAR (≤600px)
+           -------------------------------------------------------------------- */
         @media (max-width: 600px) {
             .topo { flex-direction: column; gap: 10px; text-align: center; }
             .card-header { flex-direction: column; text-align: center; gap: 10px; }
             .info-row-grid { grid-template-columns: 1fr; }
             .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
-            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
+            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important; }
         }
 
+        /* --------------------------------------------------------------------
+           11. IMPRESSÃO
+           Esconde filtros e botões; mostra o cabeçalho institucional com brasão
+           -------------------------------------------------------------------- */
         @media print {
             .topo, fieldset, .dt-bottom-controls, .alerta-erro { display: none !important; }
             #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
@@ -135,6 +210,10 @@
 <body>
 
 <div id="wrapper">
+
+    <!-- ================================================================
+         CABEÇALHO DA PÁGINA (visível na tela)
+         ================================================================ -->
     <header class="topo">
         <h1>Remuneração Detalhada dos Servidores</h1>
         <div class="logo-container">
@@ -143,6 +222,9 @@
         </div>
     </header>
 
+    <!-- ================================================================
+         CABEÇALHO DE IMPRESSÃO (visível apenas ao imprimir)
+         ================================================================ -->
     <div id="cabecalho-impressao">
         <img src="brasao_marilia.png" width="63" height="70" alt="Brasão de Marília">
         <div>
@@ -151,18 +233,24 @@
         </div>
     </div>
 
+    <!-- Loader exibido enquanto o CSV do Google Sheets é baixado -->
     <div id="loader">
         <div class="spinner"></div>
         <span>Sincronizando base de dados...</span>
     </div>
 
+    <!-- ================================================================
+         CONTEÚDO PRINCIPAL (exibido após o carregamento dos dados)
+         ================================================================ -->
     <main id="main-container" style="display:none;">
 
+        <!-- Aviso exibido quando a planilha publicada não tem os cabeçalhos esperados -->
         <div id="alerta-aba-errada" class="alerta-erro">
             ⚠️ ATENÇÃO: O sistema não encontrou os cabeçalhos corretos (Nome, Cargo, etc.).
             Por favor, certifique-se de publicar a aba chamada exatamente de "planilha" no Google Sheets e atualize a variável CSV_URL no código.
         </div>
 
+        <!-- Painel: filtros de pesquisa -->
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
             <div id="badge-atualizacao" class="badge-atualizacao">🟢 Atualizado mensalmente</div>
@@ -176,6 +264,7 @@
             </div>
         </fieldset>
 
+        <!-- Painel: botões de exportação e impressão -->
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Exportação e Impressão</legend>
             <div class="painel-exportacao">
@@ -187,6 +276,7 @@
             </div>
         </fieldset>
 
+        <!-- Painel: menu "Exibir X resultados" + contador de registros -->
         <fieldset class="painel-grupo" id="painel-visualizacao" style="padding: 10px 15px;">
             <legend class="titulo-painel">Visualização</legend>
             <div class="dt-custom-header">
@@ -195,6 +285,8 @@
             </div>
         </fieldset>
 
+        <!-- Tabela-base do DataTables: cada linha renderiza um card completo.
+             O cabeçalho fica oculto via CSS (seção 7) -->
         <table id="tabela" style="width:100%" role="presentation">
             <thead><tr><th>Dados</th></tr></thead>
             <tbody></tbody>
@@ -202,35 +294,77 @@
     </main>
 </div>
 
+<!-- ====================================================================
+     BIBLIOTECAS EXTERNAS (CDN)
+     jQuery ......... base para o DataTables e manipulação do DOM
+     DataTables ..... paginação e controle de exibição dos cards
+     SheetJS (xlsx) . geração do arquivo Excel
+     PapaParse ...... leitura do CSV do Google Sheets e geração do CSV exportado
+     ==================================================================== -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
 <script>
-    // ============================================================================
-    // 🔴 COLE AQUI O LINK DA SUA ABA "planilha" DO GOOGLE SHEETS
-    // ============================================================================
+    /* =======================================================================
+       ÍNDICE DO SCRIPT
+       1. Configuração (o que você normalmente altera está aqui)
+       2. Constantes e estado global
+       3. Funções utilitárias
+       4. Comunicação com o iframe (altura automática)
+       5. Carregamento dos dados (Google Sheets → CSV)
+       6. Processamento e mapeamento das colunas
+       7. Filtros (popular e aplicar)
+       8. Tabela de cards (DataTables)
+       9. Exportações (CSV, Excel, JSON, XML) e nome dos arquivos
+       10. Impressão
+       11. Inicialização (eventos e primeira carga)
+       ======================================================================= */
+
+    /* =======================================================================
+       1. CONFIGURAÇÃO
+       ======================================================================= */
+
+    // 🔴 LINK DO CSV: no Google Sheets, use Arquivo → Compartilhar → Publicar
+    // na web → aba "planilha" → formato CSV, e cole o link gerado aqui.
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQbCGibK-aCEzCk-9SDeaAl9NFrRVfs0AQBpXAYjzW3WfUUSphH5F7L9eopRr9h5SrOgOLTz1MX6puZ/pub?output=csv";
 
-    // Se quiser restringir o postMessage apenas ao site que hospeda o iframe,
-    // troque "*" pelo domínio do site pai, ex: "https://www.camar.sp.gov.br"
-    const ORIGEM_PAI = "*";
+    // 🔴 SITE QUE HOSPEDA O IFRAME: a altura da página só será enviada para
+    // este domínio (segurança do postMessage). Se o site oficial mudar de
+    // endereço, atualize aqui. Use "*" apenas em testes locais.
+    const ORIGEM_PAI = "https://www.marilia.sp.leg.br";
 
+    /* =======================================================================
+       2. CONSTANTES E ESTADO GLOBAL
+       ======================================================================= */
+
+    // Ordem dos meses no calendário (chaves sem acento, pois a comparação
+    // é feita sobre texto normalizado). Usada para ordenar o filtro de meses.
     const ORDEM_MESES = { "janeiro": 1, "fevereiro": 2, "marco": 3, "abril": 4, "maio": 5, "junho": 6, "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12 };
+
+    // Nomes oficiais dos meses (com acento), usados para converter mês
+    // numérico da planilha ("5") em nome por extenso ("maio").
     const NOMES_MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
-    let tabela;
-    let dadosGlobais = [];
+    let tabela;            // instância única do DataTables (criada em inicializarTabela)
+    let dadosGlobais = []; // todos os registros lidos da planilha, já normalizados
 
-    // =========================================================================
-    // UTILITÁRIOS
-    // =========================================================================
+    /* =======================================================================
+       3. FUNÇÕES UTILITÁRIAS
+       ======================================================================= */
+
+    /** Remove acentos de um texto ("mês" → "mes"). Usada em comparações. */
     function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
 
+    /** Deixa a primeira letra maiúscula ("maio" → "Maio"). */
     function capitalizar(str) { return str ? str.charAt(0).toUpperCase() + str.slice(1) : str; }
 
-    // SEGURANÇA: escapa HTML antes de inserir dados da planilha na página (evita XSS/quebra de layout)
+    /**
+     * SEGURANÇA: escapa caracteres HTML antes de inserir dados da planilha
+     * na página. Impede que uma célula contendo tags ou scripts quebre o
+     * layout ou execute código (XSS).
+     */
     function escapeHtml(valor) {
         return String(valor ?? "")
             .replace(/&/g, "&amp;")
@@ -240,6 +374,7 @@
             .replace(/'/g, "&#39;");
     }
 
+    /** Escapa os caracteres reservados do XML (&, <, >) na exportação. */
     function escapeXml(valor) {
         return String(valor ?? "")
             .replace(/&/g, "&amp;")
@@ -247,8 +382,14 @@
             .replace(/>/g, "&gt;");
     }
 
-    // Localiza uma coluna testando, nesta ordem: nome exato, cabeçalho que
-    // começa com o termo e, por fim, cabeçalho que apenas contém o termo
+    /**
+     * Localiza o índice de uma coluna na lista de cabeçalhos, testando os
+     * termos em três níveis de tolerância, nesta ordem:
+     *   1º nome exato ("ano")
+     *   2º cabeçalho que começa com o termo ("ano de referência")
+     *   3º cabeçalho que apenas contém o termo ("exercício/ano")
+     * Retorna -1 se nenhuma coluna corresponder.
+     */
     function procurarColunaFlexivel(cabecalhos, termos) {
         for (const t of termos) { const i = cabecalhos.findIndex(h => h === t); if (i !== -1) return i; }
         for (const t of termos) { const i = cabecalhos.findIndex(h => h.startsWith(t)); if (i !== -1) return i; }
@@ -256,30 +397,42 @@
         return -1;
     }
 
-    // =========================================================================
-    // ALTURA DO IFRAME — ResizeObserver envia a altura automaticamente sempre
-    // que o conteúdo muda, sem depender de setTimeout espalhado pelo código.
-    // =========================================================================
+    /* =======================================================================
+       4. COMUNICAÇÃO COM O IFRAME (altura automática)
+       A página roda dentro de um <iframe> no site oficial. Sempre que o
+       conteúdo muda de tamanho, enviamos a nova altura para o site pai
+       via postMessage, e ele redimensiona o iframe (sem barra de rolagem).
+       ======================================================================= */
+
+    /** Envia a altura atual do conteúdo para o site que hospeda o iframe. */
     function enviarAlturaIframe() {
         const wrapper = document.getElementById('wrapper');
         if (wrapper) {
-            const h = wrapper.offsetHeight + 40;
+            const h = wrapper.offsetHeight + 40; // 40px de folga para sombras/margens
             window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, ORIGEM_PAI);
         }
     }
 
+    // O ResizeObserver detecta qualquer mudança de altura do conteúdo
+    // (troca de página, filtro, expansão de cards) e reenvia automaticamente.
     if ('ResizeObserver' in window) {
         new ResizeObserver(() => enviarAlturaIframe()).observe(document.getElementById('wrapper'));
     }
 
-    // =========================================================================
-    // CARREGAMENTO DOS DADOS
-    // =========================================================================
+    /* =======================================================================
+       5. CARREGAMENTO DOS DADOS (Google Sheets → CSV)
+       ======================================================================= */
+
+    /**
+     * Baixa o CSV publicado do Google Sheets e dispara o processamento.
+     * O parâmetro t=timestamp evita que o navegador use uma cópia em cache
+     * e garante dados sempre atualizados.
+     */
     function carregarDados() {
         $('#loader').show();
         $('#main-container').hide();
 
-        // Cache-buster robusto: funciona com ou sem "?" já presente na URL
+        // O separador muda conforme a URL já tenha ou não parâmetros
         const separador = CSV_URL.includes('?') ? '&' : '?';
 
         Papa.parse(`${CSV_URL}${separador}t=${Date.now()}`, {
@@ -305,6 +458,22 @@
         });
     }
 
+    /* =======================================================================
+       6. PROCESSAMENTO E MAPEAMENTO DAS COLUNAS
+       ======================================================================= */
+
+    /**
+     * Transforma as linhas brutas do CSV em objetos organizados (dadosGlobais).
+     *
+     * Etapas:
+     *   1. Localiza a linha de cabeçalho (procura por "nome" + "bruto" nas
+     *      primeiras 15 linhas, ignorando acentos e maiúsculas).
+     *   2. Mapeia cada campo ao índice da sua coluna por palavras-chave —
+     *      assim a planilha pode ter colunas em ordem diferente sem quebrar.
+     *   3. Se nenhum cabeçalho for encontrado, exibe o alerta amarelo e usa
+     *      a ordem padrão da planilha como último recurso.
+     *   4. Converte cada linha em objeto, ignorando linhas vazias e totais.
+     */
     function processarDadosMapeados(linhas) {
         if (!linhas || linhas.length === 0) return;
 
@@ -312,6 +481,7 @@
         let cabecalhos = [];
         let indices = {};
 
+        // ---- Etapa 1: localizar a linha de cabeçalho ----
         for (let i = 0; i < Math.min(15, linhas.length); i++) {
             let cols = linhas[i].map(h => removerAcentos(String(h).trim().toLowerCase()));
             let temNome = cols.some(c => c.includes("nome") || c.includes("servidor"));
@@ -324,6 +494,7 @@
             }
         }
 
+        // Busca simples por palavra-chave (usada para as colunas de valores)
         const procurarColuna = (palavrasChave) => {
             if (headerIndex === -1) return -1;
             for (let palavra of palavrasChave) {
@@ -333,9 +504,11 @@
             return -1;
         };
 
+        // ---- Etapas 2 e 3: mapear colunas (ou usar fallback) ----
         if (headerIndex === -1) {
             $('#alerta-aba-errada').show();
-            // Fallback segue a ordem das colunas da planilha: ano, mês, Matricula, Nome, ...
+            // Último recurso: assume a ordem padrão das colunas da planilha
+            // (ano, mês, Matricula, Nome, ..., Vencimentos Liquidos, Cargo)
             indices = { ano: 0, mes: 1, matricula: 2, nome: 3, venc_bruto: 4, referencia: 5, vantagens: 6, outras_verbas: 7, indenizatorias: 8, auxilio: 9, abono: 10, redutor: 11, desc_legais: 12, desc_eventuais: 13, venc_liquido: 14, cargo: 15 };
         } else {
             $('#alerta-aba-errada').hide();
@@ -354,26 +527,29 @@
                 redutor: procurarColuna(["redutor", "teto"]),
                 desc_legais: procurarColuna(["descontos legais", "previdencia"]),
                 desc_eventuais: procurarColuna(["descontos eventuais", "eventual"]),
-                // Colunas separadas "ano" e "mês": tenta correspondência exata,
-                // depois cabeçalho que começa com o termo, depois que contém o termo
+                // Ano e mês usam a busca em três níveis (ver procurarColunaFlexivel)
                 ano: procurarColunaFlexivel(cabecalhos, ["ano", "exercicio"]),
                 mes: procurarColunaFlexivel(cabecalhos, ["mes"])
             };
         }
 
-        if(indices.nome === -1) indices.nome = 1;
+        // Garantia mínima: se a coluna de nome não foi localizada, assume a 2ª
+        if (indices.nome === -1) indices.nome = 1;
 
+        // ---- Etapa 4: converter linhas em objetos ----
         dadosGlobais = [];
         let startIndex = headerIndex !== -1 ? headerIndex + 1 : 0;
 
         for (let i = startIndex; i < linhas.length; i++) {
             const col = linhas[i];
-            if (!col || col.length < 3) continue;
+            if (!col || col.length < 3) continue; // ignora linhas vazias/incompletas
 
             let nomeVal = indices.nome !== -1 && col[indices.nome] ? col[indices.nome].trim() : "";
 
+            // Ignora linhas sem nome, linhas de totais e repetições do cabeçalho
             if (!nomeVal || nomeVal === "-" || nomeVal.toLowerCase().includes("total") || nomeVal.toLowerCase() === "nome") continue;
 
+            // Retorna o valor da coluna ou "-" quando ausente
             let extrairValor = (idx) => (idx !== -1 && col[idx]) ? col[idx].trim() : "-";
 
             let obj = {
@@ -393,36 +569,45 @@
                 desc_eventuais: extrairValor(indices.desc_eventuais)
             };
 
-            // MÊS E ANO vêm das colunas separadas da planilha.
-            // Aceita mês por extenso ("maio") ou numérico ("5" / "05")
+            // Mês e ano vêm das colunas separadas da planilha.
+            // O mês aceita nome por extenso ("maio") ou número ("5" / "05").
             obj.mes = extrairValor(indices.mes).toLowerCase();
             if (/^\d{1,2}$/.test(obj.mes)) obj.mes = NOMES_MESES[parseInt(obj.mes, 10) - 1] || obj.mes;
             obj.ano = extrairValor(indices.ano);
-            obj.mes_num = ORDEM_MESES[removerAcentos(obj.mes)] || 0;
+            obj.mes_num = ORDEM_MESES[removerAcentos(obj.mes)] || 0; // posição no calendário
 
+            // Nome sem acentos/maiúsculas, pré-calculado para a busca ser rápida
             obj.busca_nome = removerAcentos(obj.nome.toLowerCase());
             dadosGlobais.push(obj);
         }
     }
 
-    // =========================================================================
-    // FILTROS
-    // =========================================================================
+    /* =======================================================================
+       7. FILTROS
+       ======================================================================= */
+
+    /**
+     * Preenche os filtros de Cargo, Ano e Mês com os valores existentes na
+     * planilha e define a seleção inicial: o último ano e, dentro dele, o
+     * mês mais avançado do calendário — ou seja, o período mais recente.
+     */
     function popularFiltrosDynamic() {
+        // Cargos em ordem alfabética
         const cargos = [...new Set(dadosGlobais.map(d => d.cargo))].filter(c => c && c !== "-").sort();
         $('#filtroCargo').html('<option value="">Todos os Cargos</option>');
         cargos.forEach(c => $('#filtroCargo').append(`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`));
 
+        // Anos em ordem decrescente (mais recente primeiro)
         const anos = [...new Set(dadosGlobais.map(d => d.ano))].filter(a => a && a !== "-").sort((a, b) => Number(b) - Number(a));
         $('#filtroAno').html('<option value="">Todos os Anos</option>');
         anos.forEach(a => $('#filtroAno').append(`<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`));
 
-        // PADRÃO: sempre abre no último ano e mês inseridos na planilha
-        // (ano mais recente e, dentro dele, o mês mais avançado do calendário)
+        // Seleção padrão: ano mais recente...
         if (anos.length > 0) $('#filtroAno').val(anos[0]);
 
         popularMeses();
 
+        // ...e o mês mais avançado dentro dele
         const registrosDoAno = anos.length > 0 ? dadosGlobais.filter(d => d.ano === anos[0]) : [];
         if (registrosDoAno.length > 0) {
             const maisRecente = registrosDoAno.reduce((max, d) => d.mes_num > max.mes_num ? d : max, registrosDoAno[0]);
@@ -430,8 +615,11 @@
         }
     }
 
-    // Repopula o filtro de meses de acordo com o ano selecionado,
-    // ordenando por calendário (janeiro → dezembro) e não alfabeticamente
+    /**
+     * Preenche o filtro de meses conforme o ano selecionado, na ordem do
+     * calendário (janeiro → dezembro). Se um mês já estava selecionado e
+     * continua existindo no novo ano, a seleção é mantida.
+     */
     function popularMeses() {
         const anoSelecionado = $('#filtroAno').val();
         const mesAtual = $('#filtroMes').val();
@@ -444,10 +632,14 @@
         $('#filtroMes').html('<option value="">Todos os Meses</option>');
         meses.forEach(m => $('#filtroMes').append(`<option value="${escapeHtml(m)}">${escapeHtml(capitalizar(m))}</option>`));
 
-        // Mantém o mês selecionado se ele ainda existir no novo ano
         if (mesAtual && meses.includes(mesAtual)) $('#filtroMes').val(mesAtual);
     }
 
+    /**
+     * Aplica os quatro filtros (nome, cargo, mês, ano) sobre dadosGlobais,
+     * ordena por nome e envia o resultado para a tabela.
+     * A busca por nome ignora acentos e maiúsculas.
+     */
     function aplicarFiltros() {
         const nomeDigitado = removerAcentos($('#filtroNome').val().toLowerCase());
         const cargoSelecionado = $('#filtroCargo').val();
@@ -466,6 +658,7 @@
         renderizarTabela(filtrados);
     }
 
+    /** Limpa todos os filtros e volta a exibir todos os registros. */
     function limparFiltros() {
         $('#filtroNome, #filtroCargo, #filtroAno').val('');
         popularMeses();
@@ -473,21 +666,25 @@
         aplicarFiltros();
     }
 
-    // =========================================================================
-    // TABELA — criada UMA única vez; os filtros apenas atualizam os dados
-    // (antes o DataTable era destruído e recriado a cada tecla digitada)
-    // =========================================================================
+    /* =======================================================================
+       8. TABELA DE CARDS (DataTables)
+       A tabela é criada UMA única vez; os filtros apenas trocam os dados
+       (clear + rows.add + draw). Isso mantém a digitação fluida mesmo com
+       muitos registros, pois nada é destruído e recriado.
+       ======================================================================= */
+
+    /** Cria a instância do DataTables e define como cada card é desenhado. */
     function inicializarTabela() {
         tabela = $('#tabela').DataTable({
             data: [],
             pageLength: 10,
-            ordering: false,
+            ordering: false, // a ordenação por nome é feita em aplicarFiltros()
             language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
-            dom: 'lrt<"dt-bottom-controls"ip>',
+            dom: 'lrt<"dt-bottom-controls"ip>', // l=menu exibir, r=processando, t=tabela, i=info, p=paginação
             columns: [{
                 data: null,
                 render: function(d) {
-                    // Só mostra o período quando houver mês/ano; evita exibir "(-/-)"
+                    // O período "(Maio/2026)" só aparece quando há mês/ano no registro
                     const temPeriodo = (d.mes && d.mes !== "-") || (d.ano && d.ano !== "-");
                     const periodo = temPeriodo
                         ? `<span style="color:#94a3b8; font-weight:normal; font-size:11px; margin-left:5px;">(${escapeHtml(capitalizar(d.mes))}/${escapeHtml(d.ano)})</span>`
@@ -530,15 +727,18 @@
                 }
             }],
             initComplete: function() {
+                // Move o menu "Exibir X resultados" para o painel Visualização
                 $('.dataTables_length').appendTo('#comprimento-tabela');
             },
             drawCallback: function() {
+                // Atualiza o contador e reenvia a altura ao site pai a cada redesenho
                 const total = this.api().rows().count();
                 $('#contagem-registros').html(`<b>${total}</b> registros encontrados`);
                 enviarAlturaIframe();
             }
         });
 
+        // Ao trocar de página, rola suavemente de volta ao topo da lista
         tabela.on('page.dt', function () {
             setTimeout(function() {
                 document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -546,6 +746,7 @@
         });
     }
 
+    /** Substitui os dados exibidos na tabela (sem destruí-la). */
     function renderizarTabela(dados) {
         if (!tabela) inicializarTabela();
         tabela.clear();
@@ -553,9 +754,13 @@
         tabela.draw();
     }
 
-    // =========================================================================
-    // EXPORTAÇÕES (com Mês e Ano em colunas separadas)
-    // =========================================================================
+    /* =======================================================================
+       9. EXPORTAÇÕES (CSV, Excel, JSON, XML)
+       Todas exportam apenas os registros filtrados no momento, com Ano e
+       Mês como primeiras colunas — na mesma ordem da planilha.
+       ======================================================================= */
+
+    /** Converte os registros filtrados para o formato de exportação. */
     function dadosParaExportar() {
         return tabela.rows().data().toArray().map(d => ({
             "Ano": d.ano,
@@ -577,29 +782,37 @@
         }));
     }
 
+    /**
+     * Monta o nome do arquivo a partir dos filtros ativos, para que o
+     * conteúdo seja identificável pelo próprio nome. Exemplos:
+     *   remuneracao_funcionarios_maio_2026.csv
+     *   remuneracao_funcionarios_todos_os_meses_2026.xlsx
+     *   remuneracao_funcionarios_escriturario_maio_2026.json
+     * O período (mês/ano) sempre aparece, mesmo sem filtro selecionado.
+     */
     function gerarNomeArquivoBase() {
         let partes = ["remuneracao_funcionarios"];
         const nome = $('#filtroNome').val().trim();
         if (nome) partes.push(nome.replace(/\s+/g, '_'));
         if ($('#filtroCargo').val()) partes.push($('#filtroCargo option:selected').text().replace(/\s+/g, '_'));
 
-        // Identifica o período no nome do arquivo, mesmo sem filtro de mês
         const mes = $('#filtroMes').val();
         const ano = $('#filtroAno').val();
-        if (mes) partes.push(mes);
-        else partes.push("todos_os_meses");
-        if (ano) partes.push(ano);
-        else partes.push("todos_os_anos");
+        partes.push(mes || "todos_os_meses");
+        partes.push(ano || "todos_os_anos");
 
+        // Normaliza: sem acentos, sem caracteres especiais, tudo minúsculo
         return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
     }
 
+    /** Exporta CSV. O PapaParse cuida do escape de aspas, vírgulas e quebras
+        de linha; o prefixo \ufeff (BOM) garante acentos corretos no Excel. */
     function exportarCSV() {
-        // Papa.unparse cuida do escape de aspas, vírgulas e quebras de linha
         const csv = "\ufeff" + Papa.unparse(dadosParaExportar());
         downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv;charset=utf-8");
     }
 
+    /** Exporta Excel (.xlsx) via SheetJS. */
     function exportarXLSX() {
         const ws = XLSX.utils.json_to_sheet(dadosParaExportar());
         const wb = XLSX.utils.book_new();
@@ -607,13 +820,15 @@
         XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx");
     }
 
+    /** Exporta JSON formatado (2 espaços de indentação). */
     function exportarJSON() {
         downloadFile(JSON.stringify(dadosParaExportar(), null, 2), gerarNomeArquivoBase() + ".json", "application/json");
     }
 
+    /** Exporta XML com os campos em ordem fixa (ano e mês primeiro)
+        e valores escapados (ver escapeXml). */
     function exportarXML() {
         const data = tabela.rows().data().toArray();
-        // Ordem fixa dos campos, com ano e mês no início (igual à planilha)
         const campos = ["ano", "mes", "matricula", "nome", "cargo", "venc_bruto", "referencia", "vantagens", "outras_verbas", "indenizatorias", "auxilio", "abono", "redutor", "desc_legais", "desc_eventuais", "venc_liquido"];
         let xml = '<?xml version="1.0" encoding="UTF-8"?><dados>';
         data.forEach(d => {
@@ -627,44 +842,53 @@
         downloadFile(xml, gerarNomeArquivoBase() + ".xml", "application/xml");
     }
 
+    /** Dispara o download de um arquivo gerado em memória e libera o blob
+        em seguida para não acumular memória. */
     function downloadFile(content, fileName, mime) {
         const blob = new Blob([content], { type: mime });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url; a.download = fileName; a.click();
-        // Libera a memória do blob após o download iniciar
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    // =========================================================================
-    // IMPRESSÃO — espera o evento draw.dt do DataTables em vez de timeout fixo,
-    // garantindo que todos os registros foram renderizados antes de imprimir
-    // =========================================================================
+    /* =======================================================================
+       10. IMPRESSÃO
+       ======================================================================= */
+
+    /**
+     * Imprime TODOS os registros filtrados (não apenas a página atual):
+     *   1. Expande a paginação para exibir tudo (page.len(-1)).
+     *   2. Espera o evento draw.dt — sinal de que o DataTables terminou de
+     *      renderizar — em vez de um tempo fixo, que falharia com muitos dados.
+     *   3. Abre a janela de impressão e restaura a paginação anterior.
+     */
     function imprimirSeguro() {
         if (!tabela) return;
-        const len = tabela.page.len();
+        const len = tabela.page.len(); // guarda a paginação atual
         tabela.one('draw.dt', function() {
             setTimeout(() => {
                 window.print();
-                tabela.page.len(len).draw('page');
+                tabela.page.len(len).draw('page'); // restaura após imprimir
             }, 100);
         });
-        tabela.page.len(-1).draw('page');
+        tabela.page.len(-1).draw('page'); // -1 = mostrar todos
     }
 
-    // =========================================================================
-    // INICIALIZAÇÃO
-    // =========================================================================
+    /* =======================================================================
+       11. INICIALIZAÇÃO
+       ======================================================================= */
     $(document).ready(function() {
+        // Filtros de cargo e mês aplicam imediatamente ao mudar
         $('#filtroCargo, #filtroMes').on('change', aplicarFiltros);
 
-        // Ao trocar o ano, os meses disponíveis são atualizados
+        // Ao trocar o ano, a lista de meses disponíveis é atualizada antes
         $('#filtroAno').on('change', function() {
             popularMeses();
             aplicarFiltros();
         });
 
-        // Debounce: espera 250ms após a última tecla antes de filtrar,
+        // Busca por nome com debounce: espera 250ms após a última tecla,
         // evitando reprocessar a tabela a cada caractere digitado
         let debounceNome;
         $('#filtroNome').on('input', function() {
