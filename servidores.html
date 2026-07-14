@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- ===========================================================================
-     RELATÓRIO DE FUNCIONÁRIOS
+     RELATÓRIO DE SERVIDORES
      Câmara Municipal de Marília
      ===========================================================================
 
@@ -43,7 +43,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Relatório de Funcionários</title>
+    <title>Relatório de Servidores</title>
 
     <!-- Estilos do DataTables (tabela com paginação) -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
@@ -61,7 +61,7 @@
            3. Painéis (filtros, exportação, visualização)
            4. Formulários e grade de filtros
            5. Barra de exportação
-           6. Cards de funcionários
+           6. Cards de servidores
            7. Tabela e paginação (DataTables)
            8. Loader (carregamento)
            9. Responsividade para celular
@@ -136,7 +136,7 @@
         .dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
 
         /* --------------------------------------------------------------------
-           6. CARDS DE FUNCIONÁRIOS
+           6. CARDS DE SERVIDORES
            Cada registro vira um card: cabeçalho (nome/cargo/situação) e
            corpo com lotação, jornada, admissão e demissão
            -------------------------------------------------------------------- */
@@ -209,7 +209,7 @@
          CABEÇALHO DA PÁGINA (visível na tela)
          ================================================================ -->
     <header class="topo">
-        <h1>Relatório de Funcionários</h1>
+        <h1>Relatório de Servidores</h1>
         <div class="logo-container">
             <img src="brasao_marilia.png" alt="Brasão de Marília" width="50" height="50" class="brasao">
             <span class="texto-camara">Câmara Municipal de Marília</span>
@@ -222,7 +222,7 @@
     <div id="cabecalho-impressao">
         <img src="brasao_marilia.png" width="63" height="70" alt="Brasão de Marília">
         <div>
-            <h1 style="margin:0; color:#003b75;">Relatório de Funcionários</h1>
+            <h1 style="margin:0; color:#003b75;">Relatório de Servidores</h1>
             <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
         </div>
     </div>
@@ -349,7 +349,7 @@
        2. ESTADO GLOBAL
        ======================================================================= */
     let tabela;                  // instância única do DataTables
-    let dadosGlobais = [];       // todos os funcionários lidos da planilha
+    let dadosGlobais = [];       // todos os servidores lidos da planilha
     let carimboAtualizacao = ""; // data de atualização exibida no selo verde
 
     /* =======================================================================
@@ -513,7 +513,7 @@
 
     /** Ordena a lista: Ativos primeiro; dentro de cada grupo, ordem
         alfabética pelo nome. */
-    function ordenarFuncionarios(lista) {
+    function ordenarservidores(lista) {
         return lista.sort((a, b) => {
             if (a.situacao !== b.situacao) return a.situacao === "Ativo" ? -1 : 1;
             return (a.nome_func || "").localeCompare(b.nome_func || "");
@@ -561,7 +561,7 @@
             return matchNome && matchCargo && matchLot && matchSit && matchData;
         });
 
-        renderizarTabela(ordenarFuncionarios(filtrados));
+        renderizarTabela(ordenarservidores(filtrados));
     }
 
     /** Limpa todos os filtros e volta ao padrão da página: Situação "Ativos". */
@@ -583,7 +583,7 @@
         tabela = $('#tabela').DataTable({
             data: [],
             pageLength: 10,
-            ordering: false, // a ordenação é feita em ordenarFuncionarios()
+            ordering: false, // a ordenação é feita em ordenarservidores()
             language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
             dom: 'lrt<"dt-bottom-controls"ip>', // l=menu exibir, r=processando, t=tabela, i=info, p=paginação
             columns: [{
@@ -658,9 +658,9 @@
     }
 
     /** Monta o nome do arquivo a partir dos filtros ativos
-        (ex: funcionarios_ativos_2026.csv). */
+        (ex: servidores_ativos_2026.csv). */
     function gerarNomeArquivoBase() {
-        let partes = ["funcionarios"];
+        let partes = ["servidores"];
         const nome = $('#filtroNome').val().trim();
         if (nome) partes.push(nome.replace(/\s+/g, '_'));
         if ($('#filtroCargo').val()) partes.push($('#filtroCargo option:selected').text().replace(/\s+/g, '_'));
