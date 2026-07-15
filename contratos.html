@@ -30,10 +30,15 @@
      REGRAS AUTOMÁTICAS
      - Situação: calculada pela vigência (>= hoje → "Vigente";
        < hoje → "Encerrado"; sem data → "Vigência Indeterminada")
+     - CASO ESPECIAL: se a coluna de vigência trouxer o texto "Licitante
+       Apenado" em vez de uma data, o contrato recebe a situação
+       "Licitante Apenado" (selo âmbar), NÃO conta como vigente e ganha
+       opção própria no filtro de Situação
      - LGPD: CPFs de pessoa física são mascarados (***.123.456-**) na tela
        e em TODAS as exportações; CNPJs aparecem completos (dado público)
-     - Ordenação: contratos encerrados por último; dentro de cada grupo,
-       do contrato mais novo (ano/número) para o mais antigo
+     - Ordenação: vigentes primeiro, licitantes apenados no meio e
+       encerrados por último; dentro de cada grupo, do contrato mais novo
+       (ano/número) para o mais antigo
      - Filtro inicial: Situação = "Vigente"
 
      MANUTENÇÃO RÁPIDA (o que você normalmente precisa alterar)
@@ -148,10 +153,12 @@
         .card-header-texto { display: flex; flex-direction: column; gap: 2px; width: 75%; }
         .nome-principal { font-size: 15px; font-weight: 800; color: #003b75; text-transform: uppercase; word-break: break-word; }
 
-        /* Selo de situação: verde (vigente) ou vermelho (encerrado) */
+        /* Selo de situação: verde (vigente), vermelho (encerrado) ou
+           âmbar (licitante apenado — mesma cor da página de apenados) */
         .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: center; white-space: nowrap; }
         .status-ativo { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
         .status-desligado { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .status-apenado { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
 
         .card-body { padding: 15px; display: flex; flex-direction: column; gap: 12px; }
         .info-row { display: flex; flex-wrap: wrap; gap: 15px; width: 100%; }
@@ -530,15 +537,24 @@
                     else if (h.includes("link_sapl")) obj.link_sapl = val;
                 });
 
-                // Situação calculada pela vigência (comparada com hoje)
-                let vigenciaTimestamp = converterDataParaTimestamp(obj.vigencia_contrato);
-                let hoje = new Date();
-                hoje.setHours(0, 0, 0, 0);
+                // Situação calculada pela vigência (comparada com hoje).
+                // CASO ESPECIAL: se a vigência trouxer o texto "Licitante
+                // Apenado" em vez de uma data, o contrato recebe essa
+                // situação específica (selo âmbar) — e NÃO conta como vigente
+                const vigenciaTexto = removerAcentos((obj.vigencia_contrato || "").toLowerCase());
 
-                if (vigenciaTimestamp > 0) {
-                    obj.situacao = vigenciaTimestamp >= hoje.getTime() ? "Vigente" : "Encerrado";
+                if (vigenciaTexto.includes("apenado")) {
+                    obj.situacao = "Licitante Apenado";
                 } else {
-                    obj.situacao = "Vigência Indeterminada";
+                    let vigenciaTimestamp = converterDataParaTimestamp(obj.vigencia_contrato);
+                    let hoje = new Date();
+                    hoje.setHours(0, 0, 0, 0);
+
+                    if (vigenciaTimestamp > 0) {
+                        obj.situacao = vigenciaTimestamp >= hoje.getTime() ? "Vigente" : "Encerrado";
+                    } else {
+                        obj.situacao = "Vigência Indeterminada";
+                    }
                 }
 
                 // Modalidade sem números, para agrupar o filtro por tipo
@@ -622,10 +638,11 @@
      *
      * Regras:
      * - Situação "Vigente" também inclui "Vigência Indeterminada"
+     *   (mas NÃO inclui "Licitante Apenado", que tem filtro próprio)
      * - O período (mês/ano) usa a Data do Contrato por padrão; se o
      *   usuário escolher "Vigência do Contrato" no seletor, usa a vigência
-     * - Ordenação: encerrados por último; dentro de cada grupo, do
-     *   contrato mais novo (ano/número) para o mais antigo
+     * - Ordenação: vigentes → licitantes apenados → encerrados; dentro
+     *   de cada grupo, do contrato mais novo (ano/número) para o mais antigo
      */
     function aplicarFiltros() {
         const txt = removerAcentos($('#filtroTexto').val().toLowerCase());
@@ -661,11 +678,21 @@
             return matchTexto && matchSit && matchMod && matchFis && matchData;
         });
 
-        res.sort((a, b) => {
-            const aEncerrado = (a.situacao || "").toLowerCase().includes('encerrado');
-            const bEncerrado = (b.situacao || "").toLowerCase().includes('encerrado');
+        // Ordenação em três grupos: vigentes primeiro, licitantes apenados
+        // no meio e encerrados por último; dentro de cada grupo, do
+        // contrato mais novo (ano/número) para o mais antigo
+        const pesoSituacao = (s) => {
+            const t = removerAcentos((s || "").toLowerCase());
+            if (t.includes('encerrado')) return 2;
+            if (t.includes('apenado')) return 1;
+            return 0;
+        };
 
-            if (aEncerrado !== bEncerrado) return aEncerrado ? 1 : -1;
+        res.sort((a, b) => {
+            const pa = pesoSituacao(a.situacao);
+            const pb = pesoSituacao(b.situacao);
+
+            if (pa !== pb) return pa - pb;
             return b.peso_ordenacao_contrato - a.peso_ordenacao_contrato;
         });
 
@@ -704,9 +731,12 @@
             columns: [{
                 data: null,
                 render: function(d) {
-                    // Selo verde (vigente) ou vermelho (encerrado)
-                    const sitNormalizado = (d.situacao || '').toLowerCase();
-                    const statusClass = sitNormalizado.includes('encerrado') ? 'status-desligado' : 'status-ativo';
+                    // Selo: verde (vigente), vermelho (encerrado) ou
+                    // âmbar (licitante apenado)
+                    const sitNormalizado = removerAcentos((d.situacao || '').toLowerCase());
+                    let statusClass = 'status-ativo';
+                    if (sitNormalizado.includes('encerrado')) statusClass = 'status-desligado';
+                    else if (sitNormalizado.includes('apenado')) statusClass = 'status-apenado';
 
                     // Objeto do contrato: escapa o HTML primeiro e só depois
                     // converte quebras de linha em <br> (mantém a formatação
