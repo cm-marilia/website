@@ -1,102 +1,190 @@
 <!DOCTYPE html>
+<!-- ===========================================================================
+     RELATÓRIO DE ESTAGIÁRIOS
+     Câmara Municipal de Marília
+     ===========================================================================
+
+     O QUE É ESTA PÁGINA
+     Portal de transparência que exibe o quadro de estagiários da Câmara em
+     formato de cards, com busca por nome, filtros por situação e período
+     (admissão/desligamento), exportação em CSV, Excel, JSON e XML, e
+     impressão formatada.
+
+     COMO FUNCIONA
+     1. Os dados são lidos de uma planilha do Google Sheets publicada como
+        CSV (variável SHEET_URL, na seção CONFIGURAÇÃO do script).
+     2. A página é hospedada no GitHub Pages e exibida dentro de um <iframe>
+        no site oficial: https://www.marilia.sp.leg.br/
+     3. A altura do iframe é ajustada automaticamente via postMessage.
+
+     FORMATO ESPERADO DA PLANILHA
+     - Linha 1: metadados com a data de atualização "dd/mm/aaaa hh:mm"
+       (exibida no selo verde)
+     - Linha 2: cabeçalhos, identificados por palavras-chave:
+       nome | admissao | desligamento
+     - Linha 3 em diante: os registros
+     - Datas no formato dd/mm/aaaa; desligamento vazio ou "-" = ainda ativo
+
+     REGRAS AUTOMÁTICAS
+     - Situação: sem data de desligamento (ou "-") → "Ativo";
+       com data → "Desligado"
+     - Ordenação: Ativos primeiro; dentro de cada grupo, ordem alfabética
+     - Filtro inicial: Situação = "Ativos"
+
+     MANUTENÇÃO RÁPIDA (o que você normalmente precisa alterar)
+     - Trocar a planilha ......... variável SHEET_URL  (seção CONFIGURAÇÃO)
+     - Trocar o site que embute .. variável ORIGEM_PAI (seção CONFIGURAÇÃO)
+     - Trocar o brasão ........... arquivo brasao_marilia.png no repositório
+
+     DEPENDÊNCIAS (carregadas via CDN)
+     jQuery 3.7.1 | DataTables 1.13.6 | SheetJS 0.18.5 | PapaParse 5.4.1
+     =========================================================================== -->
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Relatório de Estagiários</title>
 
+    <!-- Estilos do DataTables (tabela com paginação) -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
-    
-    <style>
-        /* =========================================
-           1. ESTILOS GERAIS E BASE
-           ========================================= */
-        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden;}
-        #wrapper { padding-bottom: 40px; padding: 15px; } 
 
+    <!-- Fonte Inter (Google Fonts) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* ====================================================================
+           ÍNDICE DOS ESTILOS
+           1. Base e layout geral
+           2. Cabeçalho (topo azul e brasão)
+           3. Painéis (filtros, exportação, visualização)
+           4. Formulários e grade de filtros
+           5. Barra de exportação
+           6. Cards de estagiários
+           7. Tabela e paginação (DataTables)
+           8. Loader (carregamento)
+           9. Responsividade para celular
+           10. Impressão
+           ==================================================================== */
+
+        /* --------------------------------------------------------------------
+           1. BASE E LAYOUT GERAL
+           -------------------------------------------------------------------- */
+        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden; }
+
+        /* Padding inferior maior (40px) dá respiro ao conteúdo dentro do iframe */
+        #wrapper { padding: 15px 15px 40px; }
+
+        /* --------------------------------------------------------------------
+           2. CABEÇALHO (topo azul e brasão)
+           -------------------------------------------------------------------- */
         .topo { background: #003b75; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         .topo h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
+        .brasao { max-width: 100%; height: auto; object-fit: contain; }
 
-        .brasao {
-            max-width: 100%;
-            height: auto;
-            object-fit: contain;
-        }
-        
+        /* Cabeçalho exclusivo da versão impressa (oculto na tela; ver seção 10) */
+        #cabecalho-impressao { display: none; }
+
+        /* --------------------------------------------------------------------
+           3. PAINÉIS (caixas brancas de filtros, exportação e visualização)
+           -------------------------------------------------------------------- */
         .painel-grupo { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .titulo-painel { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
+
+        /* Selo verde com a data de atualização (lida da 1ª linha da planilha) */
         .badge-atualizacao { position: absolute; top: -10px; right: 20px; font-size: 10px; background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
 
-        /* ELEMENTOS DE FORMULÁRIO */
+        /* --------------------------------------------------------------------
+           4. FORMULÁRIOS E GRADE DE FILTROS
+           Colunas de no mínimo 200px que se reorganizam sozinhas conforme
+           a largura da tela (auto-fit)
+           -------------------------------------------------------------------- */
         select, input { height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box; width: 100%; }
         button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; width: 100%; }
         button.btn-filtro:hover { background: #00274d; }
 
-        /* FILTROS RESPONSIVOS */
         .painel-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
 
-        /* EXPORTAÇÃO RESPONSIVA */
+        /* --------------------------------------------------------------------
+           5. BARRA DE EXPORTAÇÃO
+           Em telas estreitas os botões deslizam horizontalmente (scroll suave)
+           -------------------------------------------------------------------- */
         .painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
         .painel-exportacao button { flex: 1; min-width: 100px; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .painel-exportacao button:hover { background: #00274d; }
-        .painel-exportacao .btn-acao { background: #0284c7; }
+        .painel-exportacao .btn-acao { background: #0284c7; } /* botão Imprimir (azul claro) */
         .painel-exportacao::-webkit-scrollbar { height: 6px; }
         .painel-exportacao::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-        /* CABEÇALHO VISUALIZAÇÃO */
+        /* Cabeçalho da área de visualização: menu "Exibir X" + contador de registros */
         .dt-custom-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 5px 0; }
         .badge-contagem { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid #bae6fd; }
 
-        /* CORREÇÃO DO MENU "EXIBIR X RESULTADOS" */
+        /* Ajuste visual do menu "Exibir X resultados" do DataTables */
         .dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; margin: 0; white-space: nowrap; }
         .dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
 
-        /* TABELA BASE E CARDS */
+        /* --------------------------------------------------------------------
+           6. CARDS DE ESTAGIÁRIOS
+           Cada registro vira um card: cabeçalho (nome/situação) e corpo com
+           lotação, admissão e desligamento
+           -------------------------------------------------------------------- */
+
+        /* O <thead> fica oculto: a tabela existe só para o DataTables paginar os cards */
         #tabela thead { display: none !important; }
         table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
-        
+
         .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
         .card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; display: flex; justify-content: space-between; align-items: center; }
         .card-header-texto { display: flex; flex-direction: column; gap: 2px; }
         .nome-principal { font-size: 16px; font-weight: 800; color: #003b75; text-transform: uppercase; }
         .subtitulo-card { font-size: 12px; color: #64748b; font-weight: 500; text-transform: uppercase; }
-        
+
+        /* Selo de situação: verde (ativo) ou vermelho (desligado) */
         .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
         .status-ativo { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
         .status-desligado { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-        
+
         .card-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); padding: 12px 15px; gap: 10px; }
         .info-col { display: flex; flex-direction: column; }
         .info-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
         .info-valor { font-size: 13px; font-weight: 700; color: #1e293b; }
 
-        /* PAGINAÇÃO */
-        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px;}
+        /* --------------------------------------------------------------------
+           7. TABELA E PAGINAÇÃO (DataTables)
+           -------------------------------------------------------------------- */
+        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px; }
         .dataTables_wrapper .dataTables_info { padding-top: 0 !important; color: #475569; font-size: 13px; font-weight: 500; margin-bottom: 0 !important; }
         .dataTables_wrapper .dataTables_paginate { display: flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 0 !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 6px 12px !important; border-radius: 6px !important; margin: 0 !important; border: 1px solid transparent !important; color: #475569 !important; font-weight: 600; font-size: 13px; background: transparent !important; cursor: pointer; transition: 0.2s; }
         .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border-color: #003b75 !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #003b75 !important; }
 
+        /* --------------------------------------------------------------------
+           8. LOADER (indicador de carregamento inicial)
+           -------------------------------------------------------------------- */
         #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #003b75; font-weight: bold; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        #cabecalho-impressao { display: none; }
-
-        /* =========================================
-           4. TELA PEQUENA (CELULAR) E IMPRESSÃO
-           ========================================= */
+        /* --------------------------------------------------------------------
+           9. RESPONSIVIDADE PARA CELULAR (≤600px)
+           -------------------------------------------------------------------- */
         @media (max-width: 600px) {
             .topo { flex-direction: column; gap: 10px; text-align: center; }
             .card-header { flex-direction: column; text-align: center; gap: 10px; }
             .card-body { grid-template-columns: 1fr 1fr; }
             .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
-            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
+            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important; }
         }
 
+        /* --------------------------------------------------------------------
+           10. IMPRESSÃO
+           Esconde filtros e botões; mostra o cabeçalho institucional com brasão
+           -------------------------------------------------------------------- */
         @media print {
             .topo, fieldset, .dt-bottom-controls { display: none !important; }
             #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
@@ -108,34 +196,48 @@
 <body>
 
 <div id="wrapper">
+
+    <!-- ================================================================
+         CABEÇALHO DA PÁGINA (visível na tela)
+         ================================================================ -->
     <header class="topo">
         <h1>Relatório de Estagiários</h1>
         <div class="logo-container">
-            <img src="Brasão_de_Marília.png" alt="Brasão de Marília" width="50" height="50" class="brasao">
+            <img src="brasao_marilia.png" alt="Brasão de Marília" width="50" height="50" class="brasao">
             <span class="texto-camara">Câmara Municipal de Marília</span>
         </div>
     </header>
 
+    <!-- ================================================================
+         CABEÇALHO DE IMPRESSÃO (visível apenas ao imprimir)
+         ================================================================ -->
     <div id="cabecalho-impressao">
-        <img src="Brasão_de_Marília.png" width="63" height="70" alt="Brasão de Marília">
+        <img src="brasao_marilia.png" width="63" height="70" alt="Brasão de Marília">
         <div>
             <h1 style="margin:0; color:#003b75;">Relatório de Estagiários</h1>
             <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
         </div>
     </div>
 
+    <!-- Loader exibido enquanto o CSV do Google Sheets é baixado -->
     <div id="loader">
         <div class="spinner"></div>
         <span>Carregando base de dados...</span>
     </div>
 
+    <!-- ================================================================
+         CONTEÚDO PRINCIPAL (exibido após o carregamento dos dados)
+         ================================================================ -->
     <main class="container" id="main-container" style="display: none;">
+
+        <!-- Painel: filtros de pesquisa (2 linhas: dados e período) -->
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
             <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
-            
+
             <div class="painel-filtros" style="margin-bottom: 10px;">
                 <input type="text" id="filtroNome" placeholder="Pesquisar por nome..." autocomplete="off" aria-label="Pesquisar por nome">
+                <!-- "Ativos" já vem selecionado: a página abre mostrando o quadro atual -->
                 <select id="filtroStatus" aria-label="Filtrar por Situação">
                     <option value="">Situação</option>
                     <option value="Ativo" selected>Ativos</option>
@@ -147,8 +249,9 @@
                     <option value="demissao">Demissão</option>
                 </select>
             </div>
-            
+
             <div class="painel-filtros">
+                <!-- Os valores dos meses (01-12) correspondem ao mês das datas dd/MM/aaaa -->
                 <select id="filtroMes" aria-label="Filtrar por Mês">
                     <option value="">Mês</option>
                     <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
@@ -161,6 +264,7 @@
             </div>
         </fieldset>
 
+        <!-- Painel: botões de exportação e impressão -->
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Exportação e Impressão</legend>
             <div class="painel-exportacao">
@@ -172,14 +276,17 @@
             </div>
         </fieldset>
 
+        <!-- Painel: menu "Exibir X resultados" + contador de registros -->
         <fieldset class="painel-grupo" id="painel-visualizacao" style="padding: 10px 15px;">
             <legend class="titulo-painel">Visualização</legend>
             <div class="dt-custom-header">
-                <div id="comprimento-tabela"></div> 
+                <div id="comprimento-tabela"></div>
                 <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
             </div>
         </fieldset>
 
+        <!-- Tabela-base do DataTables: cada linha renderiza um card completo.
+             O cabeçalho fica oculto via CSS (seção 6) -->
         <table id="tabela" style="width:100%" role="presentation">
             <thead><tr><th>Dados</th></tr></thead>
             <tbody></tbody>
@@ -187,47 +294,110 @@
     </main>
 </div>
 
+<!-- ====================================================================
+     BIBLIOTECAS EXTERNAS (CDN)
+     jQuery ......... base para o DataTables e manipulação do DOM
+     DataTables ..... paginação e controle de exibição dos cards
+     SheetJS (xlsx) . geração do arquivo Excel
+     PapaParse ...... leitura correta do CSV (aceita vírgulas e quebras de
+                      linha dentro das células)
+     ==================================================================== -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
 <script>
+    /* =======================================================================
+       ÍNDICE DO SCRIPT
+       1. Configuração (o que você normalmente altera está aqui)
+       2. Estado global
+       3. Funções utilitárias
+       4. Comunicação com o iframe (altura automática)
+       5. Carregamento e processamento dos dados
+       6. Filtros (popular e aplicar) e ordenação
+       7. Tabela de cards (DataTables)
+       8. Exportações (CSV, Excel, JSON, XML) e nome dos arquivos
+       9. Impressão
+       10. Inicialização (eventos e primeira carga)
+       ======================================================================= */
+
+    /* =======================================================================
+       1. CONFIGURAÇÃO
+       ======================================================================= */
+
+    // 🔴 LINK DO CSV: no Google Sheets, use Arquivo → Compartilhar → Publicar
+    // na web → formato CSV, e cole o link gerado aqui.
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTK8EGvu2R21KpD3-E3SFDVC5qfWSihafXCpj_Y-ZnpM9DNBEb_Gimw0TboxkpiuMqJQ01WNNHm8-FA/pub?output=csv";
-    
-    let tabela;
-    let dadosGlobais = [];
-    let carimboAtualizacao = "";
 
-    // INFRAESTRUTURA
-    function enviarAlturaIframe() {
-        setTimeout(() => {
-            const wrapper = document.getElementById('wrapper');
-            if (wrapper) {
-                const h = wrapper.offsetHeight + 40; 
-                window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
-            }
-        }, 200); 
-    }
+    // 🔴 SITE QUE HOSPEDA O IFRAME: a altura da página só será enviada para
+    // este domínio (segurança do postMessage). Se o site oficial mudar de
+    // endereço, atualize aqui. Use "*" apenas em testes locais.
+    const ORIGEM_PAI = "https://www.marilia.sp.leg.br";
 
+    /* =======================================================================
+       2. ESTADO GLOBAL
+       ======================================================================= */
+    let tabela;                  // instância única do DataTables
+    let dadosGlobais = [];       // todos os estagiários lidos da planilha
+    let carimboAtualizacao = ""; // data de atualização exibida no selo verde
+
+    /* =======================================================================
+       3. FUNÇÕES UTILITÁRIAS
+       ======================================================================= */
+
+    /** Remove acentos de um texto ("João" → "Joao"). Usada na busca. */
     function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
 
-    // OTIMIZADO: Agora retorna os milissegundos para facilitar e tornar segura a matemática de ordenação
-    function parseDataBR(str) {
-        if (!str || str === "-") return null;
-        const p = str.split('/');
-        return new Date(p[2], p[1] - 1, p[0]).getTime();
+    /**
+     * SEGURANÇA: escapa caracteres HTML antes de inserir dados da planilha
+     * na página. Impede que uma célula contendo tags ou scripts quebre o
+     * layout ou execute código (XSS).
+     */
+    function escapeHtml(valor) {
+        return String(valor ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
     }
 
-    function gerarNomeArquivoBase() {
-        let partes = ["estagiarios"];
-        const nome = $('#filtroNome').val().trim();
-        if (nome) partes.push(nome.replace(/\s+/g, '_'));
-        if ($('#filtroStatus').val()) partes.push($('#filtroStatus').val());
-        if ($('#filtroAno').val()) partes.push($('#filtroAno').val());
-        return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '');
+    /** Escapa os caracteres reservados do XML (&, <, >) na exportação. */
+    function escapeXml(valor) {
+        return String(valor ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
     }
 
-    // CARREGAMENTO E PROCESSAMENTO
+    /* =======================================================================
+       4. COMUNICAÇÃO COM O IFRAME (altura automática)
+       A página roda dentro de um <iframe> no site oficial. Sempre que o
+       conteúdo muda de tamanho, enviamos a nova altura para o site pai
+       via postMessage, e ele redimensiona o iframe (sem barra de rolagem).
+       ======================================================================= */
+
+    /** Envia a altura atual do conteúdo para o site que hospeda o iframe. */
+    function enviarAlturaIframe() {
+        const wrapper = document.getElementById('wrapper');
+        if (wrapper) {
+            window.parent.postMessage({ tipo: 'ajustarAltura', valor: wrapper.offsetHeight + 40 }, ORIGEM_PAI);
+        }
+    }
+
+    // O ResizeObserver detecta qualquer mudança de altura do conteúdo
+    // (troca de página, filtro, cards maiores) e reenvia automaticamente.
+    if ('ResizeObserver' in window) {
+        new ResizeObserver(() => enviarAlturaIframe()).observe(document.getElementById('wrapper'));
+    }
+
+    /* =======================================================================
+       5. CARREGAMENTO E PROCESSAMENTO DOS DADOS
+       ======================================================================= */
+
+    /** Baixa o CSV publicado do Google Sheets e inicia o painel.
+        O parâmetro cache=timestamp evita cópia em cache do navegador. */
     async function carregarDados() {
         $('#loader').show(); $('#main-container').hide();
         try {
@@ -239,49 +409,90 @@
             $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
             $('#loader').hide();
             $('#main-container').fadeIn(400, () => enviarAlturaIframe());
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error("Erro ao carregar os dados: ", e);
+            $('#loader').html('<b style="color:red">Erro ao carregar dados. Tente recarregar a página.</b>');
+        }
     }
 
+    /**
+     * Transforma o CSV bruto em objetos organizados.
+     *
+     * Estrutura esperada do arquivo:
+     *   Linha 1 .... metadados com a data de atualização (selo verde)
+     *   Linha 2 .... cabeçalhos (localizados por palavras-chave: nome,
+     *                admissao, desligamento)
+     *   Linha 3+ ... registros
+     *
+     * Para cada estagiário também são calculados:
+     *   - situacao: "Ativo" (sem desligamento ou "-") ou "Desligado"
+     *   - busca_nome: nome sem acentos/maiúsculas para a busca rápida
+     */
     function processarCSV(str) {
-        const linhas = str.trim().split("\n");
-        const match = linhas[0].match(/(\d{2}\/\d{2}\/\d{4},?\s*\d{2}:\d{2})/);
+        // Data de atualização (1ª linha da planilha, antes do parse)
+        const primeiraLinha = str.trim().split(/\r?\n/)[0];
+        const match = primeiraLinha.match(/(\d{2}\/\d{2}\/\d{4},?\s*\d{2}:\d{2})/);
         carimboAtualizacao = match ? `Dados atualizados em ${match[1].replace(',', '')}` : "Dados Sincronizados";
 
-        const headers = linhas[1].split(",").map(h => h.trim().replace(/"/g, '').toLowerCase());
-        
-        return linhas.slice(2).map(row => {
-            const colunas = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+        // O PapaParse trata corretamente células com vírgulas e quebras
+        // de linha internas (a separação manual por vírgula quebraria)
+        const linhas = Papa.parse(str.trim()).data;
+        if (linhas.length < 3) return [];
+
+        const headers = linhas[1].map(h => String(h).trim().toLowerCase());
+
+        return linhas.slice(2).map(colunas => {
             let obj = {};
-            
+
+            // Mapeia cada coluna pela palavra-chave do cabeçalho
             headers.forEach((h, i) => {
-                let val = colunas[i] ? colunas[i].replace(/"/g, '').trim() : "";
+                let val = colunas[i] ? String(colunas[i]).trim() : "";
                 if (h.includes("nome")) obj.nome = val;
                 if (h.includes("admissao")) obj.admissao = val;
                 if (h.includes("desligamento")) obj.desligamento = val;
             });
-            
+
+            // Situação: sem data de desligamento = contrato ativo
             obj.situacao = (!obj.desligamento || obj.desligamento === "-") ? "Ativo" : "Desligado";
-            
-            // OTIMIZADO: Criando o campo de busca normalizado apenas uma vez
+
+            // Nome sem acentos/maiúsculas, pré-calculado para a busca ser rápida
             obj.busca_nome = obj.nome ? removerAcentos(obj.nome.toLowerCase()) : "";
-            
+
             return obj;
-        }).filter(d => d.nome);
+        }).filter(d => d.nome); // ignora linhas vazias/incompletas
     }
 
+    /* =======================================================================
+       6. FILTROS E ORDENAÇÃO
+       ======================================================================= */
+
+    /**
+     * Preenche o filtro de Ano reunindo os anos de admissão e de
+     * desligamento presentes na planilha, em ordem decrescente.
+     */
     function popularFiltroAno() {
         let anos = new Set();
         dadosGlobais.forEach(d => {
             if (d.admissao) anos.add(d.admissao.split('/')[2]);
             if (d.desligamento && d.desligamento !== "-") anos.add(d.desligamento.split('/')[2]);
         });
-        anos = [...anos].filter(a => a && a.length === 4).sort((a,b) => b-a);
-        
+        anos = [...anos].filter(a => a && a.length === 4).sort((a, b) => b - a);
+
         $('#filtroAno').html('<option value="">Ano</option>');
         anos.forEach(a => $('#filtroAno').append(new Option(a, a)));
     }
 
-    // LÓGICA DE FILTRO E RENDER
+    /**
+     * Aplica os filtros sobre dadosGlobais, ordena e envia para a tabela.
+     *
+     * Regras do filtro de período (mês/ano):
+     * - "Admissão": compara com a data de admissão
+     * - "Demissão": compara com a data de desligamento
+     * - Sem tipo escolhido: basta a admissão OU o desligamento cair no
+     *   período (útil para "o que aconteceu em maio/2026?")
+     *
+     * Ordenação: Ativos primeiro; dentro de cada grupo, ordem alfabética.
+     */
     function aplicarFiltros() {
         const txt = removerAcentos($('#filtroNome').val().toLowerCase());
         const sit = $('#filtroStatus').val();
@@ -290,7 +501,6 @@
         const ano = $('#filtroAno').val();
 
         const res = dadosGlobais.filter(d => {
-            // OTIMIZADO: Usa o campo pré-processado, deixando a digitação super rápida
             const matchNome = !txt || d.busca_nome.includes(txt);
             const matchSit = !sit || d.situacao === sit;
 
@@ -308,51 +518,70 @@
 
         res.sort((a, b) => {
             if (a.situacao !== b.situacao) return a.situacao === "Ativo" ? -1 : 1;
-            // Ordenação alfabética pelo nome
             return (a.nome || "").localeCompare(b.nome || "");
         });
 
         renderizar(res);
     }
 
-    function renderizar(dados) {
-        if (tabela) { tabela.destroy(); $('#comprimento-tabela').empty(); }
+    /** Limpa todos os filtros e volta ao padrão da página: Situação "Ativos". */
+    function limparFiltros() {
+        $('#filtroNome').val('');
+        $('select').val('');
+        $('#filtroStatus').val('Ativo');
+        aplicarFiltros();
+    }
 
+    /* =======================================================================
+       7. TABELA DE CARDS (DataTables)
+       A tabela é criada UMA única vez; os filtros apenas trocam os dados
+       (clear + rows.add + draw). Isso mantém a digitação fluida mesmo com
+       muitos registros, pois nada é destruído e recriado.
+       ======================================================================= */
+
+    /** Cria a instância do DataTables e define como cada card é desenhado. */
+    function inicializarTabela() {
         tabela = $('#tabela').DataTable({
-            data: dados,
+            data: [],
             pageLength: 10,
-            ordering: false,
+            ordering: false, // a ordenação é feita em aplicarFiltros()
             language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
-            dom: 'lrt<"dt-bottom-controls"ip>',
+            dom: 'lrt<"dt-bottom-controls"ip>', // l=menu exibir, r=processando, t=tabela, i=info, p=paginação
             columns: [{
                 data: null,
                 render: function(d) {
+                    // Selo verde (ativo) ou vermelho (desligado)
                     const statusClass = d.situacao === 'Ativo' ? 'status-ativo' : 'status-desligado';
                     return `
                         <div class="card-info">
                             <div class="card-header">
                                 <div class="card-header-texto">
-                                    <span class="nome-principal">${d.nome}</span>
+                                    <span class="nome-principal">${escapeHtml(d.nome)}</span>
                                     <span class="subtitulo-card">Estagiário(a)</span>
                                 </div>
-                                <span class="status-badge ${statusClass}">${d.situacao}</span>
+                                <span class="status-badge ${statusClass}">${escapeHtml(d.situacao)}</span>
                             </div>
                             <div class="card-body">
                                 <div class="info-col"><span class="info-label">Lotação</span><span class="info-valor">Câmara Municipal</span></div>
-                                <div class="info-col"><span class="info-label">Admissão</span><span class="info-valor">${d.admissao}</span></div>
-                                <div class="info-col"><span class="info-label">Desligamento</span><span class="info-valor">${d.desligamento || '-'}</span></div>
+                                <div class="info-col"><span class="info-label">Admissão</span><span class="info-valor">${escapeHtml(d.admissao)}</span></div>
+                                <div class="info-col"><span class="info-label">Desligamento</span><span class="info-valor">${escapeHtml(d.desligamento || '-')}</span></div>
                             </div>
                         </div>`;
                 }
             }],
-            initComplete: function() { $('.dataTables_length').appendTo('#comprimento-tabela'); enviarAlturaIframe(); },
-            drawCallback: function() { 
-                const total = this.api().rows({ filter: 'applied' }).count();
+            initComplete: function() {
+                // Move o menu "Exibir X resultados" para o painel Visualização
+                $('.dataTables_length').appendTo('#comprimento-tabela');
+            },
+            drawCallback: function() {
+                // Atualiza o contador e reenvia a altura ao site pai a cada redesenho
+                const total = this.api().rows().count();
                 $('#contagem-registros').html(`<b>${total}</b> registros encontrados`);
-                enviarAlturaIframe(); 
+                enviarAlturaIframe();
             }
         });
 
+        // Ao trocar de página, rola suavemente de volta ao topo da lista
         tabela.on('page.dt', function () {
             setTimeout(function() {
                 document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -360,62 +589,126 @@
         });
     }
 
-    // EXPORTAÇÃO
-    function exportarCSV() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        let csv = "\ufeffNome,Situacao,Admissao,Desligamento\n";
-        data.forEach(d => { csv += `"${d.nome}","${d.situacao}","${d.admissao}","${d.desligamento}"\n`; });
-        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv");
+    /** Substitui os dados exibidos na tabela (sem destruí-la). */
+    function renderizar(dados) {
+        if (!tabela) inicializarTabela();
+        tabela.clear();
+        tabela.rows.add(dados);
+        tabela.draw();
     }
 
+    /* =======================================================================
+       8. EXPORTAÇÕES (CSV, Excel, JSON, XML)
+       Todas exportam apenas os registros filtrados no momento, sem os
+       campos internos de controle (busca_nome).
+       ======================================================================= */
+
+    /** Converte os registros filtrados para o formato de exportação. */
+    function dadosParaExportar() {
+        return tabela.rows().data().toArray().map(d => ({
+            "Nome": d.nome,
+            "Situacao": d.situacao,
+            "Admissao": d.admissao,
+            "Desligamento": d.desligamento || "-"
+        }));
+    }
+
+    /** Monta o nome do arquivo a partir dos filtros ativos
+        (ex: estagiarios_ativo_2026.csv). */
+    function gerarNomeArquivoBase() {
+        let partes = ["estagiarios"];
+        const nome = $('#filtroNome').val().trim();
+        if (nome) partes.push(nome.replace(/\s+/g, '_'));
+        if ($('#filtroStatus').val()) partes.push($('#filtroStatus').val());
+        if ($('#filtroMes').val()) partes.push($('#filtroMes option:selected').text());
+        if ($('#filtroAno').val()) partes.push($('#filtroAno').val());
+        return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+    }
+
+    /** Exporta CSV. O PapaParse cuida do escape de aspas, vírgulas e quebras
+        de linha; o prefixo \ufeff (BOM) garante acentos corretos no Excel. */
+    function exportarCSV() {
+        const csv = "\ufeff" + Papa.unparse(dadosParaExportar());
+        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv;charset=utf-8");
+    }
+
+    /** Exporta Excel (.xlsx) via SheetJS. */
     function exportarXLSX() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        const ws = XLSX.utils.json_to_sheet(data);
+        const ws = XLSX.utils.json_to_sheet(dadosParaExportar());
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Estagiários");
         XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx");
     }
 
+    /** Exporta JSON formatado (2 espaços de indentação). */
     function exportarJSON() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        downloadFile(JSON.stringify(data, null, 2), gerarNomeArquivoBase() + ".json", "application/json");
+        downloadFile(JSON.stringify(dadosParaExportar(), null, 2), gerarNomeArquivoBase() + ".json", "application/json");
     }
 
+    /** Exporta XML com os campos em ordem fixa e valores escapados
+        (ver escapeXml). */
     function exportarXML() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+        const campos = ["nome", "situacao", "admissao", "desligamento"];
         let xml = '<?xml version="1.0" encoding="UTF-8"?><estagiarios>';
-        data.forEach(d => {
+        tabela.rows().data().each(d => {
             xml += '<estagiario>';
-            for (let k in d) {
-                // Apenas renderiza chaves que não sejam objetos complexos ou campos internos
-                if(typeof d[k] !== 'object' && k !== 'busca_nome') {
-                     xml += `<${k}>${d[k]}</${k}>`;
-                }
-            }
+            campos.forEach(k => {
+                xml += `<${k}>${escapeXml(d[k])}</${k}>`;
+            });
             xml += '</estagiario>';
         });
         xml += '</estagiarios>';
         downloadFile(xml, gerarNomeArquivoBase() + ".xml", "application/xml");
     }
 
+    /** Dispara o download de um arquivo gerado em memória e libera o blob
+        em seguida para não acumular memória. */
     function downloadFile(content, fileName, mime) {
         const blob = new Blob([content], { type: mime });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url; a.download = fileName; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
+    /* =======================================================================
+       9. IMPRESSÃO
+       ======================================================================= */
+
+    /**
+     * Imprime TODOS os registros filtrados (não apenas a página atual):
+     *   1. Expande a paginação para exibir tudo (page.len(-1)).
+     *   2. Espera o evento draw.dt — sinal de que o DataTables terminou de
+     *      renderizar — em vez de um tempo fixo, que falharia com muitos dados.
+     *   3. Abre a janela de impressão e restaura a paginação anterior.
+     */
     function imprimirSeguro() {
-        const len = tabela.page.len();
-        tabela.page.len(-1).draw('page');
-        setTimeout(() => { window.print(); tabela.page.len(len).draw('page'); }, 500);
+        if (!tabela) return;
+        const len = tabela.page.len(); // guarda a paginação atual
+        tabela.one('draw.dt', function() {
+            setTimeout(() => {
+                window.print();
+                tabela.page.len(len).draw('page'); // restaura após imprimir
+            }, 100);
+        });
+        tabela.page.len(-1).draw('page'); // -1 = mostrar todos
     }
 
-    function limparFiltros() { $('#filtroNome').val(''); $('select').val(''); $('#filtroStatus').val('Ativo'); aplicarFiltros(); }
-    
+    /* =======================================================================
+       10. INICIALIZAÇÃO
+       ======================================================================= */
     $(document).ready(function() {
-        $('#filtroNome').on('input', aplicarFiltros);
+        // Busca por nome com debounce: espera 250ms após a última tecla,
+        // evitando reprocessar a tabela a cada caractere digitado
+        let debounceNome;
+        $('#filtroNome').on('input', function() {
+            clearTimeout(debounceNome);
+            debounceNome = setTimeout(aplicarFiltros, 250);
+        });
+
+        // Filtros de seleção aplicam imediatamente ao mudar
         $('select').on('change', aplicarFiltros);
+
         carregarDados();
     });
 </script>
