@@ -1,155 +1,268 @@
 <!DOCTYPE html>
+<!-- ===========================================================================
+     RELATÓRIO DE LICITANTES APENADOS
+     Câmara Municipal de Marília
+     ===========================================================================
+
+     O QUE É ESTA PÁGINA
+     Portal de transparência que exibe as empresas e pessoas físicas
+     sancionadas pela Câmara (licitantes/contratados apenados), em formato
+     de cards, com busca por razão social/CNPJ e por número de contrato,
+     detalhes da sanção em acordeão expansível, exportação em CSV, Excel,
+     JSON e XML, e impressão formatada.
+
+     COMO FUNCIONA
+     1. Os dados são lidos de uma planilha do Google Sheets publicada como
+        CSV (variável CSV_URL, na seção CONFIGURAÇÃO do script).
+     2. A página é hospedada no GitHub Pages e exibida dentro de um <iframe>
+        no site oficial: https://www.marilia.sp.leg.br/
+     3. A altura do iframe é ajustada automaticamente via postMessage.
+
+     FORMATO ESPERADO DA PLANILHA
+     - Linha 1 (opcional): metadados com a data de atualização
+       "dd/mm/aaaa hh:mm" (exibida no selo verde). Se a 1ª linha já for o
+       cabeçalho (contém "cnpj"), essa linha de metadados não existe.
+     - Cabeçalhos esperados (viram as chaves dos objetos):
+       cnpj | razao_social | numero_contrato | objeto_contrato |
+       motivo_sancao | observacao | fim_sancao
+     - fim_sancao aceita dd/mm/aaaa, aaaa-mm-dd ou dd-mm-aaaa;
+       vazio ou "—" significa sanção sem prazo definido (sempre exibida)
+
+     ⚠️ REGRA IMPORTANTE — SÓ SANÇÕES VIGENTES SÃO EXIBIDAS
+     A página filtra automaticamente pela coluna fim_sancao: registros cuja
+     sanção já venceu (fim_sancao anterior a hoje) DESAPARECEM da listagem
+     e das exportações. Isso é proposital: o painel mostra quem está
+     impedido HOJE. Os registros continuam na planilha como histórico.
+
+     REGRAS AUTOMÁTICAS
+     - LGPD: se o documento tiver 11 dígitos (CPF de pessoa física), ele é
+       mascarado (***.123.456-**) na tela e nas exportações; CNPJs (14
+       dígitos) aparecem completos, pois são dado público
+     - Observações longas ficam recolhidas no botão "Detalhes da Sanção"
+       (na impressão, todas aparecem expandidas)
+
+     MANUTENÇÃO RÁPIDA (o que você normalmente precisa alterar)
+     - Trocar a planilha ......... variável CSV_URL   (seção CONFIGURAÇÃO)
+     - Trocar o site que embute .. variável ORIGEM_PAI (seção CONFIGURAÇÃO)
+     - Trocar o brasão ........... arquivo brasao_marilia.png no repositório
+
+     DEPENDÊNCIAS (carregadas via CDN)
+     jQuery 3.7.1 | DataTables 1.13.6 | SheetJS 0.18.5 | PapaParse 5.4.1
+     =========================================================================== -->
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Relatório de Licitantes Apenados</title>
 
+    <!-- Estilos do DataTables (tabela com paginação) -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
-    
-    <style>
-        /* =========================================
-           1. ESTILOS GERAIS E BASE
-           ========================================= */
-        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden;}
-        #wrapper { padding-bottom: 40px; padding: 15px; } 
 
+    <!-- Fonte Inter (Google Fonts) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* ====================================================================
+           ÍNDICE DOS ESTILOS
+           1. Base e layout geral
+           2. Cabeçalho (topo azul e brasão)
+           3. Painéis (filtros, exportação, visualização)
+           4. Formulários e grade de filtros
+           5. Barra de exportação
+           6. Cards de apenados e acordeão de observações
+           7. Tabela e paginação (DataTables)
+           8. Loader (carregamento)
+           9. Responsividade para celular
+           10. Impressão
+           ==================================================================== */
+
+        /* --------------------------------------------------------------------
+           1. BASE E LAYOUT GERAL
+           -------------------------------------------------------------------- */
+        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden; }
+
+        /* Padding inferior maior (40px) dá respiro ao conteúdo dentro do iframe */
+        #wrapper { padding: 15px 15px 40px; }
+
+        /* --------------------------------------------------------------------
+           2. CABEÇALHO (topo azul e brasão)
+           -------------------------------------------------------------------- */
         .topo { background: #003b75; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         .topo h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
         .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
+        .brasao { max-width: 100%; height: auto; object-fit: contain; }
 
-        .brasao {
-            max-width: 100%;
-            height: auto;
-            object-fit: contain;
-        }
+        /* Cabeçalho exclusivo da versão impressa (oculto na tela; ver seção 10) */
+        #cabecalho-impressao { display: none; }
 
+        /* --------------------------------------------------------------------
+           3. PAINÉIS (caixas brancas de filtros, exportação e visualização)
+           -------------------------------------------------------------------- */
         .painel-grupo { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .titulo-painel { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
+
+        /* Selo verde com a data de atualização (lida da planilha) */
         .badge-atualizacao { position: absolute; top: -10px; right: 20px; font-size: 10px; background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
 
-        /* ELEMENTOS DE FORMULÁRIO */
+        /* --------------------------------------------------------------------
+           4. FORMULÁRIOS E GRADE DE FILTROS
+           Uma linha: busca (2fr) | nº do contrato (1fr) | botão (150px).
+           No celular tudo empilha em coluna única (ver seção 9).
+           -------------------------------------------------------------------- */
         select, input { height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box; width: 100%; }
         button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; width: 100%; }
         button.btn-filtro:hover { background: #00274d; }
 
-        /* FILTROS RESPONSIVOS - ADAPTADOS PARA UMA ÚNICA LINHA */
         .painel-filtros { display: grid; grid-template-columns: 2fr 1fr 150px; gap: 10px; margin-bottom: 10px; }
-        
-        /* EXPORTAÇÃO RESPONSIVA E CARROSSEL */
+
+        /* --------------------------------------------------------------------
+           5. BARRA DE EXPORTAÇÃO
+           Em telas estreitas os botões deslizam horizontalmente (scroll suave)
+           -------------------------------------------------------------------- */
         .painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
         .painel-exportacao button { flex: 1; min-width: 100px; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .painel-exportacao button:hover { background: #00274d; }
-        .painel-exportacao .btn-acao { background: #0284c7; }
+        .painel-exportacao .btn-acao { background: #0284c7; } /* botão Imprimir (azul claro) */
         .painel-exportacao::-webkit-scrollbar { height: 6px; }
         .painel-exportacao::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-        /* CABEÇALHO VISUALIZAÇÃO */
+        /* Cabeçalho da área de visualização: menu "Exibir X" + contador de registros */
         .dt-custom-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 5px 0; }
         .badge-contagem { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid #bae6fd; }
 
-        /* CORREÇÃO DO MENU "EXIBIR X RESULTADOS" */
+        /* Ajuste visual do menu "Exibir X resultados" do DataTables */
         .dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; margin: 0; white-space: nowrap; }
         .dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
 
-        /* TABELA BASE E CARDS */
+        /* --------------------------------------------------------------------
+           6. CARDS DE APENADOS E ACORDEÃO DE OBSERVAÇÕES
+           Cada registro vira um card com grade de 3 colunas; a observação
+           longa fica recolhida no botão "Detalhes da Sanção"
+           -------------------------------------------------------------------- */
+
+        /* O <thead> fica oculto: a tabela existe só para o DataTables paginar os cards */
         #tabela thead { display: none !important; }
         table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
-        
+
         .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
         .card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; display: flex; justify-content: space-between; align-items: center; }
         .card-header-texto { display: flex; flex-direction: column; gap: 2px; width: 100%; }
         .nome-principal { font-size: 15px; font-weight: 800; color: #003b75; text-transform: uppercase; word-break: break-word; }
         .subtitulo-card { font-size: 12px; color: #64748b; font-weight: 500; text-transform: uppercase; }
-        
-        /* GRELHA DOS CARDS - 3 COLUNAS */
+
+        /* Grade de 3 colunas; span-2/span-3 fazem campos ocuparem mais espaço */
         .card-body { display: grid; grid-template-columns: repeat(3, 1fr); padding: 12px 15px; gap: 12px; }
         .span-2 { grid-column: span 2; }
         .span-3 { grid-column: span 3; }
-        
+
         .info-col { display: flex; flex-direction: column; }
         .info-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
         .info-valor { font-size: 13px; font-weight: 700; color: #1e293b; text-align: justify; }
 
-        /* ACORDEÃO (OBSERVAÇÕES) */
+        /* Acordeão de observações (botão + conteúdo expansível) */
         .btn-obs { background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: fit-content; gap: 8px; transition: 0.2s; text-transform: uppercase; }
         .btn-obs:hover { background: #e2e8f0; color: #0f172a; }
-        
+
+        /* white-space: pre-wrap preserva as quebras de linha da planilha */
         .obs-content { display: none; margin-top: 8px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #003b75; border-radius: 6px; font-size: 13.5px; color: #475569; line-height: 1.7; text-align: justify; white-space: pre-wrap; hyphens: auto; -webkit-hyphens: auto; }
         .obs-content.mostrar { display: block; animation: fadeIn 0.3s ease-in-out; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* PAGINAÇÃO */
-        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px;}
+        /* --------------------------------------------------------------------
+           7. TABELA E PAGINAÇÃO (DataTables)
+           -------------------------------------------------------------------- */
+        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px; }
         .dataTables_wrapper .dataTables_info { padding-top: 0 !important; color: #475569; font-size: 13px; font-weight: 500; margin-bottom: 0 !important; }
         .dataTables_wrapper .dataTables_paginate { display: flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 0 !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 6px 12px !important; border-radius: 6px !important; margin: 0 !important; border: 1px solid transparent !important; color: #475569 !important; font-weight: 600; font-size: 13px; background: transparent !important; cursor: pointer; transition: 0.2s; }
         .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border-color: #003b75 !important; }
         .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #003b75 !important; }
 
+        /* --------------------------------------------------------------------
+           8. LOADER (indicador de carregamento inicial)
+           -------------------------------------------------------------------- */
         #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #003b75; font-weight: bold; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        #cabecalho-impressao { display: none; }
-
-        /* =========================================
-           RESPONSIVIDADE CELULAR E IFRAME
-           ========================================= */
+        /* --------------------------------------------------------------------
+           9. RESPONSIVIDADE PARA CELULAR
+           -------------------------------------------------------------------- */
         @media (max-width: 850px) {
             .card-body { grid-template-columns: repeat(2, 1fr); }
         }
-            
+
         @media (max-width: 600px) {
             .painel-filtros { grid-template-columns: 1fr; }
             .topo { flex-direction: column; gap: 10px; text-align: center; }
             .card-header { flex-direction: column; text-align: center; gap: 10px; }
             .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
-            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important;}
+            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important; }
             .card-body { grid-template-columns: 1fr; }
             .span-2, .span-3 { grid-column: span 1; }
         }
 
+        /* --------------------------------------------------------------------
+           10. IMPRESSÃO
+           Esconde filtros e botões; expande TODAS as observações (para o
+           documento impresso ficar completo) e mostra o cabeçalho com brasão
+           -------------------------------------------------------------------- */
         @media print {
             .topo, fieldset, .dt-bottom-controls, .btn-obs { display: none !important; }
             #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
             .card-info { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; }
             #main-container { display: block !important; margin: 0; }
-            .obs-content { display: block !important; border: 1px solid #ddd; } 
+            .obs-content { display: block !important; border: 1px solid #ddd; }
         }
     </style>
 </head>
 <body>
 
 <div id="wrapper">
+
+    <!-- ================================================================
+         CABEÇALHO DA PÁGINA (visível na tela)
+         ================================================================ -->
     <header class="topo">
         <h1>Relatório de Licitantes Apenados</h1>
         <div class="logo-container">
-            <img src="Brasão_de_Marília.png" alt="Brasão de Marília" width="50" height="50" class="brasao">
+            <img src="brasao_marilia.png" alt="Brasão de Marília" width="50" height="50" class="brasao">
             <span class="texto-camara">Câmara Municipal de Marília</span>
         </div>
     </header>
 
+    <!-- ================================================================
+         CABEÇALHO DE IMPRESSÃO (visível apenas ao imprimir)
+         CORRIGIDO: o título dizia "Relatório de Contratos"
+         ================================================================ -->
     <div id="cabecalho-impressao">
-        <img src="Brasão_de_Marília.png" width="63" height="70" alt="Brasão de Marília">
+        <img src="brasao_marilia.png" width="63" height="70" alt="Brasão de Marília">
         <div>
-            <h1 style="margin:0; color:#003b75;">Relatório de Contratos</h1>
+            <h1 style="margin:0; color:#003b75;">Relatório de Licitantes Apenados</h1>
             <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
         </div>
     </div>
 
+    <!-- Loader exibido enquanto o CSV do Google Sheets é baixado -->
     <div id="loader">
         <div class="spinner"></div>
         <span>Carregando base de dados...</span>
     </div>
 
+    <!-- ================================================================
+         CONTEÚDO PRINCIPAL (exibido após o carregamento dos dados)
+         ================================================================ -->
     <main id="main-container" style="display:none;">
+
+        <!-- Painel: filtros de pesquisa -->
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Filtros de Pesquisa</legend>
             <div id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</div>
-            
+
             <div class="painel-filtros">
                 <input type="text" id="filtroTexto" placeholder="Pesquisar por Razão Social ou CNPJ..." autocomplete="off" aria-label="Pesquisar por Razão Social ou CNPJ">
                 <input type="text" id="filtroContrato" placeholder="Número do Contrato..." autocomplete="off" aria-label="Pesquisar por Número do Contrato">
@@ -157,25 +270,29 @@
             </div>
         </fieldset>
 
+        <!-- Painel: botões de exportação e impressão -->
         <fieldset class="painel-grupo">
             <legend class="titulo-painel">Exportação e Impressão</legend>
             <div class="painel-exportacao">
                 <button onclick="exportarCSV()">⬇️ CSV</button>
                 <button onclick="exportarXLSX()">⬇️ Excel</button>
                 <button onclick="exportarJSON()">⬇️ JSON</button>
-                <button onclick="exportarXMR()">⬇️ XML</button>
+                <button onclick="exportarXML()">⬇️ XML</button>
                 <button class="btn-acao" onclick="imprimirSeguro()">🖨️ Imprimir</button>
             </div>
         </fieldset>
 
+        <!-- Painel: menu "Exibir X resultados" + contador de registros -->
         <fieldset class="painel-grupo" id="painel-visualizacao" style="padding: 10px 15px;">
             <legend class="titulo-painel">Visualização</legend>
             <div class="dt-custom-header">
-                <div id="comprimento-tabela"></div> 
+                <div id="comprimento-tabela"></div>
                 <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
             </div>
         </fieldset>
 
+        <!-- Tabela-base do DataTables: cada linha renderiza um card completo.
+             O cabeçalho fica oculto via CSS (seção 6) -->
         <table id="tabela" style="width:100%" role="presentation">
             <thead><tr><th>Dados</th></tr></thead>
             <tbody></tbody>
@@ -183,35 +300,115 @@
     </main>
 </div>
 
+<!-- ====================================================================
+     BIBLIOTECAS EXTERNAS (CDN)
+     jQuery ......... base para o DataTables e manipulação do DOM
+     DataTables ..... paginação e controle de exibição dos cards
+     SheetJS (xlsx) . geração do arquivo Excel
+     PapaParse ...... leitura correta do CSV (aceita vírgulas e quebras de
+                      linha dentro das células, comum nas observações)
+     ==================================================================== -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
 <script>
+    /* =======================================================================
+       ÍNDICE DO SCRIPT
+       1. Configuração (o que você normalmente altera está aqui)
+       2. Estado global
+       3. Funções utilitárias (inclui mascaramento de CPF — LGPD)
+       4. Comunicação com o iframe (altura automática)
+       5. Carregamento e processamento dos dados
+       6. Filtros (aplicar) e regra de vigência da sanção
+       7. Tabela de cards (DataTables) e acordeão de observações
+       8. Exportações (CSV, Excel, JSON, XML) e nome dos arquivos
+       9. Impressão
+       10. Inicialização (eventos e primeira carga)
+       ======================================================================= */
+
+    /* =======================================================================
+       1. CONFIGURAÇÃO
+       ======================================================================= */
+
+    // 🔴 LINK DO CSV: no Google Sheets, use Arquivo → Compartilhar → Publicar
+    // na web → formato CSV, e cole o link gerado aqui.
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXZV70X4FFyh12T4nl90hoY2xe_pMIWTCna2aiwNNTbOqh3GRcYZO54REDus5uCteZ9wu9Cce-9vub/pub?output=csv";
-    
-    let tabela;
-    let dadosGlobais = [];
-    let carimboAtualizacao = "";
 
-    function enviarAlturaIframe() {
-        setTimeout(() => {
-            const wrapper = document.getElementById('wrapper');
-            if (wrapper) {
-                const h = wrapper.offsetHeight + 40; 
-                window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, '*');
-            }
-        }, 200); 
-    }
+    // 🔴 SITE QUE HOSPEDA O IFRAME: a altura da página só será enviada para
+    // este domínio (segurança do postMessage). Se o site oficial mudar de
+    // endereço, atualize aqui. Use "*" apenas em testes locais.
+    const ORIGEM_PAI = "https://www.marilia.sp.leg.br";
 
+    /* =======================================================================
+       2. ESTADO GLOBAL
+       ======================================================================= */
+    let tabela;                  // instância única do DataTables
+    let dadosGlobais = [];       // todos os registros lidos da planilha
+    let carimboAtualizacao = ""; // data de atualização exibida no selo verde
+
+    /* =======================================================================
+       3. FUNÇÕES UTILITÁRIAS
+       ======================================================================= */
+
+    /** Remove acentos de um texto ("Razão" → "Razao"). Usada na busca. */
     function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
 
+    /**
+     * SEGURANÇA: escapa caracteres HTML antes de inserir dados da planilha
+     * na página. Impede que uma célula contendo tags ou scripts quebre o
+     * layout ou execute código (XSS).
+     */
+    function escapeHtml(valor) {
+        return String(valor ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    /** Escapa os caracteres reservados do XML (&, <, >) na exportação. */
+    function escapeXml(valor) {
+        return String(valor ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    /**
+     * LGPD: mascara CPFs de pessoa física (***.123.456-**), preservando
+     * apenas os dígitos centrais. CNPJs (14 dígitos) são dados públicos
+     * e retornam sem alteração. Aplicado na TELA e em TODAS as exportações.
+     */
+    function mascararCPF(doc) {
+        if (!doc) return "";
+        let numeros = doc.replace(/\D/g, '');
+        if (numeros.length === 11) {
+            return `***.${numeros.substring(3, 6)}.${numeros.substring(6, 9)}-**`;
+        }
+        return doc;
+    }
+
+    /**
+     * ⚠️ REGRA CENTRAL DA PÁGINA: verifica se a sanção ainda está vigente.
+     *
+     * - fim_sancao vazio ou "—" → sanção sem prazo definido → SEMPRE exibida
+     * - data futura ou hoje → vigente → exibida
+     * - data passada → sanção cumprida → registro OCULTO da listagem e das
+     *   exportações (permanece na planilha como histórico)
+     *
+     * Aceita os formatos dd/mm/aaaa, aaaa-mm-dd e dd-mm-aaaa; datas
+     * ilegíveis são tratadas como "sem prazo" (registro exibido), para
+     * nunca esconder uma sanção por erro de digitação.
+     */
     function verificarSancaoAtiva(dataStr) {
         if (!dataStr || dataStr.trim() === "" || dataStr === "—") return true;
-        
+
         let dia, mes, ano;
         const strLimpa = dataStr.trim();
-        
+
         if (strLimpa.includes('/')) {
             const partes = strLimpa.split('/');
             dia = parseInt(partes[0], 10);
@@ -219,11 +416,11 @@
             ano = parseInt(partes[2], 10);
         } else if (strLimpa.includes('-')) {
             const partes = strLimpa.split('-');
-            if (partes[0].length === 4) {
+            if (partes[0].length === 4) { // aaaa-mm-dd
                 ano = parseInt(partes[0], 10);
                 mes = parseInt(partes[1], 10) - 1;
                 dia = parseInt(partes[2], 10);
-            } else {
+            } else {                       // dd-mm-aaaa
                 dia = parseInt(partes[0], 10);
                 mes = parseInt(partes[1], 10) - 1;
                 ano = parseInt(partes[2], 10);
@@ -231,37 +428,63 @@
         } else {
             return true;
         }
-        
+
         if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return true;
-        
-        // Define o limite como o último segundo do dia informado
+
+        // A sanção vale até o último segundo do dia informado
         const dataFim = new Date(ano, mes, dia, 23, 59, 59);
         const hoje = new Date();
-        
+
         return hoje <= dataFim;
     }
 
-    window.toggleObservacao = function(idBotao) {
-        const conteudo = document.getElementById(idBotao);
-        if (conteudo) {
-            conteudo.classList.toggle('mostrar');
-            enviarAlturaIframe(); 
-        }
-    };
+    /* =======================================================================
+       4. COMUNICAÇÃO COM O IFRAME (altura automática)
+       A página roda dentro de um <iframe> no site oficial. Sempre que o
+       conteúdo muda de tamanho (inclusive ao abrir/fechar as observações),
+       enviamos a nova altura para o site pai via postMessage.
+       ======================================================================= */
 
+    /** Envia a altura atual do conteúdo para o site que hospeda o iframe. */
+    function enviarAlturaIframe() {
+        const wrapper = document.getElementById('wrapper');
+        if (wrapper) {
+            window.parent.postMessage({ tipo: 'ajustarAltura', valor: wrapper.offsetHeight + 40 }, ORIGEM_PAI);
+        }
+    }
+
+    // O ResizeObserver detecta qualquer mudança de altura do conteúdo
+    // (filtro, troca de página, acordeão aberto) e reenvia automaticamente.
+    if ('ResizeObserver' in window) {
+        new ResizeObserver(() => enviarAlturaIframe()).observe(document.getElementById('wrapper'));
+    }
+
+    /* =======================================================================
+       5. CARREGAMENTO E PROCESSAMENTO DOS DADOS
+       ======================================================================= */
+
+    /**
+     * Transforma o CSV bruto em objetos organizados (dadosGlobais).
+     *
+     * A linha de cabeçalho é localizada pela palavra "cnpj":
+     * - Se a 1ª linha já contém "cnpj", ela é o cabeçalho.
+     * - Se não, a 1ª linha é tratada como metadados (data de atualização)
+     *   e o cabeçalho é a 2ª linha.
+     * Os nomes das colunas viram as chaves dos objetos (ex: "razao_social").
+     */
     function processarCSV(csvText) {
-        const wb = XLSX.read(csvText, { type: 'string' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        
-        const linhasMatriz = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+        // O PapaParse trata corretamente células com vírgulas e quebras
+        // de linha internas (comuns no campo "observacao")
+        const linhasMatriz = Papa.parse(csvText.trim()).data;
         if (linhasMatriz.length === 0) return [];
 
         let linhaCabecalho = 0;
-        let primeiraLinhaTexto = linhasMatriz[0].join(",");
-        
+        const primeiraLinhaTexto = linhasMatriz[0].join(",");
+
         if (!primeiraLinhaTexto.toLowerCase().includes("cnpj") && linhasMatriz[1] && linhasMatriz[1].join(",").toLowerCase().includes("cnpj")) {
+            // 1ª linha = metadados; extrai a data de atualização dela
             linhaCabecalho = 1;
-            let matchDataHora = primeiraLinhaTexto.match(/(\d{1,2}\/\d{1,2}\/\d{4})[^\d]*(\d{1,2}:\d{2})/);
+            const matchDataHora = primeiraLinhaTexto.match(/(\d{1,2}\/\d{1,2}\/\d{4})[^\d]*(\d{1,2}:\d{2})/);
             if (matchDataHora) {
                 carimboAtualizacao = `Dados atualizados em ${matchDataHora[1]} às ${matchDataHora[2]}`;
             } else {
@@ -272,28 +495,34 @@
             carimboAtualizacao = "Sincronizado com a planilha base";
         }
 
+        // Remove caracteres invisíveis (BOM) que o Google às vezes inclui
         const headers = linhasMatriz[linhaCabecalho].map(h => String(h).trim().toLowerCase().replace(/[\uFEFF\u200B]/g, ""));
         const lista = [];
-        
+
         for (let i = linhaCabecalho + 1; i < linhasMatriz.length; i++) {
             const colunas = linhasMatriz[i];
-            
+
+            // Ignora linhas totalmente vazias
             if (!colunas || colunas.length === 0 || colunas.every(c => String(c).trim() === "")) continue;
-            
+
             let obj = {};
             headers.forEach((h, idx) => {
                 obj[h] = colunas[idx] !== undefined ? String(colunas[idx]).trim() : "";
             });
-            
-            let razaoLimpa = obj.razao_social ? obj.razao_social.toLowerCase() : "";
-            let cnpjLimpo = obj.cnpj ? obj.cnpj.replace(/\D/g, '') : "";
+
+            // Texto de busca unificado: razão social sem acentos + só os
+            // dígitos do CNPJ (permite buscar com ou sem pontuação)
+            const razaoLimpa = obj.razao_social ? obj.razao_social.toLowerCase() : "";
+            const cnpjLimpo = obj.cnpj ? obj.cnpj.replace(/\D/g, '') : "";
             obj.busca_nome = removerAcentos(razaoLimpa) + " " + cnpjLimpo;
-            
+
             lista.push(obj);
         }
         return lista;
     }
 
+    /** Baixa o CSV publicado do Google Sheets e inicia o painel.
+        O parâmetro cache=timestamp evita cópia em cache do navegador. */
     async function carregarDados() {
         $('#loader').show();
         $('#main-container').hide();
@@ -306,11 +535,24 @@
             $('#loader').hide();
             $('#main-container').fadeIn(400, () => enviarAlturaIframe());
         } catch (error) {
-            console.error(error);
+            console.error("Erro ao carregar os dados: ", error);
             $('#loader').html('<b style="color:red">Erro ao carregar dados. Verifique o compartilhamento da planilha.</b>');
         }
     }
 
+    /* =======================================================================
+       6. FILTROS
+       ======================================================================= */
+
+    /**
+     * Aplica os filtros sobre dadosGlobais e envia o resultado para a tabela.
+     *
+     * - Busca livre: compara com razão social (sem acentos) e com o CNPJ
+     *   (só dígitos), então "12.345" e "12345" encontram o mesmo registro
+     * - Nº do contrato: busca parcial, sem acentos
+     * - Vigência: registros com sanção vencida são sempre ocultados
+     *   (ver verificarSancaoAtiva)
+     */
     function aplicarFiltros() {
         const buscaTexto = removerAcentos($('#filtroTexto').val().toLowerCase().replace(/\D/g, ''));
         const buscaOriginal = removerAcentos($('#filtroTexto').val().toLowerCase());
@@ -327,42 +569,69 @@
         renderizarTabela(filtrados);
     }
 
-    function renderizarTabela(dados) {
-        if (tabela) { tabela.destroy(); $('#comprimento-tabela').empty(); }
+    /** Limpa os campos de busca e volta à listagem completa (vigentes). */
+    function limparFiltros() {
+        $('#filtroTexto, #filtroContrato').val('');
+        aplicarFiltros();
+    }
 
+    /* =======================================================================
+       7. TABELA DE CARDS (DataTables) E ACORDEÃO
+       A tabela é criada UMA única vez; os filtros apenas trocam os dados
+       (clear + rows.add + draw). Isso mantém a digitação fluida mesmo com
+       muitos registros, pois nada é destruído e recriado.
+       ======================================================================= */
+
+    /** Abre/fecha a observação de um card e reenvia a altura do iframe.
+        Fica em window.* porque é chamada pelo onclick do HTML do card. */
+    window.toggleObservacao = function(idBotao) {
+        const conteudo = document.getElementById(idBotao);
+        if (conteudo) {
+            conteudo.classList.toggle('mostrar');
+            enviarAlturaIframe();
+        }
+    };
+
+    /** Cria a instância do DataTables e define como cada card é desenhado. */
+    function inicializarTabela() {
         tabela = $('#tabela').DataTable({
-            data: dados,
+            data: [],
             pageLength: 10,
-            ordering: false,
+            ordering: false, // mantém a ordem da planilha
             language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
-            dom: 'lrt<"dt-bottom-controls"ip>',
+            dom: 'lrt<"dt-bottom-controls"ip>', // l=menu exibir, r=processando, t=tabela, i=info, p=paginação
             columns: [{
                 data: null,
                 render: function(d) {
+                    // Cada acordeão precisa de um id único para o toggle
                     const idObservacao = 'obs-' + Math.random().toString(36).substr(2, 9);
                     const temObservacao = d.observacao && d.observacao.trim() !== "";
-                    const textoObservacaoFormatado = temObservacao ? d.observacao : "";
+
+                    // Rótulo e LGPD: CPF (11 dígitos) é mascarado; CNPJ sai completo
+                    const numLimpo = (d.cnpj || '').replace(/\D/g, '');
+                    const labelDoc = numLimpo.length === 11 ? "CPF" : "CNPJ";
+                    const docMascarado = mascararCPF(d.cnpj);
 
                     return `
                         <div class="card-info">
                             <div class="card-header">
                                 <div class="card-header-texto">
-                                    <span class="nome-principal">${d.razao_social || "Razão Social não informada"}</span>
-                                    <span class="subtitulo-card">CNPJ: ${d.cnpj || "—"}</span>
+                                    <span class="nome-principal">${escapeHtml(d.razao_social || "Razão Social não informada")}</span>
+                                    <span class="subtitulo-card">${labelDoc}: ${escapeHtml(docMascarado || "—")}</span>
                                 </div>
                             </div>
                             <div class="card-body">
-                                <div class="info-col"><span class="info-label">Contrato</span><span class="info-valor">${d.numero_contrato || "—"}</span></div>
-                                <div class="info-col span-2"><span class="info-label">Motivo da Sanção</span><span class="info-valor">${d.motivo_sancao || "—"}</span></div>
-                                
-                                <div class="info-col span-3"><span class="info-label">Objeto do Contrato</span><span class="info-valor">${d.objeto_contrato || "—"}</span></div>
-                                
+                                <div class="info-col"><span class="info-label">Contrato</span><span class="info-valor">${escapeHtml(d.numero_contrato || "—")}</span></div>
+                                <div class="info-col span-2"><span class="info-label">Motivo da Sanção</span><span class="info-valor">${escapeHtml(d.motivo_sancao || "—")}</span></div>
+
+                                <div class="info-col span-3"><span class="info-label">Objeto do Contrato</span><span class="info-valor">${escapeHtml(d.objeto_contrato || "—")}</span></div>
+
                                 ${temObservacao ? `
                                     <div class="info-col span-3">
                                         <button class="btn-obs" onclick="window.toggleObservacao('${idObservacao}')">
                                             📋 Detalhes da Sanção <span>▼</span>
                                         </button>
-                                        <div id="${idObservacao}" class="obs-content">${textoObservacaoFormatado}</div>
+                                        <div id="${idObservacao}" class="obs-content">${escapeHtml(d.observacao)}</div>
                                     </div>
                                 ` : `
                                     <div class="info-col span-3">
@@ -375,14 +644,19 @@
                     `;
                 }
             }],
-            initComplete: function() { $('.dataTables_length').appendTo('#comprimento-tabela'); enviarAlturaIframe(); },
+            initComplete: function() {
+                // Move o menu "Exibir X resultados" para o painel Visualização
+                $('.dataTables_length').appendTo('#comprimento-tabela');
+            },
             drawCallback: function() {
-                const totalFiltrado = this.api().rows({ filter: 'applied' }).count();
-                $('#contagem-registros').html(`<b>${totalFiltrado}</b> registros encontrados`);
+                // Atualiza o contador e reenvia a altura ao site pai a cada redesenho
+                const total = this.api().rows().count();
+                $('#contagem-registros').html(`<b>${total}</b> registros encontrados`);
                 enviarAlturaIframe();
             }
         });
 
+        // Ao trocar de página, rola suavemente de volta ao topo da lista
         tabela.on('page.dt', function () {
             setTimeout(function() {
                 document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -390,78 +664,131 @@
         });
     }
 
-    function limparFiltros() {
-        $('#filtroTexto, #filtroContrato').val('');
-        aplicarFiltros();
+    /** Substitui os dados exibidos na tabela (sem destruí-la). */
+    function renderizarTabela(dados) {
+        if (!tabela) inicializarTabela();
+        tabela.clear();
+        tabela.rows.add(dados);
+        tabela.draw();
     }
 
+    /* =======================================================================
+       8. EXPORTAÇÕES (CSV, Excel, JSON, XML)
+       Todas exportam apenas os registros filtrados no momento (ou seja,
+       somente sanções vigentes), sem os campos internos de controle.
+       LGPD: CPF de pessoa física sai mascarado em todos os formatos.
+       ======================================================================= */
+
+    /** Converte os registros filtrados para o formato de exportação. */
+    function dadosParaExportar() {
+        return tabela.rows().data().toArray().map(d => ({
+            "CNPJ/CPF": mascararCPF(d.cnpj || ''),
+            "Razao Social": d.razao_social || '',
+            "Numero Contrato": d.numero_contrato || '',
+            "Objeto Contrato": d.objeto_contrato || '',
+            "Motivo Sancao": d.motivo_sancao || '',
+            "Fim da Sancao": d.fim_sancao || '',
+            "Observacao": d.observacao || ''
+        }));
+    }
+
+    /** Monta o nome do arquivo a partir dos filtros ativos
+        (ex: licitantes_apenados_contrato_152026.csv).
+        CORRIGIDO: o nome-base era "contratos", herdado de outra página. */
     function gerarNomeArquivoBase() {
-        let partes = ["contratos"];
+        let partes = ["licitantes_apenados"];
         const texto = $('#filtroTexto').val().trim();
         if (texto) partes.push(texto.replace(/\s+/g, '_'));
         const contrato = $('#filtroContrato').val().trim();
         if (contrato) partes.push("contrato_" + contrato.replace(/[^a-zA-Z0-9]/g, ''));
-        
+
         return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
     }
 
+    /** Exporta CSV. O PapaParse cuida do escape de aspas, vírgulas e quebras
+        de linha; o prefixo \ufeff (BOM) garante acentos corretos no Excel. */
     function exportarCSV() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        let csv = "\ufeffCNPJ,Razao Social,Numero Contrato,Objeto Contrato,Motivo Sancao,Observacao\n";
-        data.forEach(d => { 
-            const obsLimpa = d.observacao ? d.observacao.replace(/\r?\n/g, ' ') : '';
-            csv += `"${d.cnpj}","${d.razao_social}","${d.numero_contrato}","${d.objeto_contrato}","${d.motivo_sancao}","${obsLimpa}"\n`; 
-        });
-        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv");
+        const csv = "\ufeff" + Papa.unparse(dadosParaExportar());
+        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv;charset=utf-8");
     }
 
+    /** Exporta Excel (.xlsx) via SheetJS. */
     function exportarXLSX() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        const dataLimpa = data.map(({ busca_nome, ...resto }) => resto);
-        const ws = XLSX.utils.json_to_sheet(dataLimpa);
+        const ws = XLSX.utils.json_to_sheet(dadosParaExportar());
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Contratos");
+        XLSX.utils.book_append_sheet(wb, ws, "Apenados");
         XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx");
     }
 
+    /** Exporta JSON formatado (2 espaços de indentação). */
     function exportarJSON() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
-        const dataLimpa = data.map(({ busca_nome, ...resto }) => resto);
-        downloadFile(JSON.stringify(dataLimpa, null, 2), gerarNomeArquivoBase() + ".json", "application/json");
+        downloadFile(JSON.stringify(dadosParaExportar(), null, 2), gerarNomeArquivoBase() + ".json", "application/json");
     }
 
-    function exportarXMR() {
-        const data = tabela.rows({ filter: 'applied' }).data().toArray();
+    /** Exporta XML com os campos em ordem fixa, CPF mascarado e valores
+        escapados (ver escapeXml).
+        CORRIGIDO: a função se chamava "exportarXMR" (erro de digitação). */
+    function exportarXML() {
+        const campos = ["cnpj", "razao_social", "numero_contrato", "objeto_contrato", "motivo_sancao", "fim_sancao", "observacao"];
         let xml = '<?xml version="1.0" encoding="UTF-8"?><dados>';
-        data.forEach(d => {
+        tabela.rows().data().each(d => {
             xml += '<registro>';
-            for (let k in d) {
-                if(typeof d[k] !== 'object' && k !== 'busca_nome') {
-                     xml += `<${k}>${d[k]}</${k}>`;
-                }
-            }
+            campos.forEach(k => {
+                const valor = (k === 'cnpj') ? mascararCPF(d[k] || '') : d[k];
+                xml += `<${k}>${escapeXml(valor)}</${k}>`;
+            });
             xml += '</registro>';
         });
         xml += '</dados>';
         downloadFile(xml, gerarNomeArquivoBase() + ".xml", "application/xml");
     }
 
+    /** Dispara o download de um arquivo gerado em memória e libera o blob
+        em seguida para não acumular memória. */
     function downloadFile(content, fileName, mime) {
         const blob = new Blob([content], { type: mime });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url; a.download = fileName; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
+    /* =======================================================================
+       9. IMPRESSÃO
+       ======================================================================= */
+
+    /**
+     * Imprime TODOS os registros filtrados (não apenas a página atual):
+     *   1. Expande a paginação para exibir tudo (page.len(-1)).
+     *   2. Espera o evento draw.dt — sinal de que o DataTables terminou de
+     *      renderizar — em vez de um tempo fixo, que falharia com muitos dados.
+     *   3. Abre a janela de impressão e restaura a paginação anterior.
+     * (Na impressão, o CSS expande todas as observações automaticamente.)
+     */
     function imprimirSeguro() {
-        if(!tabela) return;
-        const len = tabela.page.len();
-        tabela.page.len(-1).draw('page'); 
-        setTimeout(() => { window.print(); tabela.page.len(len).draw('page'); }, 500);
+        if (!tabela) return;
+        const len = tabela.page.len(); // guarda a paginação atual
+        tabela.one('draw.dt', function() {
+            setTimeout(() => {
+                window.print();
+                tabela.page.len(len).draw('page'); // restaura após imprimir
+            }, 100);
+        });
+        tabela.page.len(-1).draw('page'); // -1 = mostrar todos
     }
 
+    /* =======================================================================
+       10. INICIALIZAÇÃO
+       ======================================================================= */
     $(document).ready(function() {
-        $('#filtroTexto, #filtroContrato').on('input', aplicarFiltros); 
+        // Buscas com debounce: espera 250ms após a última tecla,
+        // evitando reprocessar a tabela a cada caractere digitado
+        let debounceBusca;
+        $('#filtroTexto, #filtroContrato').on('input', function() {
+            clearTimeout(debounceBusca);
+            debounceBusca = setTimeout(aplicarFiltros, 250);
+        });
+
         carregarDados();
     });
 </script>
