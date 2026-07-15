@@ -35,6 +35,9 @@
      impedido HOJE. Os registros continuam na planilha como histórico.
 
      REGRAS AUTOMÁTICAS
+     - Cada card exibe um selo com o prazo da sanção no cabeçalho:
+       âmbar com a data-limite ("Sancionado até dd/mm/aaaa") ou cinza
+       ("Prazo indeterminado") quando fim_sancao está vazio
      - LGPD: se o documento tiver 11 dígitos (CPF de pessoa física), ele é
        mascarado (***.123.456-**) na tela e nas exportações; CNPJs (14
        dígitos) aparecem completos, pois são dado público
@@ -148,10 +151,16 @@
         table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
 
         .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        .card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; display: flex; justify-content: space-between; align-items: center; }
-        .card-header-texto { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+        .card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .card-header-texto { display: flex; flex-direction: column; gap: 2px; width: 75%; }
         .nome-principal { font-size: 15px; font-weight: 800; color: #003b75; text-transform: uppercase; word-break: break-word; }
         .subtitulo-card { font-size: 12px; color: #64748b; font-weight: 500; text-transform: uppercase; }
+
+        /* Selo com o prazo da sanção, no cabeçalho do card:
+           âmbar quando há data-limite; cinza quando o prazo é indeterminado */
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: center; white-space: nowrap; }
+        .status-sancao { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .status-indeterminado { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
 
         /* Grade de 3 colunas; span-2/span-3 fazem campos ocuparem mais espaço */
         .card-body { display: grid; grid-template-columns: repeat(3, 1fr); padding: 12px 15px; gap: 12px; }
@@ -200,6 +209,7 @@
             .painel-filtros { grid-template-columns: 1fr; }
             .topo { flex-direction: column; gap: 10px; text-align: center; }
             .card-header { flex-direction: column; text-align: center; gap: 10px; }
+            .card-header-texto { width: 100%; }
             .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
             .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important; }
             .card-body { grid-template-columns: 1fr; }
@@ -438,6 +448,32 @@
         return hoje <= dataFim;
     }
 
+    /**
+     * Formata a data de fim da sanção para exibição no card (dd/mm/aaaa).
+     * Aceita os mesmos formatos de verificarSancaoAtiva (dd/mm/aaaa,
+     * aaaa-mm-dd e dd-mm-aaaa). Retorna "" quando não há data (prazo
+     * indeterminado) e o texto original quando o formato não é reconhecido.
+     */
+    function formatarDataBR(dataStr) {
+        if (!dataStr || dataStr.trim() === "" || dataStr.trim() === "—") return "";
+        const s = dataStr.trim();
+        let dia, mes, ano;
+
+        if (s.includes('/')) {
+            const p = s.split('/');
+            dia = p[0]; mes = p[1]; ano = p[2];
+        } else if (s.includes('-')) {
+            const p = s.split('-');
+            if (p[0].length === 4) { ano = p[0]; mes = p[1]; dia = p[2]; } // aaaa-mm-dd
+            else { dia = p[0]; mes = p[1]; ano = p[2]; }                   // dd-mm-aaaa
+        } else {
+            return s;
+        }
+
+        if (!dia || !mes || !ano) return s;
+        return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+    }
+
     /* =======================================================================
        4. COMUNICAÇÃO COM O IFRAME (altura automática)
        A página roda dentro de um <iframe> no site oficial. Sempre que o
@@ -612,6 +648,13 @@
                     const labelDoc = numLimpo.length === 11 ? "CPF" : "CNPJ";
                     const docMascarado = mascararCPF(d.cnpj);
 
+                    // Selo com o prazo da sanção: âmbar com a data-limite,
+                    // ou cinza quando o prazo é indeterminado
+                    const fimFormatado = formatarDataBR(d.fim_sancao);
+                    const badgeSancao = fimFormatado
+                        ? `<span class="status-badge status-sancao">⏳ Sancionado até ${escapeHtml(fimFormatado)}</span>`
+                        : `<span class="status-badge status-indeterminado">Prazo indeterminado</span>`;
+
                     return `
                         <div class="card-info">
                             <div class="card-header">
@@ -619,6 +662,7 @@
                                     <span class="nome-principal">${escapeHtml(d.razao_social || "Razão Social não informada")}</span>
                                     <span class="subtitulo-card">${labelDoc}: ${escapeHtml(docMascarado || "—")}</span>
                                 </div>
+                                ${badgeSancao}
                             </div>
                             <div class="card-body">
                                 <div class="info-col"><span class="info-label">Contrato</span><span class="info-valor">${escapeHtml(d.numero_contrato || "—")}</span></div>
