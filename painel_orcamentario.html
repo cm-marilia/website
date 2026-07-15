@@ -1,15 +1,81 @@
 <!DOCTYPE html>
+<!-- ===========================================================================
+     PAINEL ORÇAMENTÁRIO (DASHBOARD)
+     Câmara Municipal de Marília
+     ===========================================================================
+
+     O QUE É ESTA PÁGINA
+     Dashboard de transparência com a execução orçamentária da Câmara:
+     cards de indicadores (receita prevista/recebida, empenhado, liquidado
+     e pago), gráfico interativo mês a mês (ECharts) com zoom por período,
+     visualização em tabela, download como imagem e exportação dos dados
+     em CSV, Excel, JSON e XML.
+
+     COMO FUNCIONA
+     1. Os dados são lidos de uma planilha do Google Sheets publicada como
+        CSV (variável CSV_URL, na seção CONFIGURAÇÃO do script).
+     2. A página é hospedada no GitHub Pages e exibida dentro de um <iframe>
+        no site oficial: https://www.marilia.sp.leg.br/
+     3. A altura do iframe é ajustada automaticamente via postMessage.
+
+     FORMATO ESPERADO DA PLANILHA
+     - Linha 1: metadados com "MODIF_REAL: dd/mm/aaaa, hh:mm" (data de
+       atualização exibida no selo verde)
+     - Linha 2: cabeçalhos (com ou sem acentos):
+       ano | mes | duodecimo_previsto | duodecimo | empenhado |
+       liquidado | pago
+     - Linha 3 em diante: um registro por mês
+     - mes por extenso ("Janeiro"); valores em formato brasileiro
+       ("1.234.567,89", com ou sem "R$")
+
+     REGRAS AUTOMÁTICAS
+     - Linhas sem nenhum valor (> 0) são ignoradas (meses futuros vazios)
+     - Ordenação cronológica (mais antigo → mais novo)
+     - Filtro inicial: o ano atual (ou o mais recente disponível)
+     - O zoom do gráfico recalcula os cards: os indicadores sempre refletem
+       o período visível — e as exportações baixam exatamente esse período
+     - Percentuais dos cards: Recebido = % do Previsto; Empenhado,
+       Liquidado e Pago = % do Recebido
+
+     MANUTENÇÃO RÁPIDA (o que você normalmente precisa alterar)
+     - Trocar a planilha ......... variável CSV_URL   (seção CONFIGURAÇÃO)
+     - Trocar o site que embute .. variável ORIGEM_PAI (seção CONFIGURAÇÃO)
+     - Cores das séries .......... seção CORES DO PAINEL do CSS e as
+                                   propriedades itemStyle/lineStyle do gráfico
+
+     DEPENDÊNCIAS (carregadas via CDN)
+     ECharts | PapaParse 5.4.1 | SheetJS 0.18.5
+     =========================================================================== -->
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Orçamentário - Câmara Municipal de Marília</title>
+
+    <!-- ECharts (gráfico), PapaParse (leitura do CSV) e SheetJS (Excel) -->
     <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <style>
+        /* ====================================================================
+           ÍNDICE DOS ESTILOS
+           1. Base e layout geral
+           2. Barra de filtros (ano/mês)
+           3. Selo de atualização e botões de exportação
+           4. Cards de indicadores (KPIs) — CORES DO PAINEL
+           5. Gráfico
+           6. Responsividade (tablet e celular)
+           ==================================================================== */
+
+        /* --------------------------------------------------------------------
+           1. BASE E LAYOUT GERAL
+           -------------------------------------------------------------------- */
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6; color: #1f2937; }
-        
+
+        /* --------------------------------------------------------------------
+           2. BARRA DE FILTROS (ano/mês)
+           -------------------------------------------------------------------- */
         .painel-filtros {
             background: #ffffff; padding: 15px 20px; display: flex; flex-wrap: wrap;
             justify-content: center; align-items: center; gap: 20px;
@@ -24,7 +90,10 @@
             cursor: pointer; outline: none;
         }
 
-        /* ESTILO DO BADGE DE ATUALIZAÇÃO */
+        /* --------------------------------------------------------------------
+           3. SELO DE ATUALIZAÇÃO E BOTÕES DE EXPORTAÇÃO
+           Uma linha: selo verde à esquerda, botões de download à direita
+           -------------------------------------------------------------------- */
         .badge-atualizacao {
             background-color: rgba(46, 204, 113, 0.12);
             border: 1px solid rgba(46, 204, 113, 0.25);
@@ -45,7 +114,6 @@
             box-shadow: 0 0 5px rgba(46, 204, 113, 0.6);
         }
 
-        /* REPOSICIONAMENTO: Ocupa as duas extremidades da linha (Badge na esquerda, Botões na direita) */
         .painel-exportacao {
             max-width: 1240px; margin: 15px auto 0 auto; padding: 0 15px;
             display: flex; justify-content: space-between; align-items: center; gap: 10px;
@@ -56,17 +124,25 @@
         .btn-export {
             background-color: #ffffff; border: 1px solid #d1d5db; padding: 6px 0;
             border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer;
-            width: 65px; /* Define o mesmo tamanho exato para todos os botões */
+            width: 65px; /* mesmo tamanho exato para todos os botões */
             text-align: center;
         }
         .btn-export:hover { background-color: #f3f4f6; }
 
+        /* --------------------------------------------------------------------
+           4. CARDS DE INDICADORES (KPIs) — CORES DO PAINEL
+           A cor da borda esquerda de cada card corresponde à cor da série
+           no gráfico (se mudar aqui, mude também no itemStyle da série):
+             previsto  #00ced1 (ciano)  | duodecimo #000000 (preto)
+             empenhado #5470C6 (azul)   | liquidado #91CC75 (verde)
+             pago      #FAC858 (amarelo)
+           -------------------------------------------------------------------- */
         .container-cards {
             max-width: 1240px; margin: 15px auto 30px auto; padding: 0 15px;
             display: grid; grid-template-columns: repeat(6, 1fr); gap: 20px 10px; box-sizing: border-box;
         }
 
-        /* PADRÃO TELAS GRANDES: 2 cards na primeira linha, 3 na segunda linha */
+        /* Telas grandes: 2 cards na primeira linha, 3 na segunda */
         .card:nth-child(1), .card:nth-child(2) { grid-column: span 3; }
         .card:nth-child(3), .card:nth-child(4), .card:nth-child(5) { grid-column: span 2; }
 
@@ -78,7 +154,7 @@
             box-sizing: border-box;
         }
 
-        .card.previsto  { border-left-color: #00ced1; } 
+        .card.previsto  { border-left-color: #00ced1; }
         .card.duodecimo { border-left-color: #000000; }
         .card.empenhado { border-left-color: #5470C6; }
         .card.liquidado { border-left-color: #91CC75; }
@@ -87,42 +163,48 @@
         .card-titulo { font-size: 10px; text-transform: uppercase; color: #6b7280; font-weight: bold; margin-bottom: 3px; }
         .card-valor { font-size: 13px; font-weight: bold; color: #111827; }
         .card-perc { font-size: 9px; margin-top: 4px; padding: 2px 5px; border-radius: 4px; font-weight: bold; }
-        
+
         .perc-previsto  { background-color: rgba(0, 206, 209, 0.1); color: #008b8b; }
         .perc-duodecimo { background-color: rgba(0, 0, 0, 0.06); color: #1f2937; }
-        .perc-empenhado { background-color: rgba(84, 112, 198, 0.1); color: #3730a3; } 
-        .perc-liquidado { background-color: rgba(145, 204, 117, 0.1); color: #166534; } 
-        .perc-pago      { background-color: rgba(250, 200, 88, 0.1); color: #92400e; } 
+        .perc-empenhado { background-color: rgba(84, 112, 198, 0.1); color: #3730a3; }
+        .perc-liquidado { background-color: rgba(145, 204, 117, 0.1); color: #166534; }
+        .perc-pago      { background-color: rgba(250, 200, 88, 0.1); color: #92400e; }
 
+        /* --------------------------------------------------------------------
+           5. GRÁFICO
+           -------------------------------------------------------------------- */
         .container-grafico { max-width: 1240px; margin: 10px auto 30px auto; padding: 0 15px; }
         #meuGrafico { width: 100%; height: 500px; background: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); padding: 15px 0; }
 
-        /* REGRAS DE RESPONSIVIDADE (MEDIA QUERIES) */
+        /* --------------------------------------------------------------------
+           6. RESPONSIVIDADE
+           -------------------------------------------------------------------- */
 
-        /* Telas pequenas (tablets em pé, celulares grandes) */
+        /* Tablets em pé e celulares grandes */
         @media (max-width: 768px) {
             .painel-exportacao { flex-direction: column-reverse; align-items: center; gap: 15px; }
             .painel-exportacao div { justify-content: center; }
             .container-cards { grid-template-columns: repeat(2, 1fr); }
-            /* Volta os 4 primeiros cards para o padrão (1 de espaço cada) */
+            /* 4 primeiros cards em pares; o último ocupa a linha inteira */
             .card:nth-child(1), .card:nth-child(2), .card:nth-child(3), .card:nth-child(4) { grid-column: span 1; }
-            /* O último card ocupa a largura toda na base para não ficar manco */
             .card:nth-child(5) { grid-column: span 2; }
             #meuGrafico { height: 400px; }
         }
 
-        /* Telas muito pequenas (celulares menores) */
+        /* Celulares menores: tudo empilhado em coluna única */
         @media (max-width: 480px) {
             .painel-filtros { flex-direction: column; gap: 12px; }
             .filtro-grupo select { width: 100%; max-width: 280px; }
             .container-cards { grid-template-columns: 1fr; }
-            /* Todos os cards ocupam 1 linha inteira */
             .card:nth-child(1), .card:nth-child(2), .card:nth-child(3), .card:nth-child(4), .card:nth-child(5) { grid-column: span 1; }
         }
     </style>
 </head>
 <body>
 
+    <!-- ================================================================
+         BARRA DE FILTROS (ano e mês)
+         ================================================================ -->
     <div class="painel-filtros">
         <div class="filtro-grupo">
             <label for="filtroAno">Ano:</label>
@@ -134,12 +216,17 @@
         </div>
     </div>
 
+    <!-- ================================================================
+         SELO DE ATUALIZAÇÃO + BOTÕES DE EXPORTAÇÃO
+         As exportações baixam exatamente o período visível no gráfico
+         (respeitando filtros e o zoom aplicado)
+         ================================================================ -->
     <div class="painel-exportacao">
         <div class="badge-atualizacao">
             <span class="ponto-verde"></span>
             <span id="txtAtualizacao">Carregando atualização...</span>
         </div>
-        
+
         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <span>Download:</span>
             <button class="btn-export" onclick="exportarCSV()">CSV</button>
@@ -149,6 +236,11 @@
         </div>
     </div>
 
+    <!-- ================================================================
+         CARDS DE INDICADORES (KPIs)
+         Os valores refletem o período visível no gráfico e são
+         recalculados a cada filtro ou zoom
+         ================================================================ -->
     <div class="container-cards">
         <div class="card previsto">
             <div class="card-titulo">Receita Prevista</div>
@@ -177,14 +269,45 @@
         </div>
     </div>
 
+    <!-- ================================================================
+         GRÁFICO (ECharts)
+         Barras: empenhado/liquidado/pago | Linhas: previsto/recebido
+         ================================================================ -->
     <div class="container-grafico">
         <div id="meuGrafico"></div>
     </div>
 
     <script>
-        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSeiEl6tsmsHfu5qECIgTNFJtSLOHJWPUD334BxUtITfI-YKaWwH-vvVM5IBTO5WDypR_r3p_AjcxZL/pub?output=csv&t=' + new Date().getTime();
+        /* ===================================================================
+           ÍNDICE DO SCRIPT
+           1. Configuração (o que você normalmente altera está aqui)
+           2. Cache de elementos do DOM e estado global
+           3. Funções utilitárias
+           4. Comunicação com o iframe (altura automática)
+           5. Carregamento e processamento dos dados
+           6. Filtros e indicadores (KPIs)
+           7. Gráfico (ECharts) e zoom
+           8. Exportações (CSV, Excel, JSON, XML)
+           =================================================================== */
 
-        // CACHE DO DOM: Otimiza a performance guardando a referência dos elementos uma única vez
+        /* ===================================================================
+           1. CONFIGURAÇÃO
+           =================================================================== */
+
+        // 🔴 LINK DO CSV: no Google Sheets, use Arquivo → Compartilhar →
+        // Publicar na web → formato CSV, e cole o link gerado aqui.
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSeiEl6tsmsHfu5qECIgTNFJtSLOHJWPUD334BxUtITfI-YKaWwH-vvVM5IBTO5WDypR_r3p_AjcxZL/pub?output=csv';
+
+        // 🔴 SITE QUE HOSPEDA O IFRAME: a altura da página só será enviada
+        // para este domínio (segurança do postMessage). Se o site oficial
+        // mudar de endereço, atualize aqui. Use "*" apenas em testes locais.
+        const ORIGEM_PAI = "https://www.marilia.sp.leg.br";
+
+        /* ===================================================================
+           2. CACHE DE ELEMENTOS DO DOM E ESTADO GLOBAL
+           Guardar as referências uma única vez evita buscas repetidas no
+           DOM a cada atualização dos indicadores.
+           =================================================================== */
         const kpiElements = {
             previsto: document.getElementById('kpiPrevisto'),
             duodecimo: document.getElementById('kpiDuodecimo'),
@@ -200,8 +323,19 @@
             filtroMes: document.getElementById('filtroMes')
         };
 
+        const myChart = echarts.init(document.getElementById('meuGrafico'));
+        let dadosOriginais = []; // todos os meses lidos da planilha
+        let dadosVisiveis = [];  // meses após aplicar os filtros de ano/mês
+
+        /* ===================================================================
+           3. FUNÇÕES UTILITÁRIAS
+           =================================================================== */
+
+        /** Formata um número como moeda brasileira (1234.5 → "R$ 1.234,50"). */
         const formatarMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
-        
+
+        /** Converte texto monetário brasileiro em número
+            ("R$ 1.234,56" → 1234.56). Números já numéricos passam direto. */
         const limparNumeroBR = (v) => {
             if (!v) return 0;
             if (typeof v === 'number') return v;
@@ -209,44 +343,93 @@
             return parseFloat(s.replace(',', '.')) || 0;
         };
 
+        /** Calcula o percentual formatado ("45,3%"); divisor zero vira "0,0%". */
         const calcularPerc = (v, t) => (t === 0) ? '0,0%' : ((v / t) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
 
-        const myChart = echarts.init(document.getElementById('meuGrafico'));
-        let dadosOriginais = [], dadosVisiveis = [];
+        /** SEGURANÇA: escapa HTML antes de inserir texto da planilha na
+            tabela "Dados" do gráfico (ver optionToContent). */
+        const escapeHtml = (v) => String(v ?? "")
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
-        fetch(csvUrl)
+        /** Escapa os caracteres reservados do XML (&, <, >) na exportação. */
+        const escapeXml = (v) => String(v ?? "")
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+        /** Converte o nome do mês em número (JANEIRO → 1), ignorando
+            acentos. Usado na ordenação cronológica. */
+        const obterMesNum = (mesStr) => {
+            const m = String(mesStr).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+            const mapa = { 'JANEIRO': 1, 'FEVEREIRO': 2, 'MARCO': 3, 'ABRIL': 4, 'MAIO': 5, 'JUNHO': 6, 'JULHO': 7, 'AGOSTO': 8, 'SETEMBRO': 9, 'OUTUBRO': 10, 'NOVEMBRO': 11, 'DEZEMBRO': 12 };
+            return mapa[m] || 0;
+        };
+
+        /* ===================================================================
+           4. COMUNICAÇÃO COM O IFRAME (altura automática)
+           NOVO NESTA VERSÃO: o painel não enviava a altura ao site, e o
+           iframe ficava travado no tamanho inicial — no celular, o final
+           do gráfico era cortado. Agora, sempre que o conteúdo muda de
+           tamanho, a nova altura é enviada via postMessage e o site
+           redimensiona o iframe.
+           =================================================================== */
+
+        /** Envia a altura atual do conteúdo para o site que hospeda o iframe. */
+        function enviarAlturaIframe() {
+            const h = document.body.scrollHeight + 30; // folga para sombras
+            window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, ORIGEM_PAI);
+        }
+
+        // O ResizeObserver detecta qualquer mudança de altura do conteúdo
+        // (filtros, responsividade, carregamento) e reenvia automaticamente.
+        if ('ResizeObserver' in window) {
+            new ResizeObserver(() => enviarAlturaIframe()).observe(document.body);
+        }
+
+        /* ===================================================================
+           5. CARREGAMENTO E PROCESSAMENTO DOS DADOS
+           - Linha 1 do CSV: metadados com a data de atualização
+           - Demais linhas: lidas pelo PapaParse com cabeçalho, com as
+             chaves normalizadas (sem acentos/maiúsculas)
+           - Linhas sem nenhum valor são descartadas (meses futuros vazios)
+           - Tudo ordenado cronologicamente antes de popular os filtros
+           =================================================================== */
+        fetch(`${CSV_URL}&t=${Date.now()}`) // cache-buster: dados sempre atuais
             .then(res => res.text())
             .then(textoBruto => {
                 const linhas = textoBruto.split(/\r?\n/);
                 const primeiraLinha = linhas[0];
-                
+
+                // Extrai e formata a data de atualização do selo verde
                 let match = primeiraLinha.match(/MODIF_REAL:\s*\d{2}\/\d{2}\/\d{4},\s*\d{2}:\d{2}(:\d{2})?/i);
                 let textoAtualizacao = "";
-                
+
                 if (match) {
                     textoAtualizacao = match[0]
                         .replace(/MODIF_REAL:\s*/i, "Dados atualizados em ")
                         .replace(",", " às")
                         .replace(/:\d{2}$/, "");
                 } else {
+                    // CORRIGIDO: este caminho escrevia "Dados updated em"
                     textoAtualizacao = primeiraLinha.replace(/[",;]+$/, '').replace(/"/g, '').trim();
                     if (textoAtualizacao.toUpperCase().includes("MODIF_REAL")) {
                         textoAtualizacao = textoAtualizacao
-                            .replace(/MODIF_REAL:\s*/i, "Dados updated em ")
+                            .replace(/MODIF_REAL:\s*/i, "Dados atualizados em ")
                             .replace(",", " às")
                             .replace(/:\d{2}$/, "");
                     }
                 }
-                
+
                 if (textoAtualizacao && kpiElements.txtAtualizacao) {
                     kpiElements.txtAtualizacao.textContent = textoAtualizacao;
                 }
 
+                // O restante do arquivo (da linha 2 em diante) são os dados
                 const dadosTabelaCsv = linhas.slice(1).join('\n');
 
                 Papa.parse(dadosTabelaCsv, {
                     header: true, skipEmptyLines: true,
                     complete: function(results) {
+                        // Normaliza as chaves: "Duodécimo" → "duodecimo"
                         dadosOriginais = results.data.map(linha => {
                             let clean = {};
                             for (let key in linha) {
@@ -255,6 +438,7 @@
                             }
                             return clean;
                         }).filter(l => {
+                            // Descarta meses sem nenhum valor lançado
                             if (!l.mes || !l.ano) return false;
                             let d = limparNumeroBR(l.duodecimo);
                             let e = limparNumeroBR(l.empenhado);
@@ -264,13 +448,7 @@
                             return (d > 0 || e > 0 || liq > 0 || p > 0 || prev > 0);
                         });
 
-                        // ORDENAÇÃO CRONOLÓGICA (Mais antigo para o mais novo)
-                        const obterMesNum = (mesStr) => {
-                            const m = mesStr.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-                            const mapa = { 'JANEIRO': 1, 'FEVEREIRO': 2, 'MARCO': 3, 'ABRIL': 4, 'MAIO': 5, 'JUNHO': 6, 'JULHO': 7, 'AGOSTO': 8, 'SETEMBRO': 9, 'OUTUBRO': 10, 'NOVEMBRO': 11, 'DEZEMBRO': 12 };
-                            return mapa[m] || 0;
-                        };
-
+                        // Ordenação cronológica (mais antigo → mais novo)
                         dadosOriginais.sort((a, b) => {
                             const anoA = parseInt(a.ano);
                             const anoB = parseInt(b.ano);
@@ -285,17 +463,26 @@
             })
             .catch(err => {
                 console.error("Erro no carregamento:", err);
-                if (kpiElements.txtAtualizacao) kpiElements.txtAtualizacao.textContent = "Atualização indisponível";
+                if (kpiElements.txtAtualizacao) kpiElements.txtAtualizacao.textContent = "Erro ao carregar os dados — recarregue a página";
             });
 
+        /* ===================================================================
+           6. FILTROS E INDICADORES (KPIs)
+           =================================================================== */
+
+        /**
+         * Preenche os filtros de Ano e Mês com os valores da planilha.
+         * O ano atual já vem selecionado (ou o mais recente disponível).
+         */
         function popularFiltros(d) {
             const sAno = kpiElements.filtroAno, sMes = kpiElements.filtroMes;
-            const anos = [...new Set(d.map(i => i.ano))].sort((a,b) => b-a);
+            const anos = [...new Set(d.map(i => i.ano))].sort((a, b) => b - a);
             const meses = [...new Set(d.map(i => i.mes.toUpperCase()))];
-            
+
             anos.forEach(a => { let o = document.createElement('option'); o.value = a; o.textContent = a; sAno.appendChild(o); });
-            textMeses = meses.forEach(m => { let o = document.createElement('option'); o.value = m; o.textContent = m; sMes.appendChild(o); });
-            
+            meses.forEach(m => { let o = document.createElement('option'); o.value = m; o.textContent = m; sMes.appendChild(o); });
+
+            // Padrão: o ano corrente; se não existir na planilha, o mais recente
             const atual = new Date().getFullYear().toString();
             sAno.value = anos.includes(atual) ? atual : anos[0];
 
@@ -303,14 +490,21 @@
             sMes.addEventListener('change', aplicarFiltros);
         }
 
+        /** Aplica os filtros de ano/mês e redesenha o gráfico. */
         function aplicarFiltros() {
             const aS = kpiElements.filtroAno.value, mS = kpiElements.filtroMes.value;
             dadosVisiveis = dadosOriginais.filter(l => (aS === 'Todos' || l.ano === aS) && (mS === 'Todos' || l.mes.toUpperCase() === mS));
-            
+
             let titulo = `Acompanhamento Orçamentário ${aS !== 'Todos' ? '- ' + aS : ''}`;
             renderizarGrafico(dadosVisiveis, titulo);
         }
 
+        /**
+         * Recalcula os cinco cards a partir dos meses recebidos (que são
+         * sempre os meses visíveis no zoom do gráfico).
+         * Percentuais: Recebido = % do Previsto; Empenhado, Liquidado e
+         * Pago = % do Recebido.
+         */
         function atualizarKPIs(d) {
             let tPre = 0, tRec = 0, tEmp = 0, tLiq = 0, tPag = 0;
             d.forEach(l => {
@@ -333,9 +527,19 @@
             kpiElements.percPago.textContent = calcularPerc(tPag, tRec) + ' do Recebido';
         }
 
+        /* ===================================================================
+           7. GRÁFICO (ECharts) E ZOOM
+           - Linhas: Receita Prevista (ciano, grossa) e Recebida (preta)
+           - Barras: Empenhado, Liquidado e Pago
+           - O zoom inicial vai até o último mês com valores lançados
+           - Botões do canto: "Tabela" (visualização em tabela) e "Imagem"
+             (salva o gráfico como PNG)
+           =================================================================== */
         function renderizarGrafico(d, titulo) {
             const eixoX = d.map(l => l.mes.toUpperCase() + '/' + l.ano);
-            
+
+            // Localiza o último mês com algum valor lançado, para o zoom
+            // inicial não mostrar meses futuros vazios
             let indexUltimoPreenchido = d.length - 1;
             for (let i = d.length - 1; i >= 0; i--) {
                 if (limparNumeroBR(d[i].duodecimo) > 0 || limparNumeroBR(d[i].empenhado) > 0 || limparNumeroBR(d[i].pago) > 0) {
@@ -347,81 +551,96 @@
             const opt = {
                 title: { text: titulo, left: 'center', textStyle: { fontSize: 16 } },
                 tooltip: { trigger: 'axis', valueFormatter: (v) => formatarMoeda(v) },
-                toolbox: { feature: { 
-                    dataView: { show: true, readOnly: true, title: 'Tabela', lang:['Dados','Fechar','Ver'],
+                toolbox: { feature: {
+                    dataView: { show: true, readOnly: true, title: 'Tabela', lang: ['Dados', 'Fechar', 'Ver'],
+                        // Monta a visualização em tabela do botão "Tabela"
+                        // (textos da planilha passam por escapeHtml)
                         optionToContent: function(opt) {
                             let axis = opt.xAxis[0].data, series = opt.series;
                             let table = '<table style="width:100%;text-align:center;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f3f4f6"><th>Mês</th>';
-                            series.forEach(s => table += `<th>${s.name}</th>`);
+                            series.forEach(s => table += `<th>${escapeHtml(s.name)}</th>`);
                             table += '</tr></thead><tbody>';
-                            for(let i=0; i<axis.length; i++) {
-                                table += `<tr><td style="font-weight:bold">${axis[i]}</td>`;
+                            for (let i = 0; i < axis.length; i++) {
+                                table += `<tr><td style="font-weight:bold">${escapeHtml(axis[i])}</td>`;
                                 series.forEach(s => table += `<td>${formatarMoeda(s.data[i])}</td>`);
                                 table += '</tr>';
                             }
                             return table + '</tbody></table>';
                         }
-                    }, 
-                    saveAsImage: { show: true, title: 'Imagem' } 
+                    },
+                    saveAsImage: { show: true, title: 'Imagem' }
                 } },
-                
+
                 legend: [
                     { data: ['Receita Prevista', 'Receita Recebida'], bottom: 25 },
                     { data: ['Valor Empenhado', 'Valor Liquidado', 'Valor Pago'], bottom: 0 }
                 ],
-                
+
                 grid: { top: '15%', bottom: 130, containLabel: true },
                 xAxis: { type: 'category', data: eixoX, axisLabel: { rotate: 45 } },
-                yAxis: { type: 'value', axisLabel: { formatter: (v) => v >= 1000000 ? (v/1000000)+'M' : v >= 1000 ? (v/1000)+'k' : v } },
-                
+                yAxis: { type: 'value', axisLabel: { formatter: (v) => v >= 1000000 ? (v / 1000000) + 'M' : v >= 1000 ? (v / 1000) + 'k' : v } },
+
+                // Barra de zoom: já abre mostrando até o último mês preenchido
                 dataZoom: [{ type: 'slider', show: eixoX.length > 1, bottom: 65, height: 20, startValue: 0, endValue: indexUltimoPreenchido }],
-                
+
                 series: [
-                    { 
-                        name: 'Receita Prevista', 
-                        type: 'line', 
-                        data: d.map(l => limparNumeroBR(l.duodecimo_previsto)), 
-                        lineStyle: { type: 'solid', color: '#00ced1', width: 8 }, 
+                    {
+                        name: 'Receita Prevista',
+                        type: 'line',
+                        data: d.map(l => limparNumeroBR(l.duodecimo_previsto)),
+                        lineStyle: { type: 'solid', color: '#00ced1', width: 8 },
                         itemStyle: { color: '#00ced1' },
-                        symbolSize: 12, 
-                        z: 1 
+                        symbolSize: 12,
+                        z: 1
                     },
-                    { 
-                        name: 'Receita Recebida', 
-                        type: 'line', 
+                    {
+                        name: 'Receita Recebida',
+                        type: 'line',
+                        // Meses ainda sem repasse ficam sem ponto (null),
+                        // em vez de a linha despencar para zero
                         data: d.map(l => {
                             let val = limparNumeroBR(l.duodecimo);
                             return val === 0 ? null : val;
-                        }), 
-                        lineStyle: { type: 'solid', color: '#000000', width: 3 }, 
+                        }),
+                        lineStyle: { type: 'solid', color: '#000000', width: 3 },
                         itemStyle: { color: '#000000' },
-                        symbolSize: 8, 
-                        z: 3 
+                        symbolSize: 8,
+                        z: 3
                     },
                     { name: 'Valor Empenhado', type: 'bar', data: d.map(l => limparNumeroBR(l.empenhado)), itemStyle: { color: '#5470C6' }, z: 2 },
                     { name: 'Valor Liquidado', type: 'bar', data: d.map(l => limparNumeroBR(l.liquidado)), itemStyle: { color: '#91CC75' }, z: 2 },
                     { name: 'Valor Pago', type: 'bar', data: d.map(l => limparNumeroBR(l.pago)), itemStyle: { color: '#FAC858' }, z: 2 }
                 ]
             };
-            
+
             myChart.setOption(opt, true);
 
+            // Os cards refletem o período do zoom inicial
             let dadosNoZoom = d.slice(0, indexUltimoPreenchido + 1);
             atualizarKPIs(dadosNoZoom);
         }
 
-        myChart.off('datazoom'); 
+        // Ao mexer no zoom, os cards são recalculados para o período visível
+        myChart.off('datazoom');
         myChart.on('datazoom', function () {
             let optAtual = myChart.getOption();
             let startIdx = optAtual.dataZoom[0].startValue;
             let endIdx = optAtual.dataZoom[0].endValue;
-            
+
             let dadosAtualizados = dadosVisiveis.slice(startIdx, endIdx + 1);
             atualizarKPIs(dadosAtualizados);
         });
 
+        // Redesenha o gráfico quando a janela muda de tamanho
         window.addEventListener('resize', () => myChart.resize());
 
+        /* ===================================================================
+           8. EXPORTAÇÕES (CSV, Excel, JSON, XML)
+           Baixam exatamente o período visível no gráfico (filtros + zoom),
+           com os valores já convertidos em números.
+           =================================================================== */
+
+        /** Retorna somente os meses dentro do zoom atual do gráfico. */
         function obterDadosZoom() {
             let optAtual = myChart.getOption();
             if (optAtual && optAtual.dataZoom && optAtual.dataZoom.length > 0) {
@@ -432,10 +651,12 @@
             return dadosVisiveis;
         }
 
+        /** Monta o nome do arquivo a partir do ano filtrado e do intervalo
+            de meses visível (ex: orcamento_cmm_2026_janeiro_a_maio.csv). */
         function gerarNomeArquivoBase() {
             const ano = kpiElements.filtroAno.value;
-            let nome = 'orcamento_cmm'; 
-            
+            let nome = 'orcamento_cmm';
+
             if (ano !== 'Todos') nome += '_' + ano;
             else nome += '_todos_anos';
 
@@ -443,7 +664,7 @@
             if (dadosExportar.length > 0) {
                 let mesInicio = dadosExportar[0].mes.toLowerCase();
                 let mesFim = dadosExportar[dadosExportar.length - 1].mes.toLowerCase();
-                
+
                 if (mesInicio === mesFim) {
                     nome += '_' + mesInicio;
                 } else {
@@ -454,6 +675,8 @@
             return nome;
         }
 
+        /** Converte os meses visíveis para o formato de exportação
+            (valores numéricos, prontos para somar no Excel). */
         function prepararDados() {
             let dadosExportar = obterDadosZoom();
             return dadosExportar.map(l => ({
@@ -466,27 +689,41 @@
             }));
         }
 
+        /** Exporta CSV (separado por ";", padrão do Excel brasileiro).
+            O prefixo \ufeff (BOM) garante acentos corretos no Excel. */
         function exportarCSV() {
             const csv = Papa.unparse(prepararDados(), { delimiter: ";" });
             baixar("\uFEFF" + csv, `${gerarNomeArquivoBase()}.csv`, "text/csv;charset=utf-8;");
         }
+
+        /** Exporta Excel (.xlsx) via SheetJS. */
         function exportarXLSX() {
             const ws = XLSX.utils.json_to_sheet(prepararDados());
             const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Dados");
             XLSX.writeFile(wb, `${gerarNomeArquivoBase()}.xlsx`);
         }
+
+        /** Exporta JSON formatado (2 espaços de indentação). */
         function exportarJSON() {
             baixar(JSON.stringify(prepararDados(), null, 2), `${gerarNomeArquivoBase()}.json`, "application/json");
         }
+
+        /** Exporta XML com os valores escapados (Ano/Mes vêm da planilha). */
         function exportarXML() {
             let xml = '<?xml version="1.0" encoding="UTF-8"?><orcamento>';
             prepararDados().forEach(l => {
                 xml += '<registro>';
-                for(let k in l) xml += `<${k.replace(/[^\w]/g,'')}>${l[k]}</${k.replace(/[^\w]/g,'')}>`;
+                for (let k in l) {
+                    const tag = k.replace(/[^\w]/g, '');
+                    xml += `<${tag}>${escapeXml(l[k])}</${tag}>`;
+                }
                 xml += '</registro>';
             });
             baixar(xml + '</orcamento>', `${gerarNomeArquivoBase()}.xml`, "application/xml");
         }
+
+        /** Dispara o download de um arquivo gerado em memória e libera o
+            blob em seguida para não acumular memória. */
         function baixar(c, n, t) {
             const b = new Blob([c], { type: t }), u = URL.createObjectURL(b), a = document.createElement('a');
             a.href = u; a.download = n; a.click(); URL.revokeObjectURL(u);
