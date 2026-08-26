@@ -11,33 +11,37 @@
      formatada.
 
      COMO FUNCIONA
-     1. Os dados ficam na constante DADOS, logo no início do script
-        (seção CONFIGURAÇÃO). É lá que você inclui um novo exercício.
-     2. OPCIONAL: se preferir manter os dados numa planilha do Google Sheets
-        (como na página de licitantes apenados), basta preencher a constante
-        CSV_URL. Com ela preenchida, a planilha tem prioridade e a lista
-        DADOS passa a ser apenas uma cópia de segurança.
-     3. A página é hospedada no GitHub Pages e exibida dentro de um <iframe>
+     1. Os dados são lidos de uma planilha do Google Sheets publicada como
+        CSV (variável CSV_URL, na seção CONFIGURAÇÃO do script). Para incluir
+        um exercício, basta acrescentar uma linha na planilha.
+     2. A página é hospedada no GitHub Pages e exibida dentro de um <iframe>
         no site oficial: https://www.marilia.sp.leg.br/
-     4. A altura do iframe é ajustada automaticamente via postMessage.
+     3. A altura do iframe é ajustada automaticamente via postMessage.
 
-     CAMPOS DE CADA REGISTRO (mesmos nomes servem de cabeçalho na planilha)
-       exercicio ........... ano das contas julgadas (ex: 2024)
-       processo ............ número do processo no TCE (ex: TC-005147.989.24)
-       julgamento .......... resultado (ex: Regulares com recomendações)
-       transito_julgado .... data do trânsito em julgado (dd/mm/aaaa)
-       itens_irregulares ... principais itens que ensejaram o julgamento
-                             irregular; deixe vazio ou "-" quando não houver
+     FORMATO ESPERADO DA PLANILHA
+     - A primeira aba do arquivo é a publicada pelo Google; mantenha nela
+       apenas a tabela (as instruções ficam numa segunda aba).
+     - Cabeçalhos esperados (viram as chaves dos objetos):
+       exercicio | processo | julgamento | transito_julgado | itens_irregulares
+         exercicio ........... ano das contas julgadas (ex: 2024)
+         processo ............ número do processo no TCE (ex: TC-005147.989.24)
+         julgamento .......... resultado (ex: Regulares com recomendações)
+         transito_julgado .... data do trânsito em julgado (dd/mm/aaaa);
+                               aceita também aaaa-mm-dd e dd-mm-aaaa
+         itens_irregulares ... principais itens que ensejaram o julgamento
+                               irregular; vazio ou "-" quando não houver
+     - A linha de cabeçalho é localizada pela palavra "exercicio", então uma
+       eventual linha de metadados acima dela não atrapalha a leitura.
 
      REGRAS AUTOMÁTICAS
      - Quando "itens_irregulares" está vazio ou é "-", o card mostra
        "Nenhum item registrado" em cinza, em vez de um traço solto.
      - Os cards são exibidos do exercício mais recente para o mais antigo,
-       independentemente da ordem em que estiverem na lista DADOS.
+       independentemente da ordem das linhas na planilha.
 
      MANUTENÇÃO RÁPIDA (o que você normalmente precisa alterar)
-     - Incluir um exercício ...... lista DADOS          (seção CONFIGURAÇÃO)
-     - Migrar para planilha ...... CSV_URL              (seção CONFIGURAÇÃO)
+     - Incluir um exercício ...... acrescentar linha na planilha
+     - Trocar a planilha ......... variável CSV_URL     (seção CONFIGURAÇÃO)
      - Trocar o site que embute .. ORIGEM_PAI           (seção CONFIGURAÇÃO)
      - Trocar o brasão ........... arquivo brasao_marilia.png no repositório
 
@@ -48,7 +52,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Julgamento das Contas Anuais</title>
+    <title>Julgamento das Contas Anuais da Câmara Municipal de Marília</title>
 
     <!-- Estilos do DataTables (tabela com paginação) -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
@@ -294,56 +298,11 @@
        1. CONFIGURAÇÃO
        ======================================================================= */
 
-    /* 🔴 DADOS DOS JULGAMENTOS
-       Para incluir um novo exercício, copie um bloco abaixo e altere os
-       valores. Mantenha as aspas e a vírgula no fim de cada bloco.
-       - transito_julgado: use o formato dd/mm/aaaa (deixe "" se ainda não houve)
-       - itens_irregulares: deixe "" ou "-" quando não houver itens a registrar */
-    const DADOS = [
-        {
-            exercicio: "2024",
-            processo: "TC-005147.989.24",
-            julgamento: "Regulares com recomendações",
-            transito_julgado: "19/06/2026",
-            itens_irregulares: ""
-        },
-        {
-            exercicio: "2023",
-            processo: "TC-005226.989.23",
-            julgamento: "Regulares com recomendações",
-            transito_julgado: "12/02/2026",
-            itens_irregulares: ""
-        },
-        {
-            exercicio: "2022",
-            processo: "TC-004992.989.22",
-            julgamento: "Regulares com recomendações",
-            transito_julgado: "23/07/2024",
-            itens_irregulares: ""
-        },
-        {
-            exercicio: "2021",
-            processo: "TC-006656.989.20",
-            julgamento: "Regulares com recomendações",
-            transito_julgado: "25/10/2023",
-            itens_irregulares: ""
-        },
-        {
-            exercicio: "2020",
-            processo: "TC-003961.989.20",
-            julgamento: "Regulares com determinações e recomendações",
-            transito_julgado: "03/04/2024",
-            itens_irregulares: ""
-        }
-    ];
-
-    // 🔵 OPCIONAL — PLANILHA DO GOOGLE SHEETS
-    // Deixe "" para usar a lista DADOS acima. Se quiser manter os dados numa
-    // planilha (Arquivo → Compartilhar → Publicar na web → CSV), cole o link
-    // aqui: a planilha passa a ter prioridade e DADOS vira apenas backup.
-    // Cabeçalhos esperados na planilha:
+    // 🔴 LINK DO CSV: no Google Sheets, use Arquivo → Compartilhar → Publicar
+    // na web → selecione a aba "Julgamentos" → formato CSV, e cole o link
+    // gerado aqui. Cabeçalhos esperados na primeira linha da planilha:
     // exercicio | processo | julgamento | transito_julgado | itens_irregulares
-    const CSV_URL = "";
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRvxvNlJbj3Ewufg_Us6zbQT1tCEhACAaZloEZpnntJk6AgCe_CMtn0Dw5OI7TqUwNRD3acTno8V4IP/pub?output=csv";
 
     // 🔴 SITE QUE HOSPEDA O IFRAME: a altura da página só será enviada para
     // este domínio (segurança do postMessage). Se o site oficial mudar de
@@ -452,16 +411,28 @@
         );
     }
 
-    /** Converte o CSV publicado da planilha em registros (modo opcional). */
+    /**
+     * Converte o CSV publicado da planilha em registros.
+     *
+     * A linha de cabeçalho é localizada pela palavra "exercicio", então uma
+     * eventual linha de metadados acima dela é simplesmente ignorada.
+     * Os nomes das colunas viram as chaves dos objetos (ex: "transito_julgado").
+     */
     function processarCSV(csvText) {
+        // O PapaParse trata corretamente células com vírgulas e quebras de
+        // linha internas (comuns no campo "itens_irregulares")
         const linhas = Papa.parse(csvText.trim()).data;
         if (linhas.length === 0) return [];
 
+        // Procura a linha de cabeçalho nas primeiras linhas do arquivo
+        let linhaCabecalho = linhas.findIndex(l => l.join(",").toLowerCase().includes("exercicio"));
+        if (linhaCabecalho === -1) linhaCabecalho = 0;
+
         // Remove caracteres invisíveis (BOM) que o Google às vezes inclui
-        const headers = linhas[0].map(h => String(h).trim().toLowerCase().replace(/[\uFEFF\u200B]/g, ""));
+        const headers = linhas[linhaCabecalho].map(h => String(h).trim().toLowerCase().replace(/[\uFEFF\u200B]/g, ""));
         const lista = [];
 
-        for (let i = 1; i < linhas.length; i++) {
+        for (let i = linhaCabecalho + 1; i < linhas.length; i++) {
             const colunas = linhas[i];
             if (!colunas || colunas.every(c => String(c).trim() === "")) continue;
 
@@ -472,29 +443,23 @@
         return lista;
     }
 
-    /** Carrega os dados (da planilha, se CSV_URL estiver preenchida; caso
-        contrário, da lista DADOS) e inicia o painel. */
+    /** Baixa o CSV publicado do Google Sheets e inicia o painel.
+        O parâmetro cache=timestamp evita cópia em cache do navegador. */
     async function carregarDados() {
         $('#loader').show();
         $('#main-container').hide();
-
-        if (CSV_URL) {
-            try {
-                const separador = CSV_URL.includes('?') ? '&' : '?';
-                const resposta = await fetch(`${CSV_URL}${separador}cache=${Date.now()}`);
-                const texto = await resposta.text();
-                dadosGlobais = processarCSV(texto);
-            } catch (erro) {
-                console.error("Erro ao carregar a planilha; usando os dados internos.", erro);
-                dadosGlobais = DADOS.map(prepararRegistro);
-            }
-        } else {
-            dadosGlobais = DADOS.map(prepararRegistro);
+        try {
+            const separador = CSV_URL.includes('?') ? '&' : '?';
+            const resposta = await fetch(`${CSV_URL}${separador}cache=${Date.now()}`);
+            const texto = await resposta.text();
+            dadosGlobais = processarCSV(texto);
+            renderizarTabela(ordenarPorExercicio(dadosGlobais));
+            $('#loader').hide();
+            $('#main-container').fadeIn(400, () => enviarAlturaIframe());
+        } catch (erro) {
+            console.error("Erro ao carregar os dados: ", erro);
+            $('#loader').html('<b style="color:red">Erro ao carregar dados. Verifique o compartilhamento da planilha.</b>');
         }
-
-        renderizarTabela(ordenarPorExercicio(dadosGlobais));
-        $('#loader').hide();
-        $('#main-container').fadeIn(400, () => enviarAlturaIframe());
     }
 
     /* =======================================================================
