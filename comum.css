@@ -1,0 +1,172 @@
+/* =========================================================================
+   comum.css — estilos compartilhados das paginas do Portal de Transparencia
+   Camara Municipal de Marilia
+
+   Origem: extraido de contratos.html (versao mais completa).
+   Paginas que precisem de estilos proprios adicionam um <style> curto
+   apos <link rel="stylesheet" href="comum.css">.
+   ========================================================================= */
+
+/* ====================================================================
+   ÍNDICE DOS ESTILOS
+   1. Base e layout geral
+   2. Cabeçalho (topo azul e brasão)
+   3. Painéis (filtros, exportação, visualização)
+   4. Formulários e grade de filtros
+   5. Barra de exportação
+   6. Cards de contratos e botões de links externos
+   7. Tabela e paginação (DataTables)
+   8. Loader (carregamento)
+   9. Responsividade para celular
+   10. Impressão
+   ==================================================================== */
+
+/* --------------------------------------------------------------------
+   1. BASE E LAYOUT GERAL
+   -------------------------------------------------------------------- */
+body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden; }
+
+/* Padding inferior maior (40px) dá respiro ao conteúdo dentro do iframe */
+#wrapper { padding: 15px 15px 40px; }
+
+/* --------------------------------------------------------------------
+   2. CABEÇALHO (topo azul e brasão)
+   -------------------------------------------------------------------- */
+.topo { background: #003b75; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+.topo h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
+.logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
+.brasao { max-width: 100%; height: auto; object-fit: contain; }
+
+/* Cabeçalho exclusivo da versão impressa (oculto na tela; ver seção 10) */
+#cabecalho-impressao { display: none; }
+
+/* --------------------------------------------------------------------
+   3. PAINÉIS (caixas brancas de filtros, exportação e visualização)
+   -------------------------------------------------------------------- */
+.painel-grupo { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.titulo-painel { font-size: 13px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: .5px; padding: 0 10px; }
+
+/* Legenda que também carrega o selo de atualização: ocupa a largura toda
+   e joga o selo para a direita, na mesma linha do texto. */
+.titulo-painel--com-selo { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px 14px; flex-wrap: wrap; }
+
+/* Selo verde com a data de atualização (lida da 1ª linha da planilha). */
+.badge-atualizacao { font-size: 12px; background: #d1fae5; color: #065f46; padding: 4px 14px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; white-space: nowrap; text-transform: none; letter-spacing: 0; }
+
+/* --------------------------------------------------------------------
+   4. FORMULÁRIOS E GRADE DE FILTROS
+
+   Grade de 4 colunas: a busca livre ocupa 2 (.span-2), cada select e o
+   botão ocupam 1. 8 células → 2 linhas exatas, sem buraco.
+   Colapsa para 2 colunas (≤1024px) e 1 coluna (≤768px).
+   -------------------------------------------------------------------- */
+select, input { height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box; width: 100%; }
+button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; width: 100%; }
+button.btn-filtro:hover { background: #00274d; }
+
+.painel-filtros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.painel-filtros .span-2 { grid-column: span 2; }
+
+/* --------------------------------------------------------------------
+   5. BARRA DE EXPORTAÇÃO
+   Em telas estreitas os botões deslizam horizontalmente (scroll suave)
+   -------------------------------------------------------------------- */
+.painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
+.painel-exportacao button { flex: 1; min-width: 100px; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.painel-exportacao button:hover { background: #00274d; }
+.painel-exportacao .btn-acao { background: #0284c7; } /* botão Imprimir (azul claro) */
+.painel-exportacao::-webkit-scrollbar { height: 6px; }
+.painel-exportacao::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+/* Cabeçalho da área de visualização: menu "Exibir X" + contador de registros */
+.dt-custom-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 5px 0; }
+.badge-contagem { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid #bae6fd; }
+
+/* Ajuste visual do menu "Exibir X resultados" do DataTables */
+.dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; margin: 0; white-space: nowrap; }
+.dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
+
+/* --------------------------------------------------------------------
+   6. CARDS DE CONTRATOS E BOTÕES DE LINKS EXTERNOS
+   Cada contrato vira um card: cabeçalho (razão social/CNPJ/situação),
+   corpo com os dados e botões para o PDF e a pasta no SAPL
+   -------------------------------------------------------------------- */
+
+/* O <thead> fica oculto: a tabela existe só para o DataTables paginar os cards */
+#tabela thead { display: none !important; }
+table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
+
+.card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+.card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; display: flex; justify-content: space-between; align-items: center; }
+.card-header-texto { display: flex; flex-direction: column; gap: 2px; width: 75%; }
+.nome-principal { font-size: 15px; font-weight: 800; color: #003b75; text-transform: uppercase; word-break: break-word; }
+
+/* Selo de situação: verde (vigente), vermelho (encerrado) ou
+   âmbar (licitante apenado — mesma cor da página de apenados) */
+.status-badge { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: center; white-space: nowrap; }
+.status-ativo { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+.status-desligado { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.status-apenado { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.status-rescindido { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+.card-body { padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+.info-row { display: flex; flex-wrap: wrap; gap: 15px; width: 100%; }
+.info-col { flex: 1; min-width: 130px; display: flex; flex-direction: column; }
+.info-col.full-width { flex: 1 1 100%; background: #f8fafc; padding: 10px 12px; border-radius: 6px; border: 1px solid #f1f5f9; box-sizing: border-box; }
+
+.info-label { font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
+.info-valor { font-size: 13px; font-weight: 700; color: #1e293b; word-break: break-word; }
+
+/* Botões de links externos (PDF, SAPL etc.): container genérico.
+   As cores de cada botão ficam no <style> da página que os usa. */
+.container-links { display: flex; flex-wrap: wrap; gap: 12px; width: 100%; }
+.btn-link-externo { flex: 1; min-width: 200px; display: flex; align-items: center; justify-content: center; gap: 8px; height: 42px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; text-transform: uppercase; transition: 0.2s ease-in-out; box-sizing: border-box; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+/* --------------------------------------------------------------------
+   7. TABELA E PAGINAÇÃO (DataTables)
+   -------------------------------------------------------------------- */
+.dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px; }
+.dataTables_wrapper .dataTables_info { padding-top: 0 !important; color: #475569; font-size: 13px; font-weight: 500; margin-bottom: 0 !important; }
+.dataTables_wrapper .dataTables_paginate { display: flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 0 !important; }
+.dataTables_wrapper .dataTables_paginate .paginate_button { padding: 6px 12px !important; border-radius: 6px !important; margin: 0 !important; border: 1px solid transparent !important; color: #475569 !important; font-weight: 600; font-size: 13px; background: transparent !important; cursor: pointer; transition: 0.2s; }
+.dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border-color: #003b75 !important; }
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #003b75 !important; }
+
+/* --------------------------------------------------------------------
+   8. LOADER (indicador de carregamento inicial)
+   -------------------------------------------------------------------- */
+#loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #003b75; font-weight: bold; }
+.spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* --------------------------------------------------------------------
+   9. RESPONSIVIDADE PARA CELULAR (≤768px)
+   -------------------------------------------------------------------- */
+/* Telas médias: 2 colunas */
+@media (max-width: 1024px) {
+    .painel-filtros { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+    .topo { flex-direction: column; gap: 10px; text-align: center; }
+    .card-header { flex-direction: column; text-align: center; gap: 10px; }
+    .card-header-texto { width: 100%; }
+    .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
+    .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important; }
+    /* Empilha todos os filtros em coluna única */
+    .painel-filtros { grid-template-columns: 1fr; }
+    .painel-filtros .span-2 { grid-column: span 1; }
+}
+
+/* --------------------------------------------------------------------
+   10. IMPRESSÃO
+   Esconde filtros, botões e links externos; mostra o cabeçalho
+   institucional com brasão
+   -------------------------------------------------------------------- */
+@media print {
+    .topo, fieldset, .dt-bottom-controls, .container-links { display: none !important; }
+    #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
+    .card-info { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; }
+    .container { display: block !important; margin: 0; }
+}
