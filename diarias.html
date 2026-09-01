@@ -6,31 +6,47 @@
 
      O QUE É ESTA PÁGINA
      Portal de transparência que exibe as diárias e adiantamentos concedidos
-     a vereadores e assessores, em formato de cards, com filtros por nome,
-     gabinete, servidor, mês e ano, exportação em CSV, Excel, JSON e XML,
-     e impressão formatada.
+     a vereadores e servidores, em formato de cards, com busca livre e
+     filtros por legislatura, gabinete, servidor, ano e mês, exportação em
+     CSV, Excel, JSON e XML, e impressão formatada.
 
      COMO FUNCIONA
-     1. Os dados vêm de DUAS planilhas do Google Sheets exportadas como CSV:
-        - URL_DIARIAS ....... registros de diárias/adiantamentos
-        - URL_GABINETES ..... lista de gabinetes para o filtro
-     2. A página é hospedada no GitHub Pages e exibida dentro de um <iframe>
+     1. Os dados são lidos de abas (por ano) de uma planilha do Google Sheets
+        publicadas como CSV (FONTES_POR_ANO, na seção CONFIGURAÇÃO do script).
+        O filtro "Legislatura" define QUAIS abas de ano são carregadas de uma
+        vez (a legislatura atual tem 4 anos); "Ano" e "Mês" filtram depois,
+        já na memória.
+     2. Uma segunda planilha (URL_GABINETES) traz a lista de gabinetes, cada
+        um marcado com a legislatura ("20" ou "21"); o filtro "Gabinete" só
+        mostra os vereadores da legislatura carregada.
+     3. A página é hospedada no GitHub Pages e exibida dentro de um <iframe>
         no site oficial: https://www.marilia.sp.leg.br/
-     3. A altura do iframe é ajustada automaticamente via postMessage.
+     4. A altura do iframe é ajustada automaticamente via postMessage.
 
-     FORMATO ESPERADO DA PLANILHA DE DIÁRIAS
-     - Linha 1: metadados, contendo "MODIF_REAL: dd/mm/aaaa hh:mm"
-       (data da última atualização, exibida no selo verde)
-     - Linha 2: cabeçalhos das colunas, entre eles:
-       servidor | cargo | qtde_diarias | data_partida | data_retorno |
-       valor_diarias | valor_adiantamento | dotacao | cidade_destino |
-       local_destino | motivacao_viagem
+     CÓDIGO COMPARTILHADO
+     - Estilos comuns a todas as páginas ....... comum.css
+     - Funções comuns (texto, datas, iframe,
+       download e exportações) ................. comum.js
+     Esta página contém apenas o que é específico de diárias: leitura da
+     planilha, filtros, ordenação e montagem dos cards.
+
+     FORMATO ESPERADO DA PLANILHA  (ver padrao-planilhas.md no repositório)
+     - Linha 1: carimbo "DADOS_ATUALIZADOS_EM: dd/mm/aaaa hh:mm"
+       (exibido no selo verde; preenchido pelo Apps Script)
+     - Linha 2: cabeçalhos, localizados por NOME (não por posição):
+       nome_servidor | cargo | quantidade_diarias | data_partida |
+       data_retorno | valor_diarias | valor_adiantamento | dotacao |
+       local_destino | cidade_destino | motivacao_viagem
+       (os nomes antigos servidor / qtde_diarias continuam sendo aceitos)
      - Linha 3 em diante: os registros
-     - Datas no formato dd/mm/aaaa; valores como "R$ 1.234,56" ou "1.234,56"
+     - Datas dd/mm/aaaa; valores como número (sem "R$")
+     - A planilha é dividida em abas por ANO da data de partida. Cada aba
+       publicada vira uma URL de CSV; ver FONTES_POR_ANO na CONFIGURAÇÃO.
 
      MANUTENÇÃO RÁPIDA (o que você normalmente precisa alterar)
-     - Trocar as planilhas ....... URL_DIARIAS e URL_GABINETES (CONFIGURAÇÃO)
-     - Trocar o site que embute .. ORIGEM_PAI (CONFIGURAÇÃO)
+     - Publicar aba de ano nova .. adicionar a URL em FONTES_POR_ANO
+     - Trocar a lista de gabinetes . variável URL_GABINETES
+     - Trocar o site que embute .. variável ORIGEM_PAI (seção CONFIGURAÇÃO)
      - Trocar o brasão ........... arquivo brasao_marilia.png no repositório
      - Ativar o card de totais ... procure por "CARD DE SOMATÓRIA" no HTML
 
@@ -51,157 +67,25 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+    <!-- Estilos compartilhados de todas as páginas do portal -->
+    <link rel="stylesheet" href="comum.css" />
+
     <style>
-        /* ====================================================================
-           ÍNDICE DOS ESTILOS
-           1. Base e layout geral
-           2. Cabeçalho (topo azul e brasão)
-           3. Painéis (filtros, exportação, visualização)
-           4. Formulários e botões
-           5. Totais (card de somatória, quando ativado)
-           6. Barra de exportação
-           7. Cards de diárias
-           8. Tabela e paginação (DataTables)
-           9. Loader (carregamento)
-           10. Responsividade para celular
-           11. Impressão
-           ==================================================================== */
-
-        /* --------------------------------------------------------------------
-           1. BASE E LAYOUT GERAL
-           -------------------------------------------------------------------- */
-        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; }
-
-        /* Padding inferior maior (40px) dá respiro ao conteúdo dentro do iframe */
-        #wrapper { padding: 15px 15px 40px; }
-
-        /* --------------------------------------------------------------------
-           2. CABEÇALHO (topo azul e brasão)
-           -------------------------------------------------------------------- */
-        .topo { background: #003b75; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); gap: 20px; }
-        .topo h1 { margin: 0; font-size: 1.5rem; font-weight: 800; letter-spacing: 1px; }
-        .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-        .texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
-        .brasao { max-width: 100%; height: auto; object-fit: contain; }
-
-        /* Cabeçalho exclusivo da versão impressa (oculto na tela; ver seção 11) */
-        #cabecalho-impressao { display: none; }
-
-        /* --------------------------------------------------------------------
-           3. PAINÉIS (caixas brancas de filtros, exportação e visualização)
-           -------------------------------------------------------------------- */
-        .painel { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .painel-titulo { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
-
-        /* Selo verde com a data de atualização (lida da planilha, ver MODIF_REAL) */
-        .badge-sinc { position: absolute; top: -10px; right: 20px; font-size: 10px; background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 20px; font-weight: 700; border: 1px solid #a7f3d0; }
-
-        /* --------------------------------------------------------------------
-           4. FORMULÁRIOS E BOTÕES
-           -------------------------------------------------------------------- */
-        select, input { height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box; width: 100%; }
-        button.btn-filtro { height: 38px; border-radius: 6px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; width: 100%; }
-        button.btn-filtro:hover { background: #00274d; }
-
-        /* Grade de filtros: colunas de no mínimo 200px que se reorganizam
-           sozinhas conforme a largura da tela (auto-fit) */
-        .painel-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
-
-        /* --------------------------------------------------------------------
-           5. TOTAIS (card de somatória — desativado no HTML, ver comentário lá)
-           -------------------------------------------------------------------- */
+        /* ESTILOS ESPECÍFICOS DE DIÁRIAS
+           A estrutura dos cards (.card-info, .card-header, .info-row…) vem
+           de comum.css. Aqui só o card de somatória, quando ativado. */
         .totais-container { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
         .total-box { flex: 1 1 250px; background: white; border: 1px solid #e2e8f0; border-left: 4px solid #003b75; border-radius: 10px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .total-box label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; display: block; }
         .total-box span { font-size: 18px; font-weight: 800; }
-
-        /* --------------------------------------------------------------------
-           6. BARRA DE EXPORTAÇÃO
-           Em telas estreitas os botões deslizam horizontalmente (scroll suave)
-           -------------------------------------------------------------------- */
-        .painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
-        .painel-exportacao button { flex: 1; min-width: 100px; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .painel-exportacao button:hover { background: #00274d; }
-        .painel-exportacao .btn-acao { background: #0284c7; } /* botão Imprimir (azul claro) */
-        .painel-exportacao::-webkit-scrollbar { height: 6px; }
-        .painel-exportacao::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-
-        /* Cabeçalho da área de visualização: menu "Exibir X" + contador de registros */
-        .dt-header-flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 5px 0; }
-        .badge-count { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid #bae6fd; }
-
-        /* Ajuste visual do menu "Exibir X resultados" do DataTables */
-        .dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; margin: 0; white-space: nowrap; }
-        .dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
-
-        /* --------------------------------------------------------------------
-           7. CARDS DE DIÁRIAS
-           Cada registro vira um card: cabeçalho (servidor/cargo), corpo com
-           datas e valores, e rodapé com destino e motivação da viagem
-           -------------------------------------------------------------------- */
-
-        /* O <thead> fica oculto: a tabela existe só para o DataTables paginar os cards */
-        #tabela-base thead { display: none !important; }
-        table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
-
-        .card-diaria { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        .card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; }
-        .card-nome { font-size: 16px; font-weight: 800; color: #003b75; text-transform: uppercase; }
-        .card-cargo { font-size: 12px; color: #64748b; text-transform: uppercase; display: block; margin-top: 2px; }
-        .card-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); padding: 12px 15px; gap: 10px; }
-        .card-body.sep { border-top: 1px dashed #f1f5f9; }
-        .item-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 2px; }
-        .item-valor { font-size: 13px; font-weight: 700; color: #1e293b; }
-
-        /* Rodapé do card: destino e motivação (a motivação ocupa a linha toda) */
-        .card-footer { background: #f8fafc; padding: 12px 15px; border-top: 1px solid #edf2f7; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .quadro-full { grid-column: 1 / -1; border-top: 1px dashed #e2e8f0; padding-top: 10px; margin-top: 2px; }
-
-        /* --------------------------------------------------------------------
-           8. TABELA E PAGINAÇÃO (DataTables)
-           -------------------------------------------------------------------- */
-        .controles-datatable { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px; }
-        .dataTables_wrapper .dataTables_info { padding-top: 0 !important; color: #475569; font-size: 13px; font-weight: 500; margin-bottom: 0 !important; }
-        .dataTables_wrapper .dataTables_paginate { display: flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 0 !important; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 6px 12px !important; border-radius: 6px !important; margin: 0 !important; border: 1px solid transparent !important; color: #475569 !important; font-weight: 600; font-size: 13px; background: transparent !important; cursor: pointer; transition: 0.2s; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border-color: #003b75 !important; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #003b75 !important; }
-
-        /* --------------------------------------------------------------------
-           9. LOADER (indicador de carregamento inicial)
-           -------------------------------------------------------------------- */
-        #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #003b75; font-weight: bold; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* --------------------------------------------------------------------
-           10. RESPONSIVIDADE PARA CELULAR (≤600px)
-           -------------------------------------------------------------------- */
-        @media (max-width: 600px) {
-            .topo { flex-direction: column; gap: 10px; text-align: center; }
-            .card-body { grid-template-columns: 1fr 1fr; }
-            .card-footer { grid-template-columns: 1fr; }
-            .dt-header-flex, .controles-datatable { flex-direction: column; text-align: center; }
-            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important; }
-        }
-
-        /* --------------------------------------------------------------------
-           11. IMPRESSÃO
-           Esconde filtros, botões e paginação; mostra o cabeçalho com brasão.
-           (CORRIGIDO: antes escondia ".dt-bottom-controls", classe que não
-           existe nesta página — a paginação aparecia na impressão)
-           -------------------------------------------------------------------- */
         @media print {
-            .topo, fieldset, .controles-datatable { display: none !important; }
-            #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
             .totais-container { display: flex !important; flex-direction: row !important; gap: 10px !important; margin-bottom: 20px !important; page-break-inside: avoid; }
-            .total-box { border: 1px solid #cbd5e1 !important; border-left: 4px solid #003b75 !important; background: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .card-diaria { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; }
-            #main-content { display: block !important; margin: 0; }
+            .total-box { border: 1px solid #cbd5e1 !important; border-left: 4px solid #003b75 !important; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
 <body>
+
 <div id="wrapper">
 
     <!-- ================================================================
@@ -226,44 +110,57 @@
         </div>
     </div>
 
-    <!-- Loader exibido enquanto os CSVs do Google Sheets são baixados -->
-    <div id="loader"><div class="spinner"></div><span>Sincronizando dados...</span></div>
+    <!-- Loader exibido enquanto o CSV do Google Sheets é baixado -->
+    <div id="loader" role="status" aria-live="polite">
+        <div class="spinner"></div>
+        <span>Carregando base de dados de diárias...</span>
+    </div>
 
     <!-- ================================================================
          CONTEÚDO PRINCIPAL (exibido após o carregamento dos dados)
          ================================================================ -->
-    <main id="main-content" style="display:none;">
+    <main class="container" id="main-container" style="display: none;">
 
         <!-- Painel: filtros de pesquisa -->
-        <fieldset class="painel">
-            <legend class="painel-titulo">Filtros de Pesquisa</legend>
-            <div id="sync-info" class="badge-sinc">Aguardando...</div>
-            <div class="painel-filtros" style="margin-bottom: 10px;">
-                <input type="text" id="buscaNome" placeholder="Pesquisar por nome..." autocomplete="off" aria-label="Pesquisar por nome">
-                <select id="selGabinete" aria-label="Filtrar por Gabinete"><option value="">Gabinete</option></select>
-                <select id="selServidor" aria-label="Filtrar por Servidor"><option value="">Servidor</option></select>
-            </div>
+        <fieldset class="painel-grupo">
+            <legend class="titulo-painel titulo-painel--com-selo">
+                Filtros de Pesquisa
+                <span id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</span>
+            </legend>
+
             <div class="painel-filtros">
-                <!-- Os valores dos meses (01-12) correspondem ao mês da data de
-                     partida (dd/MM/aaaa) usado no filtro -->
-                <select id="selMes" aria-label="Filtrar por Mês">
-                    <option value="">Mês</option>
+                <input type="text" id="filtroTexto" class="span-2" placeholder="Pesquisar por nome, cargo, cidade, motivação..." autocomplete="off" aria-label="Pesquisa livre">
+
+                <!-- Legislatura: define o conjunto de anos carregado e quais
+                     gabinetes aparecem no filtro. Trocar recarrega os dados. -->
+                <select id="filtroLegislatura" aria-label="Filtrar por Legislatura"></select>
+                <select id="filtroGabinete" aria-label="Filtrar por Gabinete">
+                    <option value="">Gabinete</option>
+                </select>
+                <select id="filtroServidor" aria-label="Filtrar por Servidor">
+                    <option value="">Servidor</option>
+                </select>
+                <select id="filtroAno" aria-label="Filtrar por Ano">
+                    <option value="">Ano</option>
+                </select>
+                <!-- Os valores dos meses (01-12) correspondem ao mês da data de partida -->
+                <select id="filtroMes" aria-label="Filtrar por Mês de partida">
+                    <option value="">Mês (partida)</option>
                     <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
                     <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
                     <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
                     <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
                 </select>
-                <select id="selAno" aria-label="Filtrar por Ano"><option value="">Ano</option></select>
-                <button class="btn-filtro" onclick="resetarFiltros()">Limpar Filtros</button>
+                <button class="btn-filtro" onclick="limparFiltros()">Limpar filtros</button>
             </div>
         </fieldset>
 
         <!-- Painel: botões de exportação e impressão -->
-        <fieldset class="painel">
-            <legend class="painel-titulo">Exportação e Ações</legend>
+        <fieldset class="painel-grupo">
+            <legend class="titulo-painel">Exportação e Impressão</legend>
             <div class="painel-exportacao">
                 <button onclick="exportarCSV()">⬇️ CSV</button>
-                <button onclick="exportarExcel()">⬇️ Excel</button>
+                <button onclick="exportarXLSX()">⬇️ Excel</button>
                 <button onclick="exportarJSON()">⬇️ JSON</button>
                 <button onclick="exportarXML()">⬇️ XML</button>
                 <button class="btn-acao" onclick="imprimirSeguro()">🖨️ Imprimir</button>
@@ -283,506 +180,563 @@
         -->
 
         <!-- Painel: menu "Exibir X resultados" + contador de registros -->
-        <fieldset class="painel" id="painel-visualizacao" style="padding: 10px 15px;">
-            <legend class="painel-titulo">Visualização</legend>
-            <div class="dt-header-flex">
-                <div id="area-length"></div>
-                <div class="badge-count"><span id="count-rows">0</span> registros encontrados</div>
+        <fieldset class="painel-grupo" id="painel-visualizacao" style="padding: 10px 15px;">
+            <legend class="titulo-painel">Visualização</legend>
+            <div class="dt-custom-header">
+                <div id="comprimento-tabela"></div>
+                <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
             </div>
         </fieldset>
 
         <!-- Tabela-base do DataTables: cada linha renderiza um card completo.
-             O cabeçalho fica oculto via CSS (seção 7) -->
-        <table id="tabela-base" style="width:100%" role="presentation"><thead><tr><th>Dados</th></tr></thead><tbody></tbody></table>
+             O cabeçalho fica oculto via CSS (comum.css) -->
+        <table id="tabela" style="width:100%" role="presentation">
+            <thead><tr><th>Dados das Diárias</th></tr></thead>
+            <tbody></tbody>
+        </table>
     </main>
 </div>
 
 <!-- ====================================================================
-     BIBLIOTECAS EXTERNAS (CDN)
+     BIBLIOTECAS EXTERNAS (CDN) + CÓDIGO COMPARTILHADO
      jQuery ......... base para o DataTables e manipulação do DOM
      DataTables ..... paginação e controle de exibição dos cards
      SheetJS (xlsx) . geração do arquivo Excel
      PapaParse ...... leitura correta do CSV (aceita vírgulas e quebras de
                       linha dentro das células, como na motivação da viagem)
+     comum.js ....... funções compartilhadas (texto, datas, iframe,
+                      download e exportações)
      ==================================================================== -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
+<!-- Domínio que embute o iframe: a altura da página só é enviada para
+     este endereço (segurança do postMessage). Use "*" apenas em testes. -->
+<script>window.ORIGEM_PAI = "https://www.marilia.sp.leg.br";</script>
+<script src="comum.js"></script>
+
 <script>
     /* =======================================================================
-       ÍNDICE DO SCRIPT
-       1. Configuração (o que você normalmente altera está aqui)
-       2. Estado global
-       3. Funções utilitárias
-       4. Comunicação com o iframe (altura automática)
-       5. Carregamento dos dados (duas planilhas em paralelo)
-       6. Processamento do CSV de diárias
-       7. Filtros (popular e aplicar)
-       8. Tabela de cards (DataTables)
-       9. Exportações (CSV, Excel, JSON, XML) e nome dos arquivos
-       10. Impressão
-       11. Inicialização (eventos e primeira carga)
+       ESPECÍFICO DE DIÁRIAS
+       As funções utilitárias (removerAcentos, escapeHtml, escapeXml,
+       parseNumeroBR, formatarBRL, formatarDataBR, dataParaTimestamp,
+       buscarCSV, indexarColunas, enviarAlturaIframe e o objeto Exportar)
+       vêm de comum.js.
        ======================================================================= */
 
     /* =======================================================================
        1. CONFIGURAÇÃO
        ======================================================================= */
 
-    // 🔴 PLANILHA DE DIÁRIAS: link de exportação CSV do Google Sheets
-    const URL_DIARIAS = "https://docs.google.com/spreadsheets/d/1XP67Ojd_HK3S1IPvC_9eY32-lf0_qI3jfBfrLzasvQo/export?format=csv";
+    // 🔴 FONTES DE DADOS — uma URL de CSV por ano da data de partida.
+    //
+    // A planilha de diárias é dividida em abas por ano. Ao publicar a aba
+    // de um ano novo (Arquivo → Compartilhar → Publicar na web → escolher a
+    // aba → CSV), acrescente aqui uma linha "ANO": "URL".
+    // Passo a passo completo: padrao-planilhas.md, seção 4b.
+    const FONTES_POR_ANO = {
+        "2026": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTtMF3eG1pp1M6Pk6ZOYhabqXwdSa59V9OwpG4974bSTW-Kh0P1_hNmSODwsmTIwtKE-LCLUNvB0yFk/pub?gid=610285154&single=true&output=csv",
+        "2025": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTtMF3eG1pp1M6Pk6ZOYhabqXwdSa59V9OwpG4974bSTW-Kh0P1_hNmSODwsmTIwtKE-LCLUNvB0yFk/pub?gid=1117138374&single=true&output=csv",
+        "2024": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTtMF3eG1pp1M6Pk6ZOYhabqXwdSa59V9OwpG4974bSTW-Kh0P1_hNmSODwsmTIwtKE-LCLUNvB0yFk/pub?gid=240692215&single=true&output=csv",
+        "2023": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTtMF3eG1pp1M6Pk6ZOYhabqXwdSa59V9OwpG4974bSTW-Kh0P1_hNmSODwsmTIwtKE-LCLUNvB0yFk/pub?gid=270273885&single=true&output=csv"
+    };
 
-    // 🔴 PLANILHA DE GABINETES: lista usada no filtro "Gabinete"
-    const URL_GABINETES = "https://docs.google.com/spreadsheets/d/1GwDig1yn9YIX8FSsHFPHL2iLCtwsZkNnquNjp5D7Oaw/export?format=csv";
+    // 🔴 PLANILHA DE GABINETES: lista usada no filtro "Gabinete".
+    // Duas colunas — cabeçalho na 1ª linha: "gabinete" | "legislatura"
+    // (ver planilhas_normalizadas/gabinetes.xlsx). A legislatura é "20" ou
+    // "21"; o filtro só mostra os gabinetes da legislatura do ano aberto.
+    const URL_GABINETES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTrEs7gAdVQ9P_mMO9qKXaa80sUO8-o-KYrqTBewtKtVA6_wp-5kzAYSLjryjJtzMMzxmhdAh9bRvwk/pub?gid=1946841856&single=true&output=csv";
 
-    // 🔴 SITE QUE HOSPEDA O IFRAME: a altura da página só será enviada para
-    // este domínio (segurança do postMessage). Se o site oficial mudar de
-    // endereço, atualize aqui. Use "*" apenas em testes locais.
-    const ORIGEM_PAI = "https://www.marilia.sp.leg.br";
+    // Legislaturas da Câmara de Marília (mandatos de 4 anos). Ao virar a
+    // legislatura (2029), acrescente aqui a nova faixa.
+    const LEGISLATURAS = [
+        { numero: "21", rotulo: "21ª legislatura (2025–2028)", inicio: 2025, fim: 2028 },
+        { numero: "20", rotulo: "20ª legislatura (2021–2024)", inicio: 2021, fim: 2024 },
+    ];
+
+    /** Retorna a legislatura ({numero, rotulo}) a que um ano pertence, ou null. */
+    function legislaturaDoAno(ano) {
+        const a = Number(ano);
+        return LEGISLATURAS.find(L => a >= L.inicio && a <= L.fim) || null;
+    }
+
+    /** Legislaturas que têm pelo menos um ano configurado em FONTES_POR_ANO,
+        da mais recente para a mais antiga. */
+    function legislaturasDisponiveis() {
+        const nums = new Set();
+        Object.keys(FONTES_POR_ANO).forEach(ano => {
+            const L = legislaturaDoAno(ano);
+            if (L) nums.add(L.numero);
+        });
+        return LEGISLATURAS.filter(L => nums.has(L.numero));
+    }
+
+    /** Anos configurados de uma legislatura, do mais recente para o mais antigo. */
+    function anosDaLegislatura(numero) {
+        return Object.keys(FONTES_POR_ANO)
+            .filter(ano => { const L = legislaturaDoAno(ano); return L && L.numero === numero; })
+            .sort((a, b) => Number(b) - Number(a));
+    }
 
     /* =======================================================================
        2. ESTADO GLOBAL
        ======================================================================= */
-    let grid;                // instância única do DataTables
-    let dadosBrutos = [];    // registros de diárias, já normalizados
-    let listaGabinetes = []; // nomes de gabinetes para o filtro
+    let tabela;                  // instância única do DataTables
+    let dadosGlobais = [];       // diárias de TODOS os anos da legislatura carregada
+    let listaGabinetes = [];     // nomes de gabinetes (para o filtro)
+    let carimboAtualizacao = ""; // data de atualização exibida no selo verde
 
     /* =======================================================================
-       3. FUNÇÕES UTILITÁRIAS
+       3. CARREGAMENTO E PROCESSAMENTO DOS DADOS
        ======================================================================= */
 
-    /** Remove acentos de um texto ("Marília" → "Marilia"). Usada em comparações. */
-    function removerAcentos(str) { return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; }
+    // Campo interno → nome(s) da coluna na planilha (linha 2). A coluna é
+    // localizada por NOME (normalizado: sem acento, minúsculo, espaço→"_"),
+    // não por posição. Aceita o nome novo e o antigo (retrocompatível).
+    const COL = {
+        servidor:     ["nome_servidor", "servidor"],
+        cargo:        ["cargo"],
+        quantidade:   ["quantidade_diarias", "qtde_diarias"],
+        data_partida: ["data_partida"],
+        data_retorno: ["data_retorno"],
+        valor_diaria: ["valor_diarias"],
+        adiantamento: ["valor_adiantamento"],
+        dotacao:      ["dotacao"],
+        local:        ["local_destino"],
+        cidade:       ["cidade_destino"],
+        motivacao:    ["motivacao_viagem"],
+    };
 
     /**
-     * SEGURANÇA: escapa caracteres HTML antes de inserir dados da planilha
-     * na página. Impede que uma célula contendo tags ou scripts quebre o
-     * layout ou execute código (XSS).
+     * Converte o texto de um CSV (uma aba de ano) em { carimbo, diarias }.
+     * Estrutura esperada:
+     *   Linha 1 .... carimbo "DADOS_ATUALIZADOS_EM: ..." (selo verde)
+     *   Linha 2 .... cabeçalhos (ver COL)
+     *   Linha 3+ ... diárias
      */
-    function escapeHtml(valor) {
-        return String(valor ?? "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;");
-    }
+    function processarCSV(text) {
+        // PapaParse trata células com vírgulas e quebras de linha internas
+        const linhas = Papa.parse(text).data;
 
-    /** Escapa os caracteres reservados do XML (&, <, >) na exportação. */
-    function escapeXml(valor) {
-        return String(valor ?? "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-    }
-
-    /** Exibe um valor monetário com o prefixo "R$" ("1.234,56" → "R$ 1.234,56"). */
-    function formatarMoeda(v) { return (!v || v === "0") ? "R$ 0,00" : (v.includes("R$") ? v : `R$ ${v}`); }
-
-    /** Converte texto monetário brasileiro em número ("R$ 1.234,56" → 1234.56).
-        Usado nos totais e na exportação Excel (valores numéricos). */
-    function parseMoeda(v) { return parseFloat((v || "0").replace(/R\$\s?|[.]/g, '').replace(',', '.')) || 0; }
-
-    /** Converte uma data "dd/mm/aaaa" em número ordenável (aaaa mm dd →
-        20260518). Datas inválidas retornam 0 e vão para o fim da lista.
-        Usado na ordenação dos cards e na seleção do período mais recente. */
-    function dataParaNumero(data) {
-        const p = String(data || "").split('/');
-        if (p.length !== 3) return 0;
-        return (parseInt(p[2], 10) || 0) * 10000 + (parseInt(p[1], 10) || 0) * 100 + (parseInt(p[0], 10) || 0);
-    }
-
-    /* =======================================================================
-       4. COMUNICAÇÃO COM O IFRAME (altura automática)
-       A página roda dentro de um <iframe> no site oficial. Sempre que o
-       conteúdo muda de tamanho, enviamos a nova altura para o site pai
-       via postMessage, e ele redimensiona o iframe (sem barra de rolagem).
-       ======================================================================= */
-
-    /** Envia a altura atual do conteúdo para o site que hospeda o iframe. */
-    function ajustarIframe() {
-        const wrapper = document.getElementById('wrapper');
-        if (wrapper) {
-            window.parent.postMessage({ tipo: 'ajustarAltura', valor: wrapper.offsetHeight + 40 }, ORIGEM_PAI);
+        // Carimbo de atualização (1ª linha) — pega a data qualquer que seja o rótulo
+        let carimbo = "";
+        if (linhas.length > 0 && linhas[0][0]) {
+            const m = String(linhas[0][0]).match(/(\d{2}\/\d{2}\/\d{4})[,\s]*(\d{2}:\d{2})?/);
+            if (m) carimbo = `Dados atualizados em ${m[1]}${m[2] ? ' ' + m[2] : ''}`;
         }
-    }
 
-    // O ResizeObserver detecta qualquer mudança de altura do conteúdo
-    // (troca de página, filtro, cards maiores) e reenvia automaticamente.
-    if ('ResizeObserver' in window) {
-        new ResizeObserver(() => ajustarIframe()).observe(document.getElementById('wrapper'));
-    }
-
-    /* =======================================================================
-       5. CARREGAMENTO DOS DADOS
-       Baixa as duas planilhas em paralelo (Promise.all). O parâmetro
-       t=timestamp evita cache do navegador e garante dados atualizados.
-       ======================================================================= */
-    async function carregarDados() {
-        $('#loader').show();
-        $('#main-content').hide();
-        try {
-            const [rD, rG] = await Promise.all([
-                fetch(`${URL_DIARIAS}&t=${Date.now()}`),
-                fetch(`${URL_GABINETES}&t=${Date.now()}`)
-            ]);
-
-            // Planilha de diárias
-            const textoD = await rD.text();
-            processarDados(textoD);
-
-            // Planilha de gabinetes: uma coluna com os nomes (1ª linha é cabeçalho)
-            const textoG = await rG.text();
-            listaGabinetes = Papa.parse(textoG.trim()).data
-                .slice(1)
-                .map(l => String(l[0] || "").trim().toUpperCase())
-                .filter(g => g);
-
-            popularSelects();
-            filtrar();
-
-            $('#loader').hide();
-            $('#main-content').fadeIn(400, ajustarIframe);
-        } catch (e) {
-            console.error("Erro ao carregar os dados: ", e);
-            $('#loader').html('<b style="color:red">Erro de conexão com os dados. Tente recarregar a página.</b>');
+        // Localiza a linha de cabeçalho (procura "servidor" ou "data_partida")
+        let ic = 1;
+        for (let i = 0; i < Math.min(5, linhas.length); i++) {
+            const t = removerAcentos(linhas[i].join(" ").toLowerCase());
+            if (t.includes("servidor") || t.includes("data_partida")) { ic = i; break; }
         }
-    }
 
-    /* =======================================================================
-       6. PROCESSAMENTO DO CSV DE DIÁRIAS
-       ======================================================================= */
-
-    /**
-     * Transforma o CSV bruto em objetos organizados (dadosBrutos).
-     *
-     * Estrutura esperada do arquivo:
-     *   Linha 1 .... metadados com "MODIF_REAL: data" (exibida no selo verde)
-     *   Linha 2 .... cabeçalhos (viram as chaves dos objetos)
-     *   Linha 3+ ... registros
-     *
-     * O PapaParse faz a leitura: diferentemente da separação manual por
-     * vírgula, ele trata corretamente células com vírgulas e QUEBRAS DE
-     * LINHA internas — comum no campo "motivação da viagem".
-     */
-    function processarDados(csv) {
-        // Data de atualização (procurada no texto bruto, antes do parse)
-        const match = csv.match(/MODIF_REAL:\s*(\d{2}\/\d{2}\/\d{4}[^\d]+\d{2}:\d{2})/i);
-        if (match) $('#sync-info').text(`🟢 Dados atualizados em: ${match[1]}`);
-
-        const linhas = Papa.parse(csv.trim()).data;
-        if (linhas.length < 3) { dadosBrutos = []; return; }
-
-        // Cabeçalhos normalizados: viram as chaves dos objetos (ex: "servidor")
-        const cab = linhas[1].map(c => String(c).toLowerCase().trim());
-
-        dadosBrutos = linhas.slice(2).map(cols => {
-            let o = {};
-            cab.forEach((c, i) => o[c] = String(cols[i] || "").trim());
-            if (o.servidor) o.servidor = o.servidor.toUpperCase();
-
-            // Textos de busca pré-calculados (sem acentos/maiúsculas) para
-            // que a filtragem seja rápida mesmo com muitos registros
-            o.busca_nome = removerAcentos((o.servidor || "").toLowerCase());
-            o.busca_cargo = removerAcentos((o.cargo || "").toUpperCase());
-            o.busca_servidor_upper = removerAcentos((o.servidor || "").toUpperCase());
-
-            return o;
-        }).filter(d => d.servidor); // ignora linhas vazias/incompletas
-    }
-
-    /* =======================================================================
-       7. FILTROS
-       ======================================================================= */
-
-    /**
-     * Preenche os filtros de Gabinete, Servidor e Ano com os valores das
-     * planilhas e seleciona por padrão o mês e o ano da diária mais recente.
-     * (Os meses são fixos no HTML, pois o filtro usa o número do mês
-     * da data de partida.)
-     */
-    function popularSelects() {
-        $('#selGabinete').html('<option value="">Gabinete</option>');
-        [...new Set(listaGabinetes)].forEach(g => $('#selGabinete').append(new Option(g, g)));
-
-        $('#selServidor').html('<option value="">Servidor</option>');
-        [...new Set(dadosBrutos.map(d => d.servidor))].sort().forEach(s => $('#selServidor').append(new Option(s, s)));
-
-        // Anos extraídos da data de partida (dd/mm/AAAA), mais recente primeiro
-        const anos = [...new Set(dadosBrutos.map(d => (d.data_partida || "").split('/')[2]))].filter(a => a).sort((a, b) => b - a);
-        $('#selAno').html('<option value="">Ano</option>');
-        anos.forEach(a => $('#selAno').append(new Option(a, a)));
-
-        // Seleção padrão: mês e ano da diária mais recente da planilha
-        selecionarPeriodoMaisRecente();
-    }
-
-    /**
-     * Seleciona nos filtros o mês e o ano da diária mais recente da planilha
-     * (com base na data de partida). Usado na carga inicial da página e
-     * pelo botão "Limpar Filtros".
-     */
-    function selecionarPeriodoMaisRecente() {
-        if (dadosBrutos.length === 0) return;
-        const maisRecente = dadosBrutos.reduce(
-            (max, d) => dataParaNumero(d.data_partida) > dataParaNumero(max.data_partida) ? d : max,
-            dadosBrutos[0]
-        );
-        const p = (maisRecente.data_partida || "").split('/');
-        if (p.length === 3) {
-            $('#selAno').val(p[2]);
-            $('#selMes').val(p[1].padStart(2, '0')); // garante o formato "05"
-        }
-    }
-
-    /**
-     * Aplica os cinco filtros (nome, gabinete, servidor, mês, ano) sobre
-     * dadosBrutos, ordena por data de partida (mais recente primeiro) e
-     * envia o resultado para a tabela.
-     * - A busca por nome ignora acentos e maiúsculas.
-     * - O filtro de gabinete compara com o nome do servidor E com o cargo,
-     *   pois o nome do vereador costuma aparecer no cargo dos assessores.
-     * - Mês e ano são extraídos da data de partida (dd/mm/aaaa).
-     */
-    function filtrar() {
-        const n = removerAcentos($('#buscaNome').val().toLowerCase());
-        const g = $('#selGabinete').val() ? removerAcentos($('#selGabinete').val().toUpperCase()) : "";
-        const s = $('#selServidor').val(), m = $('#selMes').val(), a = $('#selAno').val();
-
-        const res = dadosBrutos.filter(d => {
-            const dp = (d.data_partida || "").split('/');
-            return (!n || d.busca_nome.includes(n)) &&
-                   (!g || d.busca_servidor_upper.includes(g) || d.busca_cargo.includes(g)) &&
-                   (!s || d.servidor === s) &&
-                   (!m || dp[1] === m) &&
-                   (!a || dp[2] === a);
+        const idx = indexarColunas(linhas[ic]);
+        const posicao = {};
+        Object.keys(COL).forEach(campo => {
+            for (const nome of COL[campo]) {
+                if (nome in idx) { posicao[campo] = idx[nome]; break; }
+            }
         });
 
-        // Ordena por data de partida, da mais recente para a mais antiga
-        res.sort((a, b) => dataParaNumero(b.data_partida) - dataParaNumero(a.data_partida));
+        // GUARD (B2): as colunas essenciais precisam existir
+        const faltando = ["servidor", "data_partida"].filter(c => !(c in posicao));
+        if (faltando.length) {
+            throw new Error("A planilha não tem as colunas esperadas: " + faltando.map(c => COL[c][0]).join(", ") + ".");
+        }
 
-        renderizarGrid(res);
+        const pegar = (colunas, campo) => {
+            const i = posicao[campo];
+            return (i != null && colunas[i] != null) ? String(colunas[i]).trim() : "";
+        };
+
+        const diarias = linhas.slice(ic + 1).map(colunas => {
+            const obj = {
+                servidor:       pegar(colunas, "servidor").toUpperCase(),
+                cargo:          pegar(colunas, "cargo"),
+                quantidade:     pegar(colunas, "quantidade"),
+                data_partida:   formatarDataBR(pegar(colunas, "data_partida")),
+                data_retorno:   formatarDataBR(pegar(colunas, "data_retorno")),
+                dotacao:        pegar(colunas, "dotacao"),
+                local_destino:  pegar(colunas, "local"),
+                cidade_destino: pegar(colunas, "cidade"),
+                motivacao:      pegar(colunas, "motivacao"),
+            };
+
+            // Valores: número (para somar/ordenar) + texto formatado (exibição).
+            // Adiantamento vazio ou 0 é tratado como "não houve".
+            obj.valor_diaria_num = parseNumeroBR(pegar(colunas, "valor_diaria"));
+            obj.valor_diaria_fmt = isNaN(obj.valor_diaria_num) ? "" : formatarBRL(obj.valor_diaria_num);
+
+            const adiantRaw = parseNumeroBR(pegar(colunas, "adiantamento"));
+            obj.adiantamento_num = (isNaN(adiantRaw) || adiantRaw === 0) ? 0 : adiantRaw;
+            obj.adiantamento_fmt = obj.adiantamento_num ? formatarBRL(obj.adiantamento_num) : "";
+
+            // Peso para ordenar pela data de partida (mais recente primeiro)
+            obj.peso_data = dataParaTimestamp(obj.data_partida);
+
+            const buscaUnificada = `${obj.servidor} ${obj.cargo} ${obj.cidade_destino} ${obj.local_destino} ${obj.motivacao} ${obj.dotacao}`;
+            obj.busca_indexada = removerAcentos(buscaUnificada.toLowerCase().replace(/\n/g, ' '));
+            return obj;
+        }).filter(d => d.servidor); // ignora linhas vazias
+
+        return { carimbo, diarias };
     }
 
-    /** Limpa todos os filtros e volta ao estado inicial da página:
-        mês e ano da diária mais recente selecionados. */
-    function resetarFiltros() {
-        $('#buscaNome').val('');
-        $('select').val('');
-        selecionarPeriodoMaisRecente();
-        filtrar();
+    /** Baixa TODAS as abas de ano da legislatura selecionada (e, na 1ª vez, a
+        lista de gabinetes), junta tudo em dadosGlobais e monta os filtros. */
+    async function carregarDados() {
+        $('#loader').show(); $('#main-container').hide();
+        try {
+            const legs = legislaturasDisponiveis();
+            if (!legs.length) throw new Error("Nenhuma aba de ano configurada em FONTES_POR_ANO.");
+
+            let legNum = $('#filtroLegislatura').val();
+            if (!legNum || !legs.some(L => L.numero === legNum)) legNum = legs[0].numero;
+            const leg = LEGISLATURAS.find(L => L.numero === legNum);
+
+            const anos = anosDaLegislatura(legNum);
+            if (!anos.length) throw new Error("A legislatura selecionada não tem anos configurados em FONTES_POR_ANO.");
+
+            // Uma requisição por ano da legislatura (+ gabinetes, só na 1ª carga)
+            const pedidos = anos.map(a => buscarCSV(FONTES_POR_ANO[a]));
+            const buscarGab = listaGabinetes.length === 0;
+            if (buscarGab) pedidos.push(buscarCSV(URL_GABINETES));
+            const respostas = await Promise.all(pedidos);
+            const csvGabinetes = buscarGab ? respostas.pop() : null;
+
+            // Junta as diárias de todos os anos, marcando o ano e a legislatura
+            dadosGlobais = [];
+            const carimbos = [];
+            respostas.forEach((csv, i) => {
+                const parte = processarCSV(csv);
+                if (parte.carimbo) carimbos.push(parte.carimbo);
+                parte.diarias.forEach(d => {
+                    d.ano = (d.data_partida || "").split('/')[2] || anos[i];
+                    d.legislatura = legNum;
+                    dadosGlobais.push(d);
+                });
+            });
+            carimboAtualizacao = carimbos[0] || "Dados sincronizados";
+
+            if (csvGabinetes != null) {
+                // Cada linha: [nome_do_gabinete, legislatura ("20" ou "21")]
+                listaGabinetes = Papa.parse(String(csvGabinetes).trim()).data
+                    .slice(1)
+                    .map(l => ({ nome: String(l[0] || "").trim(), legislatura: String(l[1] || "").trim() }))
+                    .filter(g => g.nome);
+            }
+
+            if (dadosGlobais.length === 0) {
+                throw new Error("A planilha foi lida, mas não retornou nenhuma diária.");
+            }
+
+            popularFiltrosDinamicos(leg);
+            selecionarPeriodoMaisRecente();
+            aplicarFiltros();
+
+            $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
+            $('#loader').hide();
+            $('#main-container').fadeIn(400, () => enviarAlturaIframe());
+        } catch (e) {
+            console.error("Erro ao carregar as diárias: ", e);
+            $('#loader').html(`<b style="color:#b91c1c">Não foi possível carregar os dados.<br>${escapeHtml(e.message)}<br><br>Tente recarregar a página.</b>`);
+        }
     }
 
     /* =======================================================================
-       8. TABELA DE CARDS (DataTables)
-       A tabela é criada UMA única vez; os filtros apenas trocam os dados
-       (clear + rows.add + draw). Isso mantém a digitação fluida mesmo com
-       muitos registros, pois nada é destruído e recriado.
+       4. FILTROS E ORDENAÇÃO
+       ======================================================================= */
+
+    /** Preenche os filtros dependentes dos dados carregados:
+        - Gabinete: só os vereadores da legislatura carregada (leg).
+        - Servidor: os nomes que aparecem nas diárias carregadas.
+        - Ano: os anos presentes nos dados (a legislatura tem 4). */
+    function popularFiltrosDinamicos(leg) {
+        const gabinetesDaLeg = listaGabinetes
+            .filter(g => !leg || !g.legislatura || g.legislatura === leg.numero)
+            .map(g => g.nome);
+
+        let htmlGab = '<option value="">Gabinete</option>';
+        [...new Set(gabinetesDaLeg)].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+            .forEach(g => { htmlGab += `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`; });
+        $('#filtroGabinete').html(htmlGab);
+
+        let htmlServ = '<option value="">Servidor</option>';
+        [...new Set(dadosGlobais.map(d => d.servidor))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+            .forEach(s => { htmlServ += `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`; });
+        $('#filtroServidor').html(htmlServ);
+
+        let htmlAno = '<option value="">Ano</option>';
+        [...new Set(dadosGlobais.map(d => d.ano))].filter(Boolean).sort((a, b) => Number(b) - Number(a))
+            .forEach(a => { htmlAno += `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`; });
+        $('#filtroAno').html(htmlAno);
+    }
+
+    /** Alinha os filtros de Ano e Mês à diária mais recente carregada (pela
+        data de partida). Usado na carga inicial e em "Limpar filtros". */
+    function selecionarPeriodoMaisRecente() {
+        if (!dadosGlobais.length) return;
+        const maisRecente = dadosGlobais.reduce((max, d) => d.peso_data > max.peso_data ? d : max, dadosGlobais[0]);
+        const p = (maisRecente.data_partida || "").split('/');
+        if (p.length === 3) {
+            $('#filtroAno').val(p[2]);
+            $('#filtroMes').val(p[1].padStart(2, '0'));
+        }
+    }
+
+    /**
+     * Aplica os filtros sobre dadosGlobais e ordena por data de partida
+     * (mais recente primeiro).
+     * - A busca livre ignora acentos e maiúsculas.
+     * - O filtro de Gabinete compara o nome do gabinete com o nome do
+     *   servidor E com o cargo, pois o nome do vereador costuma aparecer
+     *   no cargo dos assessores ("ASSESSOR ... do Ver. Fulano").
+     * - O filtro de Mês usa o mês da data de partida.
+     */
+    function aplicarFiltros() {
+        const txt = removerAcentos($('#filtroTexto').val().toLowerCase());
+        const gab = removerAcentos(($('#filtroGabinete').val() || "").toLowerCase());
+        const serv = $('#filtroServidor').val();
+        const ano = $('#filtroAno').val();
+        const mes = $('#filtroMes').val();
+
+        const res = dadosGlobais.filter(d => {
+            const matchTexto = !txt || d.busca_indexada.includes(txt);
+            const matchGab = !gab || d.busca_indexada.includes(gab);
+            const matchServ = !serv || d.servidor === serv;
+            const matchAno = !ano || d.ano === ano;
+            const matchMes = !mes || (!!d.data_partida && d.data_partida.split('/')[1] === mes);
+            return matchTexto && matchGab && matchServ && matchAno && matchMes;
+        });
+
+        res.sort((a, b) => b.peso_data - a.peso_data);
+        renderizar(res);
+    }
+
+    /** Limpa os filtros e volta ao padrão: mês da diária mais recente.
+        Não altera a legislatura selecionada (#filtroLegislatura). */
+    function limparFiltros() {
+        $('#filtroTexto').val('');
+        $('select').not('#filtroLegislatura').val('');
+        selecionarPeriodoMaisRecente();
+        aplicarFiltros();
+    }
+
+    /* =======================================================================
+       5. TABELA DE CARDS (DataTables)
        ======================================================================= */
 
     /** Cria a instância do DataTables e define como cada card é desenhado. */
-    function inicializarGrid() {
-        grid = $('#tabela-base').DataTable({
+    function inicializarTabela() {
+        tabela = $('#tabela').DataTable({
             data: [],
             pageLength: 10,
-            ordering: false, // a ordenação por data de partida é feita em filtrar()
-            dom: 'lrt<"controles-datatable"ip>', // l=menu exibir, r=processando, t=tabela, i=info, p=paginação
+            ordering: false, // a ordenação por data de partida é feita em aplicarFiltros()
             language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
+            dom: 'lrt<"dt-bottom-controls"ip>', // l=menu exibir, r=processando, t=tabela, i=info, p=paginação
             columns: [{
                 data: null,
-                render: d => `
-                    <div class="card-diaria">
-                        <div class="card-header"><span class="card-nome">${escapeHtml(d.servidor)}</span><span class="card-cargo">${escapeHtml(d.cargo || "-")}</span></div>
-                        <div class="card-body">
-                            <div><label class="item-label">Diárias</label><span class="item-valor">${escapeHtml(d.qtde_diarias)}</span></div>
-                            <div><label class="item-label">Partida</label><span class="item-valor">${escapeHtml(d.data_partida)}</span></div>
-                            <div><label class="item-label">Retorno</label><span class="item-valor">${escapeHtml(d.data_retorno)}</span></div>
-                        </div>
-                        <div class="card-body sep">
-                            <div><label class="item-label">Valor Diárias</label><span class="item-valor">${escapeHtml(formatarMoeda(d.valor_diarias))}</span></div>
-                            <div><label class="item-label">Adiantamento</label><span class="item-valor">${escapeHtml(formatarMoeda(d.valor_adiantamento))}</span></div>
-                            <div><label class="item-label">Dotação</label><span class="item-valor">${escapeHtml(d.dotacao || "-")}</span></div>
-                        </div>
-                        <div class="card-footer">
-                            <div><label class="item-label">Cidade de Destino</label><span class="item-valor">${escapeHtml(d.cidade_destino || "-")}</span></div>
-                            <div><label class="item-label">Local de Destino</label><span class="item-valor">${escapeHtml(d.local_destino || "-")}</span></div>
-                            <div class="quadro-full">
-                                <label class="item-label">Motivação da Viagem</label>
-                                <span style="font-size:13px; font-weight:500; color:#334155; display:block; margin-top:4px; line-height:1.4;">${escapeHtml(d.motivacao_viagem || "-")}</span>
+                render: function(d) {
+                    const cargo = d.cargo
+                        ? `<span style="font-size:11px; color:#64748b; font-weight:600; text-transform:uppercase;">${escapeHtml(d.cargo)}</span>`
+                        : '';
+                    const motivacao = d.motivacao ? escapeHtml(d.motivacao).replace(/\n/g, '<br>') : '-';
+
+                    return `
+                        <div class="card-info">
+                            <div class="card-header">
+                                <div class="card-header-texto">
+                                    <span class="nome-principal">${escapeHtml(d.servidor || 'Servidor não informado')}</span>
+                                    ${cargo}
+                                </div>
                             </div>
-                        </div>
-                    </div>`
+
+                            <div class="card-body">
+                                <div class="info-row">
+                                    <div class="info-col">
+                                        <span class="info-label">Quantidade de Diárias</span>
+                                        <span class="info-valor">${escapeHtml(d.quantidade || '-')}</span>
+                                    </div>
+                                    <div class="info-col">
+                                        <span class="info-label">Partida</span>
+                                        <span class="info-valor">${escapeHtml(d.data_partida || '-')}</span>
+                                    </div>
+                                    <div class="info-col">
+                                        <span class="info-label">Retorno</span>
+                                        <span class="info-valor">${escapeHtml(d.data_retorno || '-')}</span>
+                                    </div>
+                                </div>
+
+                                <div class="info-row">
+                                    <div class="info-col">
+                                        <span class="info-label">Valor das Diárias</span>
+                                        <span class="info-valor">${escapeHtml(d.valor_diaria_fmt || '-')}</span>
+                                    </div>
+                                    <div class="info-col">
+                                        <span class="info-label">Adiantamento</span>
+                                        <span class="info-valor">${escapeHtml(d.adiantamento_fmt || '-')}</span>
+                                    </div>
+                                    <div class="info-col">
+                                        <span class="info-label">Dotação</span>
+                                        <span class="info-valor">${escapeHtml(d.dotacao || '-')}</span>
+                                    </div>
+                                </div>
+
+                                <div class="info-row">
+                                    <div class="info-col full-width" style="background:transparent; border:0; padding:0;">
+                                        <span class="info-label">Cidade de Destino</span>
+                                        <span class="info-valor">${escapeHtml(d.cidade_destino || '-')}</span>
+                                    </div>
+                                </div>
+                                <div class="info-row">
+                                    <div class="info-col full-width" style="background:transparent; border:0; padding:0;">
+                                        <span class="info-label">Local de Destino</span>
+                                        <span class="info-valor">${escapeHtml(d.local_destino || '-')}</span>
+                                    </div>
+                                </div>
+
+                                <div class="info-row" style="margin-top: 5px;">
+                                    <div class="info-col full-width">
+                                        <span class="info-label">Motivação da Viagem</span>
+                                        <span class="info-valor" style="font-weight: 500; font-size: 12.5px;">${motivacao}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                }
             }],
             initComplete: function() {
                 // Move o menu "Exibir X resultados" para o painel Visualização
-                $('.dataTables_length').appendTo('#area-length');
+                $('.dataTables_length').appendTo('#comprimento-tabela');
             },
             drawCallback: function() {
                 // Soma diárias e adiantamentos dos registros filtrados.
                 // Os totais alimentam o card de somatória (quando ativado no HTML).
                 let sD = 0, sA = 0;
-                this.api().rows().data().each(d => { sD += parseMoeda(d.valor_diarias); sA += parseMoeda(d.valor_adiantamento); });
-                const f = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-                $('#txt-total-diarias').text(f.format(sD));
-                $('#txt-total-adiantamentos').text(f.format(sA));
+                this.api().rows().data().each(d => {
+                    if (!isNaN(d.valor_diaria_num)) sD += d.valor_diaria_num;
+                    sA += d.adiantamento_num || 0;
+                });
+                $('#txt-total-diarias').text(formatarBRL(sD));
+                $('#txt-total-adiantamentos').text(formatarBRL(sA));
 
-                // Contador de registros e altura do iframe
-                $('#count-rows').text(this.api().rows().count());
-                ajustarIframe();
+                const total = this.api().rows().count();
+                $('#contagem-registros').html(`<b>${total}</b> diárias encontradas`);
+                enviarAlturaIframe();
             }
         });
 
         // Ao trocar de página, rola suavemente de volta ao topo da lista
-        grid.on('page.dt', function () {
-            setTimeout(function() {
-                document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
+        tabela.on('page.dt', function () {
+            setTimeout(function() { document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
         });
     }
 
     /** Substitui os dados exibidos na tabela (sem destruí-la). */
-    function renderizarGrid(dados) {
-        if (!grid) inicializarGrid();
-        grid.clear();
-        grid.rows.add(dados);
-        grid.draw();
+    function renderizar(dados) {
+        if (!tabela) inicializarTabela();
+        tabela.clear();
+        tabela.rows.add(dados);
+        tabela.draw();
     }
 
     /* =======================================================================
-       9. EXPORTAÇÕES (CSV, Excel, JSON, XML)
-       Todas exportam apenas os registros filtrados no momento, com todos
-       os campos do card (antes o CSV e o XML exportavam só uma parte).
+       6. EXPORTAÇÕES
+       As exportações em si estão em comum.js (objeto Exportar). Aqui só
+       montamos a lista de diárias filtradas e o nome do arquivo.
        ======================================================================= */
 
-    /** Converte os registros filtrados para o formato de exportação. */
+    /** Converte as diárias filtradas para o formato de exportação. */
     function dadosParaExportar() {
-        return grid.rows().data().toArray().map(d => ({
-            "Servidor": d.servidor,
-            "Cargo": d.cargo,
-            "Qtde Diarias": d.qtde_diarias,
-            "Data Partida": d.data_partida,
-            "Data Retorno": d.data_retorno,
-            "Valor Diarias": d.valor_diarias,
-            "Valor Adiantamento": d.valor_adiantamento,
-            "Dotacao": d.dotacao,
-            "Cidade Destino": d.cidade_destino,
-            "Local Destino": d.local_destino,
-            "Motivacao da Viagem": d.motivacao_viagem
+        return tabela.rows().data().toArray().map(d => ({
+            "Legislatura": d.legislatura ? `${d.legislatura}ª` : '',
+            "Servidor": d.servidor || '',
+            "Cargo": d.cargo || '',
+            "Quantidade de Diarias": d.quantidade || '',
+            "Data de Partida": d.data_partida || '',
+            "Data de Retorno": d.data_retorno || '',
+            "Valor das Diarias": isNaN(d.valor_diaria_num) ? '' : d.valor_diaria_num,
+            "Valor do Adiantamento": d.adiantamento_num || '',
+            "Dotacao": d.dotacao || '',
+            "Cidade de Destino": d.cidade_destino || '',
+            "Local de Destino": d.local_destino || '',
+            "Motivacao da Viagem": d.motivacao || ''
         }));
     }
 
-    /**
-     * Monta o nome do arquivo a partir dos filtros ativos, para que o
-     * conteúdo seja identificável pelo próprio nome. Exemplos:
-     *   diarias_maio_2026.csv
-     *   diarias_todos_os_meses_2026.xlsx
-     *   diarias_joao_da_silva_todos_os_meses_2025.json
-     * O período (mês/ano) sempre aparece, mesmo sem filtro selecionado.
-     */
+    /** Monta o nome do arquivo a partir do ano e dos filtros ativos
+        (ex: diarias_2026_maio, diarias_2025_joao_da_silva). */
     function gerarNomeArquivoBase() {
-        let partes = ["diarias"];
-        const serv = $('#selServidor').val();
-        const gab = $('#selGabinete').val();
+        let partes = ["diarias", ($('#filtroLegislatura').val() || "") + "a_legislatura"];
+
+        const ano = $('#filtroAno').val();
+        if (ano) partes.push(ano);
+
+        const serv = $('#filtroServidor').val();
+        const gab = $('#filtroGabinete').val();
         if (serv) partes.push(serv.replace(/\s+/g, '_'));
         else if (gab) partes.push(gab.replace(/\s+/g, '_'));
 
-        partes.push($('#selMes').val() ? $('#selMes option:selected').text() : "todos_os_meses");
-        partes.push($('#selAno').val() || "todos_os_anos");
+        const mes = $('#filtroMes').val();
+        partes.push(mes ? $('#filtroMes option:selected').text() : "todos_os_meses");
 
-        // Normaliza: sem acentos, sem caracteres especiais, tudo minúsculo
         return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
     }
 
-    /** Exporta CSV. O PapaParse cuida do escape de aspas, vírgulas e quebras
-        de linha; o prefixo \ufeff (BOM) garante acentos corretos no Excel. */
-    function exportarCSV() {
-        const csv = "\ufeff" + Papa.unparse(dadosParaExportar());
-        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv;charset=utf-8");
-    }
-
-    /** Exporta Excel (.xlsx). Os valores monetários vão como NÚMEROS,
-        permitindo somar e criar fórmulas direto na planilha baixada. */
-    function exportarExcel() {
-        const dadosTratados = dadosParaExportar().map(d => ({
-            ...d,
-            "Valor Diarias": parseMoeda(d["Valor Diarias"]),
-            "Valor Adiantamento": parseMoeda(d["Valor Adiantamento"])
-        }));
-        const ws = XLSX.utils.json_to_sheet(dadosTratados);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Diarias");
-        XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx");
-    }
-
-    /** Exporta JSON formatado (2 espaços de indentação). */
-    function exportarJSON() {
-        downloadFile(JSON.stringify(dadosParaExportar(), null, 2), gerarNomeArquivoBase() + ".json", "application/json");
-    }
-
-    /** Exporta XML com todos os campos (antes só servidor e valor saíam)
-        e valores escapados (ver escapeXml). */
-    function exportarXML() {
-        const campos = ["servidor", "cargo", "qtde_diarias", "data_partida", "data_retorno", "valor_diarias", "valor_adiantamento", "dotacao", "cidade_destino", "local_destino", "motivacao_viagem"];
-        let xml = '<?xml version="1.0" encoding="UTF-8"?><relatorio>';
-        grid.rows().data().each(d => {
-            xml += '<registro>';
-            campos.forEach(k => {
-                xml += `<${k}>${escapeXml(d[k])}</${k}>`;
-            });
-            xml += '</registro>';
-        });
-        xml += '</relatorio>';
-        downloadFile(xml, gerarNomeArquivoBase() + ".xml", "application/xml");
-    }
-
-    /** Dispara o download de um arquivo gerado em memória e libera o blob
-        em seguida para não acumular memória. */
-    function downloadFile(content, fileName, mime) {
-        const blob = new Blob([content], { type: mime });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = fileName; a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }
+    function exportarCSV()  { Exportar.csv(dadosParaExportar(), gerarNomeArquivoBase()); }
+    function exportarXLSX() { Exportar.xlsx(dadosParaExportar(), gerarNomeArquivoBase(), "Diarias"); }
+    function exportarJSON() { Exportar.json(dadosParaExportar(), gerarNomeArquivoBase()); }
+    function exportarXML()  { Exportar.xml(dadosParaExportar(), gerarNomeArquivoBase(), { raiz: "diarias", item: "diaria" }); }
 
     /* =======================================================================
-       10. IMPRESSÃO
+       7. IMPRESSÃO
        ======================================================================= */
 
     /**
-     * Imprime TODOS os registros filtrados (não apenas a página atual):
+     * Imprime TODAS as diárias filtradas (não apenas a página atual):
      *   1. Expande a paginação para exibir tudo (page.len(-1)).
      *   2. Espera o evento draw.dt — sinal de que o DataTables terminou de
      *      renderizar — em vez de um tempo fixo, que falharia com muitos dados.
      *   3. Abre a janela de impressão e restaura a paginação anterior.
      */
     function imprimirSeguro() {
-        if (!grid) return;
-        const len = grid.page.len(); // guarda a paginação atual
-        grid.one('draw.dt', function() {
+        if (!tabela) return;
+        const len = tabela.page.len(); // guarda a paginação atual
+        tabela.one('draw.dt', function() {
             setTimeout(() => {
                 window.print();
-                grid.page.len(len).draw('page'); // restaura após imprimir
+                tabela.page.len(len).draw('page'); // restaura após imprimir
             }, 100);
         });
-        grid.page.len(-1).draw('page'); // -1 = mostrar todos
+        tabela.page.len(-1).draw('page'); // -1 = mostrar todos
     }
 
     /* =======================================================================
-       11. INICIALIZAÇÃO
+       8. INICIALIZAÇÃO
        ======================================================================= */
     $(document).ready(function() {
-        // Busca por nome com debounce: espera 250ms após a última tecla,
-        // evitando reprocessar a tabela a cada caractere digitado
-        let debounceNome;
-        $('#buscaNome').on('input', function() {
-            clearTimeout(debounceNome);
-            debounceNome = setTimeout(filtrar, 250);
+        // Seletor de legislatura: inicia na mais recente; trocar recarrega os
+        // dados (baixa todos os anos daquela legislatura).
+        const legs = legislaturasDisponiveis();
+        $('#filtroLegislatura')
+            .html(legs.map(L => `<option value="${L.numero}">${escapeHtml(L.rotulo)}</option>`).join(''))
+            .val(legs.length ? legs[0].numero : '')
+            .on('change', carregarDados);
+
+        // Busca livre com debounce: espera 250ms após a última tecla
+        let debounceBusca;
+        $('#filtroTexto').on('input', function() {
+            clearTimeout(debounceBusca);
+            debounceBusca = setTimeout(aplicarFiltros, 250);
         });
 
         // Filtros de seleção aplicam imediatamente ao mudar
-        $('select').on('change', filtrar);
+        // (exceto #filtroLegislatura, que recarrega os dados — ligado acima)
+        $('select').not('#filtroLegislatura').on('change', aplicarFiltros);
 
         carregarDados();
     });
