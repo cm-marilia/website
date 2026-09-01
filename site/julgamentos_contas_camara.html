@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<!-- ===========================================================================
+     JULGAMENTO DAS CONTAS ANUAIS
+     Câmara Municipal de Marília
+     ===========================================================================
+
+     O QUE É ESTA PÁGINA
+     Portal de transparência que exibe o resultado do julgamento das contas
+     anuais da Câmara pelo Tribunal de Contas do Estado de São Paulo, em
+     formato de cards, com busca livre, filtro por exercício, exportação em
+     CSV, Excel, JSON e XML e impressão formatada.
+
+     COMO FUNCIONA
+     1. Os dados são lidos de uma planilha do Google Sheets publicada como
+        CSV (variável CSV_URL, na seção CONFIGURAÇÃO do script). Para incluir
+        um exercício, basta acrescentar uma linha na planilha.
+     2. A página é hospedada no GitHub Pages e exibida dentro de um <iframe>
+        no site oficial: https://www.marilia.sp.leg.br/
+     3. A altura do iframe é ajustada automaticamente via postMessage.
+
+     CÓDIGO COMPARTILHADO
+     - Estilos comuns a todas as páginas ....... comum.css
+     - Funções comuns (texto, datas, iframe,
+       download e exportações) ................. comum.js
+     Esta página contém apenas o que é específico dos julgamentos: leitura da
+     planilha, filtros, ordenação e montagem dos cards.
+
+     FORMATO ESPERADO DA PLANILHA  (ver docs/padrao-planilhas.md no repositório)
+     - Linha 1 (opcional): carimbo "DADOS_ATUALIZADOS_EM: dd/mm/aaaa hh:mm"
+       (exibido no selo verde; preenchido pelo Apps Script)
+     - Linha de cabeçalho, localizada pela palavra "exercicio" — uma eventual
+       linha de metadados acima dela não atrapalha. Colunas (lidas por NOME):
+       exercicio | processo | julgamento | transito_julgado | itens_irregulares
+         exercicio ........... ano das contas julgadas (ex: 2024)
+         processo ............ número do processo no TCE (ex: TC-005147.989.24)
+         julgamento .......... resultado (ex: Regulares com recomendações)
+         transito_julgado .... data do trânsito em julgado (dd/mm/aaaa);
+                               aceita também aaaa-mm-dd e dd-mm-aaaa
+         itens_irregulares ... principais itens que ensejaram o julgamento
+                               irregular; vazio ou "-" quando não houver
+
+     REGRAS AUTOMÁTICAS
+     - Quando "itens_irregulares" está vazio ou é "-", o card mostra
+       "Nenhum item registrado" em cinza, em vez de um traço solto.
+     - Os cards são exibidos do exercício mais recente para o mais antigo,
+       independentemente da ordem das linhas na planilha.
+
+     MANUTENÇÃO RÁPIDA (o que você normalmente precisa alterar)
+     - Incluir um exercício ...... acrescentar linha na planilha
+     - Trocar a planilha ......... variável CSV_URL   (seção CONFIGURAÇÃO)
+     - Trocar o site que embute .. variável ORIGEM_PAI (seção CONFIGURAÇÃO)
+     - Trocar o brasão ........... arquivo brasao_marilia.png no repositório
+
+     DEPENDÊNCIAS (carregadas via CDN)
+     jQuery 3.7.1 | DataTables 1.13.6 | SheetJS 0.18.5 | PapaParse 5.4.1
+     =========================================================================== -->
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Julgamento das Contas Anuais</title>
+
+    <!-- Estilos do DataTables (tabela com paginação) -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+
+    <!-- Fonte Inter (Google Fonts) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Estilos compartilhados de todas as páginas do portal -->
+    <link rel="stylesheet" href="comum.css" />
+
+    <style>
+        /* ESTILOS ESPECÍFICOS DE JULGAMENTOS
+           A estrutura de card (.card-info, .card-header, .card-body,
+           .info-row, .info-col, .info-label, .info-valor) vem de comum.css. */
+
+        .subtitulo-card { font-size: 12px; color: #64748b; font-weight: 500; text-transform: uppercase; }
+
+        /* Texto cinza exibido quando não há itens que ensejaram irregularidade */
+        .info-vazio { font-size: 13px; font-weight: 700; color: #94a3b8; font-style: italic; }
+
+        /* Caixa de destaque usada quando há itens que ensejaram irregularidade */
+        .bloco-itens { margin-top: 4px; padding: 12px; background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #003b75; border-radius: 6px; font-size: 13.5px; font-weight: 500; color: #475569; line-height: 1.7; text-align: justify; white-space: pre-wrap; hyphens: auto; -webkit-hyphens: auto; }
+    </style>
+</head>
+<body>
+
+<div id="wrapper">
+
+    <!-- ================================================================
+         CABEÇALHO DA PÁGINA (visível na tela)
+         ================================================================ -->
+    <header class="topo">
+        <h1>Julgamento das Contas Anuais</h1>
+        <div class="logo-container">
+            <img src="../brasao_marilia.png" alt="Brasão de Marília" width="50" height="50" class="brasao">
+            <span class="texto-camara">Câmara Municipal de Marília</span>
+        </div>
+    </header>
+
+    <!-- ================================================================
+         CABEÇALHO DE IMPRESSÃO (visível apenas ao imprimir)
+         ================================================================ -->
+    <div id="cabecalho-impressao">
+        <img src="../brasao_marilia.png" width="63" height="70" alt="Brasão de Marília">
+        <div>
+            <h1 style="margin:0; color:#003b75;">Julgamento das Contas Anuais</h1>
+            <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
+        </div>
+    </div>
+
+    <!-- Loader exibido enquanto o CSV do Google Sheets é baixado -->
+    <div id="loader" role="status" aria-live="polite">
+        <div class="spinner"></div>
+        <span>Carregando base de dados...</span>
+    </div>
+
+    <!-- ================================================================
+         CONTEÚDO PRINCIPAL (exibido após o carregamento dos dados)
+         ================================================================ -->
+    <main class="container" id="main-container" style="display: none;">
+
+        <!-- Painel: filtros de pesquisa -->
+        <fieldset class="painel-grupo">
+            <legend class="titulo-painel titulo-painel--com-selo">
+                Filtros de Pesquisa
+                <span id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</span>
+            </legend>
+
+            <div class="painel-filtros">
+                <input type="text" id="filtroTexto" class="span-2" placeholder="Pesquisar por exercício, processo, resultado, item..." autocomplete="off" aria-label="Pesquisa livre">
+                <select id="filtroExercicio" aria-label="Filtrar por Exercício">
+                    <option value="">Exercício</option>
+                </select>
+                <button class="btn-filtro" onclick="limparFiltros()">Limpar filtros</button>
+            </div>
+        </fieldset>
+
+        <!-- Painel: botões de exportação e impressão -->
+        <fieldset class="painel-grupo">
+            <legend class="titulo-painel">Exportação e Impressão</legend>
+            <div class="painel-exportacao">
+                <button onclick="exportarCSV()">⬇️ CSV</button>
+                <button onclick="exportarXLSX()">⬇️ Excel</button>
+                <button onclick="exportarJSON()">⬇️ JSON</button>
+                <button onclick="exportarXML()">⬇️ XML</button>
+                <button class="btn-acao" onclick="imprimirSeguro()">🖨️ Imprimir</button>
+            </div>
+        </fieldset>
+
+        <!-- Painel: menu "Exibir X resultados" + contador de registros -->
+        <fieldset class="painel-grupo" id="painel-visualizacao" style="padding: 10px 15px;">
+            <legend class="titulo-painel">Visualização</legend>
+            <div class="dt-custom-header">
+                <div id="comprimento-tabela"></div>
+                <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
+            </div>
+        </fieldset>
+
+        <!-- Tabela-base do DataTables: cada linha renderiza um card completo.
+             O cabeçalho fica oculto via CSS (comum.css) -->
+        <table id="tabela" style="width:100%" role="presentation">
+            <thead><tr><th>Julgamentos das Contas Anuais</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </main>
+</div>
+
+<!-- ====================================================================
+     BIBLIOTECAS EXTERNAS (CDN) + CÓDIGO COMPARTILHADO
+     jQuery ......... base para o DataTables e manipulação do DOM
+     DataTables ..... paginação e controle de exibição dos cards
+     SheetJS (xlsx) . geração do arquivo Excel
+     PapaParse ...... leitura correta do CSV (aceita vírgulas e quebras de
+                      linha dentro das células, como no campo de itens)
+     comum.js ....... funções compartilhadas (texto, datas, iframe,
+                      download e exportações)
+     ==================================================================== -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<!-- Domínio que embute o iframe: a altura da página só é enviada para
+     este endereço (segurança do postMessage). Use "*" apenas em testes. -->
+<script>window.ORIGEM_PAI = "https://www.marilia.sp.leg.br";</script>
+<script src="comum.js"></script>
+
+<script>
+    /* =======================================================================
+       ESPECÍFICO DE JULGAMENTOS
+       As funções utilitárias (removerAcentos, escapeHtml, escapeXml,
+       formatarDataBR, buscarCSV, indexarColunas, enviarAlturaIframe e o
+       objeto Exportar) vêm de comum.js.
+       ======================================================================= */
+
+    /* =======================================================================
+       1. CONFIGURAÇÃO
+       ======================================================================= */
+
+    // 🔴 LINK DO CSV: no Google Sheets, use Arquivo → Compartilhar → Publicar
+    // na web → selecione a aba dos julgamentos → formato CSV, e cole o link
+    // aqui. Cabeçalhos esperados:
+    // exercicio | processo | julgamento | transito_julgado | itens_irregulares
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRvxvNlJbj3Ewufg_Us6zbQT1tCEhACAaZloEZpnntJk6AgCe_CMtn0Dw5OI7TqUwNRD3acTno8V4IP/pub?output=csv";
+
+    // 🔴 SITE QUE HOSPEDA O IFRAME: definido acima em window.ORIGEM_PAI.
+
+    /* =======================================================================
+       2. ESTADO GLOBAL
+       ======================================================================= */
+    let tabela;                  // instância única do DataTables
+    let dadosGlobais = [];       // todos os registros carregados
+    let carimboAtualizacao = ""; // data de atualização exibida no selo verde
+
+    /* =======================================================================
+       3. CARREGAMENTO E PROCESSAMENTO DOS DADOS
+       ======================================================================= */
+
+    // Campo interno → nome da coluna na planilha. A coluna é localizada por
+    // NOME (normalizado: sem acento, minúsculo, espaço→"_"), não por posição.
+    const COL = {
+        exercicio:  "exercicio",
+        processo:   "processo",
+        julgamento: "julgamento",
+        transito:   "transito_julgado",
+        itens:      "itens_irregulares",
+    };
+
+    /** Considera vazio o campo em branco, "-", "–" ou "—". */
+    function estaVazio(valor) {
+        const s = String(valor ?? "").trim();
+        return s === "" || s === "-" || s === "–" || s === "—";
+    }
+
+    /**
+     * Converte o texto do CSV publicado em { carimbo, registros }.
+     *   Linha 1 (opcional) .. carimbo "DADOS_ATUALIZADOS_EM: ..." (selo verde)
+     *   Linha de cabeçalho .. localizada pela palavra "exercicio"
+     *   Linhas seguintes .... os julgamentos
+     */
+    function processarCSV(text) {
+        // PapaParse trata células com vírgulas e quebras de linha internas
+        // (comuns no campo "itens_irregulares")
+        const linhas = Papa.parse(text.trim()).data;
+        if (!linhas.length) return { carimbo: "", registros: [] };
+
+        // Carimbo de atualização (1ª linha) — pega a data qualquer que seja o rótulo
+        let carimbo = "";
+        if (linhas[0] && linhas[0][0]) {
+            const m = String(linhas[0][0]).match(/(\d{2}\/\d{2}\/\d{4})[,\s]*(\d{2}:\d{2})?/);
+            if (m) carimbo = `Dados atualizados em ${m[1]}${m[2] ? ' ' + m[2] : ''}`;
+        }
+
+        // Localiza a linha de cabeçalho pela palavra "exercicio"
+        let ic = linhas.findIndex(l => removerAcentos(l.join(" ").toLowerCase()).includes("exercicio"));
+        if (ic === -1) ic = 0;
+
+        const idx = indexarColunas(linhas[ic]);
+        const posicao = {};
+        Object.keys(COL).forEach(campo => { if (COL[campo] in idx) posicao[campo] = idx[COL[campo]]; });
+
+        // GUARD: a coluna essencial precisa existir
+        if (!("exercicio" in posicao)) {
+            throw new Error('A planilha não tem a coluna esperada "exercicio".');
+        }
+
+        const pegar = (colunas, campo) => {
+            const i = posicao[campo];
+            return (i != null && colunas[i] != null) ? String(colunas[i]).trim() : "";
+        };
+
+        const registros = linhas.slice(ic + 1).map(colunas => {
+            if (!colunas || colunas.every(c => String(c).trim() === "")) return null;
+            const obj = {
+                exercicio:  pegar(colunas, "exercicio"),
+                processo:   pegar(colunas, "processo"),
+                julgamento: pegar(colunas, "julgamento"),
+                transito:   pegar(colunas, "transito"),
+                itens:      pegar(colunas, "itens"),
+            };
+            const busca = `${obj.exercicio} ${obj.processo} ${obj.julgamento} ${obj.itens}`;
+            obj.busca_indexada = removerAcentos(busca.toLowerCase().replace(/\n/g, ' '));
+            return obj;
+        }).filter(d => d && d.exercicio);
+
+        return { carimbo, registros };
+    }
+
+    /** Baixa o CSV publicado do Google Sheets e monta dadosGlobais. */
+    async function carregarDados() {
+        $('#loader').show(); $('#main-container').hide();
+        try {
+            const parte = processarCSV(await buscarCSV(CSV_URL));
+            dadosGlobais = parte.registros;
+            carimboAtualizacao = parte.carimbo || "Dados sincronizados";
+
+            if (dadosGlobais.length === 0) {
+                throw new Error("A planilha foi lida, mas não retornou nenhum julgamento.");
+            }
+
+            popularFiltrosDinamicos();
+            aplicarFiltros();
+
+            $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
+            $('#loader').hide();
+            $('#main-container').fadeIn(400, () => enviarAlturaIframe());
+        } catch (e) {
+            console.error("Erro ao carregar os julgamentos: ", e);
+            $('#loader').html(`<b style="color:#b91c1c">Não foi possível carregar os dados.<br>${escapeHtml(e.message)}<br><br>Tente recarregar a página.</b>`);
+        }
+    }
+
+    /* =======================================================================
+       4. FILTROS E ORDENAÇÃO
+       ======================================================================= */
+
+    /** Preenche o filtro de Exercício com os anos presentes na planilha,
+        do mais recente para o mais antigo. */
+    function popularFiltrosDinamicos() {
+        const exercicios = [...new Set(dadosGlobais.map(d => d.exercicio).filter(Boolean))]
+            .sort((a, b) => String(b).localeCompare(String(a), 'pt-BR', { numeric: true }));
+
+        let html = '<option value="">Exercício</option>';
+        exercicios.forEach(ex => { html += `<option value="${escapeHtml(ex)}">${escapeHtml(ex)}</option>`; });
+        $('#filtroExercicio').html(html);
+    }
+
+    /**
+     * Aplica os filtros sobre dadosGlobais e ordena o resultado do exercício
+     * mais recente para o mais antigo.
+     */
+    function aplicarFiltros() {
+        const txt = removerAcentos($('#filtroTexto').val().toLowerCase());
+        const ex = $('#filtroExercicio').val();
+
+        const res = dadosGlobais.filter(d => {
+            const matchTexto = !txt || d.busca_indexada.includes(txt);
+            const matchExerc = !ex || d.exercicio === ex;
+            return matchTexto && matchExerc;
+        });
+
+        res.sort((a, b) => String(b.exercicio).localeCompare(String(a.exercicio), 'pt-BR', { numeric: true }));
+
+        renderizar(res);
+    }
+
+    /** Limpa os filtros e reexibe todos os julgamentos. */
+    function limparFiltros() {
+        $('#filtroTexto').val('');
+        $('#filtroExercicio').val('');
+        aplicarFiltros();
+    }
+
+    /* =======================================================================
+       5. TABELA DE CARDS (DataTables)
+       ======================================================================= */
+
+    /** Cria a instância do DataTables e define como cada card é desenhado. */
+    function inicializarTabela() {
+        tabela = $('#tabela').DataTable({
+            data: [],
+            pageLength: 10,
+            ordering: false, // a ordenação é feita em aplicarFiltros()
+            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados", emptyTable: "Nenhum julgamento cadastrado." },
+            dom: 'lrt<"dt-bottom-controls"ip>', // l=menu exibir, r=processando, t=tabela, i=info, p=paginação
+            columns: [{
+                data: null,
+                render: function(d) {
+                    const transito = formatarDataBR(d.transito);
+
+                    // Quando não há itens, mostra texto cinza em vez de um traço
+                    const blocoItens = estaVazio(d.itens)
+                        ? `<span class="info-vazio">Nenhum item registrado.</span>`
+                        : `<div class="bloco-itens">${escapeHtml(d.itens)}</div>`;
+
+                    return `
+                        <div class="card-info">
+                            <div class="card-header">
+                                <div class="card-header-texto">
+                                    <span class="nome-principal">Exercício ${escapeHtml(d.exercicio || "—")}</span>
+                                    <span class="subtitulo-card">Contas anuais da Câmara Municipal</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="info-row">
+                                    <div class="info-col">
+                                        <span class="info-label">Processo</span>
+                                        <span class="info-valor">${escapeHtml(d.processo || "—")}</span>
+                                    </div>
+                                    <div class="info-col">
+                                        <span class="info-label">Julgamento</span>
+                                        <span class="info-valor">${escapeHtml(d.julgamento || "—")}</span>
+                                    </div>
+                                    <div class="info-col">
+                                        <span class="info-label">Trânsito em Julgado</span>
+                                        <span class="info-valor">${escapeHtml(transito || "—")}</span>
+                                    </div>
+                                </div>
+
+                                <div class="info-row" style="margin-top: 5px;">
+                                    <div class="info-col full-width">
+                                        <span class="info-label">Principais itens que ensejaram o julgamento irregular</span>
+                                        ${blocoItens}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }],
+            initComplete: function() {
+                // Move o menu "Exibir X resultados" para o painel Visualização
+                $('.dataTables_length').appendTo('#comprimento-tabela');
+            },
+            drawCallback: function() {
+                // Atualiza o contador e reenvia a altura ao site pai a cada redesenho
+                const total = this.api().rows().count();
+                $('#contagem-registros').html(`<b>${total}</b> registros encontrados`);
+                enviarAlturaIframe();
+            }
+        });
+
+        // Ao trocar de página, rola suavemente de volta ao topo da lista
+        tabela.on('page.dt', function () {
+            setTimeout(function() { document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+        });
+    }
+
+    /** Substitui os dados exibidos na tabela (sem destruí-la). */
+    function renderizar(dados) {
+        if (!tabela) inicializarTabela();
+        tabela.clear();
+        tabela.rows.add(dados);
+        tabela.draw();
+    }
+
+    /* =======================================================================
+       6. EXPORTAÇÕES
+       As exportações em si estão em comum.js (objeto Exportar). Aqui só
+       montamos a lista de julgamentos filtrados e o nome do arquivo.
+       ======================================================================= */
+
+    /** Converte os julgamentos filtrados para o formato de exportação. */
+    function dadosParaExportar() {
+        return tabela.rows().data().toArray().map(d => ({
+            "Exercicio": d.exercicio || '',
+            "Processo": d.processo || '',
+            "Julgamento": d.julgamento || '',
+            "Transito em Julgado": formatarDataBR(d.transito) || '',
+            "Principais Itens": estaVazio(d.itens) ? '' : d.itens
+        }));
+    }
+
+    /** Monta o nome do arquivo a partir dos filtros ativos
+        (ex: julgamento_contas_2024). */
+    function gerarNomeArquivoBase() {
+        let partes = ["julgamento_contas"];
+        const ex = $('#filtroExercicio').val();
+        if (ex) partes.push(ex);
+        const txt = $('#filtroTexto').val().trim();
+        if (txt) partes.push(txt.replace(/\s+/g, '_'));
+        return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+    }
+
+    function exportarCSV()  { Exportar.csv(dadosParaExportar(), gerarNomeArquivoBase()); }
+    function exportarXLSX() { Exportar.xlsx(dadosParaExportar(), gerarNomeArquivoBase(), "Julgamentos"); }
+    function exportarJSON() { Exportar.json(dadosParaExportar(), gerarNomeArquivoBase()); }
+    function exportarXML()  { Exportar.xml(dadosParaExportar(), gerarNomeArquivoBase(), { raiz: "julgamentos", item: "julgamento" }); }
+
+    /* =======================================================================
+       7. IMPRESSÃO
+       ======================================================================= */
+
+    /**
+     * Imprime TODOS os julgamentos filtrados (não apenas a página atual):
+     *   1. Expande a paginação para exibir tudo (page.len(-1)).
+     *   2. Espera o evento draw.dt — sinal de que o DataTables terminou de
+     *      renderizar — em vez de um tempo fixo.
+     *   3. Abre a janela de impressão e restaura a paginação anterior.
+     */
+    function imprimirSeguro() {
+        if (!tabela) return;
+        const len = tabela.page.len(); // guarda a paginação atual
+        tabela.one('draw.dt', function() {
+            setTimeout(() => {
+                window.print();
+                tabela.page.len(len).draw('page'); // restaura após imprimir
+            }, 100);
+        });
+        tabela.page.len(-1).draw('page'); // -1 = mostrar todos
+    }
+
+    /* =======================================================================
+       8. INICIALIZAÇÃO
+       ======================================================================= */
+    $(document).ready(function() {
+        // Busca livre com debounce: espera 250ms após a última tecla
+        let debounceBusca;
+        $('#filtroTexto').on('input', function() {
+            clearTimeout(debounceBusca);
+            debounceBusca = setTimeout(aplicarFiltros, 250);
+        });
+
+        // Filtros de seleção aplicam imediatamente ao mudar
+        $('select').on('change', aplicarFiltros);
+
+        carregarDados();
+    });
+</script>
+</body>
+</html>

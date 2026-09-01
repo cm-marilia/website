@@ -1,0 +1,122 @@
+<!-- ===========================================================================
+     SEÇÃO "JULGAMENTO DAS CONTAS ANUAIS" — SITE OFICIAL
+     Câmara Municipal de Marília | https://www.marilia.sp.leg.br/
+
+     O QUE É ESTE CÓDIGO
+     Texto explicativo sobre o julgamento das contas anuais pelo TCE-SP +
+     iframe que incorpora o painel hospedado no GitHub Pages + script que
+     ajusta a altura do iframe automaticamente.
+
+     ⚠️ IMPORTANTE: todos os estilos são INLINE de propósito — o editor do
+     site remove blocos <style> ao salvar. Não converta para classes/<style>.
+     Cole apenas este fragmento no editor (sem <!DOCTYPE>, <html>, <head>
+     ou <body> — o site já fornece essa estrutura).
+
+     MANUTENÇÃO RÁPIDA
+     - Endereço do painel ........ src do iframe:
+       https://cm-marilia.github.io/website/site/julgamentos_contas_camara.html
+       (repo cm-marilia/website, pasta site/)
+     =========================================================================== -->
+
+<section class="manual-julgamento-contas" style="margin-top: 20px;">
+    <p style="text-align: justify;">
+        Todo ano a Câmara Municipal presta contas do dinheiro público que recebeu e gastou.
+        Essas contas são examinadas pelo Tribunal de Contas do Estado de São Paulo (TCE-SP),
+        órgão externo e independente responsável por fiscalizar as administrações municipais.
+    </p>
+    <p style="text-align: justify;">
+        O exame não se limita à conferência de somas: o Tribunal verifica se as despesas
+        tinham amparo legal, se as licitações e contratos seguiram as regras, se os limites
+        constitucionais de gastos foram respeitados e se as informações prestadas conferem
+        com a realidade. Ao final, profere uma decisão sobre cada exercício financeiro.
+    </p>
+    <hr>
+    <h3>⚖️ Como Funciona o Julgamento</h3>
+    <p style="text-align: justify;">
+        A fiscalização das contas municipais está prevista nos artigos 31, 70 e 71 da Constituição Federal, e o rito seguido pelo TCE-SP é disciplinado por sua Lei Orgânica (Lei Complementar estadual nº 709/1993). Cada exercício financeiro dá origem a um processo próprio, identificado por um número de TC. A fiscalização reúne dados enviados pela Câmara ao longo do ano e, quando é o caso, inspeções realizadas no próprio órgão; em seguida, o relatório é submetido ao contraditório, oportunidade em que a Câmara apresenta suas justificativas e documentos. Instruído o processo, o Conselheiro Relator leva a matéria a julgamento. Vale registrar uma distinção importante: as contas da Câmara Municipal, por serem contas de gestão de seu Presidente, são julgadas em definitivo pelo próprio Tribunal, ao passo que as contas anuais do Prefeito recebem parecer prévio do TCE-SP e são julgadas pelo Plenário da Câmara Municipal.
+    </p>
+    <hr>
+    <h3>📌 Resultados Possíveis</h3>
+    <p style="text-align: justify;">
+        As contas podem ser julgadas <b>regulares</b>, quando estão em ordem; <b>regulares com
+        ressalvas</b>, quando há falhas de natureza formal, sem prejuízo ao erário nem má-fé;
+        ou <b>irregulares</b>, quando se constata grave infração à lei, dano ao erário ou
+        desfalque. Em qualquer hipótese, o Tribunal pode acompanhar a decisão de
+        <b>recomendações</b> — orientações de aprimoramento — e de <b>determinações</b>, de
+        cumprimento obrigatório, cuja observância é verificada nos exercícios seguintes.
+    </p>
+    <hr>
+    <h3>⏳ Por Que o Julgamento Demora Alguns Anos</h3>
+    <p style="text-align: justify;">
+        É comum que o resultado de um exercício só apareça dois, três ou mais anos depois do
+        seu encerramento — em 2026, por exemplo, foram julgadas as contas de 2024. Isso não
+        indica atraso indevido, mas decorre do próprio rito. O exercício se encerra em 31 de
+        dezembro e a documentação só é encaminhada ao Tribunal nos meses seguintes. A partir
+        daí, cada processo é instruído individualmente: os agentes de fiscalização conferem e
+        validam as informações, elaboram o relatório, abre-se prazo para a defesa prévia do
+        órgão, os documentos são examinados pelos órgãos técnicos e pelo Ministério Público de
+        Contas e, por fim, o Conselheiro Relator elabora seu voto e leva o processo à sessão de
+        julgamento.
+    </p>
+    <p style="text-align: justify;">
+        Some-se a isso o volume: o TCE-SP é responsável por 644 municípios paulistas — todos,
+        exceto a capital, que possui tribunal próprio — e fiscaliza, em cada um deles,
+        prefeituras, câmaras, autarquias e fundações, o que resulta em milhares de processos
+        por ano. O intervalo, portanto, é o tempo necessário para que cada prestação de contas
+        seja examinada com profundidade e para que o órgão fiscalizado tenha oportunidade real
+        de se manifestar antes da decisão.
+    </p>
+    <hr>
+    <h3>🔎 Trânsito em Julgado</h3>
+    <p style="text-align: justify;">
+        Proferida a decisão, ainda cabe recurso. Diz-se que houve <b>trânsito em julgado</b>
+        quando não há mais recurso possível e o resultado se torna definitivo. Por isso, na
+        consulta abaixo, cada exercício aparece com o número do processo, o resultado do
+        julgamento e a data em que a decisão se tornou definitiva.
+    </p>
+    <p style="text-align: justify;">
+        Como a fase recursal tem duração variável, as datas de trânsito em julgado não seguem
+        necessariamente a ordem dos exercícios: um ano mais antigo pode tornar-se definitivo
+        depois de um mais recente, conforme o andamento de cada processo.
+    </p>
+    <hr>
+    <h3>📄 Julgamento das Contas da Câmara de Marília</h3>
+
+    <!-- ====================================================================
+         IFRAME — painel de consulta hospedado no GitHub Pages
+         A altura inicial (800px) vale só até a primeira mensagem do painel;
+         depois disso o script abaixo ajusta a altura automaticamente ao
+         conteúdo. Sem "scrolling=no": se a mensagem de altura não chegar
+         (erro de script no painel, bloqueio de rede), o iframe rola
+         internamente e nada é cortado. Quando o ajuste funciona, a altura
+         fica exata e não há rolagem.
+         ==================================================================== -->
+    <iframe
+        id="iframe-julgamentos_de_contas"
+        src="https://cm-marilia.github.io/website/site/julgamentos_contas_camara.html"
+        loading="lazy"
+        style="border: none; width: 1px; min-width: 100%; height: 800px; transition: height 0.3s ease-in-out;"
+        title="Julgamento das Contas Anuais - Câmara Municipal de Marília">
+    </iframe>
+
+    <!-- ====================================================================
+         SCRIPT — ajuste automático de altura do iframe
+         Proteções: só aceita mensagens do GitHub Pages oficial (event.origin),
+         vindas DESTE iframe (event.source), com altura numérica válida.
+         ==================================================================== -->
+    <script>
+        window.addEventListener('message', function (event) {
+            if (event.origin !== "https://cm-marilia.github.io") return;
+
+            var iframe = document.getElementById('iframe-julgamentos_de_contas');
+            if (!iframe || event.source !== iframe.contentWindow) return;
+
+            if (event.data && event.data.tipo === 'ajustarAltura') {
+                var altura = parseInt(event.data.valor, 10);
+                if (!isNaN(altura) && altura > 200) {
+                    iframe.style.height = altura + 'px';
+                }
+            }
+        }, false);
+    </script>
+</section>
