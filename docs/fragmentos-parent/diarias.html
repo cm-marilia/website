@@ -1,0 +1,208 @@
+<!-- ===========================================================================
+     SEÇÃO "DIÁRIAS E ADIANTAMENTOS" — SITE OFICIAL
+     Câmara Municipal de Marília | https://www.marilia.sp.leg.br/
+
+     O QUE É ESTE CÓDIGO
+     Conteúdo explicativo sobre a Resolução nº 380/2022 (regras de diárias
+     e adiantamentos) + iframe que incorpora o painel de consulta hospedado
+     no GitHub Pages + script que ajusta a altura do iframe automaticamente.
+
+     ⚠️ IMPORTANTE: todos os estilos são INLINE de propósito — o editor do
+     site remove blocos <style> ao salvar. Não converta para classes/<style>.
+
+     ORGANIZAÇÃO
+     1. Conteúdo ....... textos, tabelas de valores e links
+     2. Iframe ......... painel de consulta (GitHub Pages)
+     3. Script ......... recebe a altura enviada pelo painel via postMessage
+
+     MANUTENÇÃO RÁPIDA
+     - Valores das diárias ....... tabela "Tabela de Valores de Diárias"
+     - Critérios por duração ..... tabela "Critérios para Pagamento"
+     - Endereço do painel ........ src do iframe e link "tela cheia":
+       https://cm-marilia.github.io/website/site/diarias.html
+       (repo cm-marilia/website, pasta site/ — o GitHub Pages serve a raiz do repo)
+     - Lista de filtros do painel . parágrafo "Consulta de Diárias e Adiantamentos"
+     =========================================================================== -->
+
+<section class="manual-diarias" style="margin-top: 20px;">
+
+    <p style="text-align: justify; font-family: 'Inter', Arial, sans-serif;">
+        A Resolução nº 380/2022 é o documento oficial que define as regras e os limites para o pagamento de despesas de viagem (diárias e adiantamentos) aos vereadores e servidores da Câmara Municipal de Marília, sempre que precisarem se deslocar para outras cidades a trabalho e no interesse do município. O objetivo deste documento é garantir que as viagens oficiais ocorram de forma transparente, controlada e sem prejuízos aos cofres públicos.
+    </p>
+
+    <p style="text-align: justify; font-family: 'Inter', Arial, sans-serif;">
+        O inteiro teor da Resolução nº 380/2022, bem como suas alterações posteriores, pode ser consultado por meio do link abaixo.<br>
+        <a href="https://sapl.marilia.sp.leg.br/@@download_norma?cod_norma=40663&texto_original=1&t=1785781099.611191" target="_blank" rel="noopener noreferrer" style="color: #003b75; font-weight: bold;">Acessar a Resolução nº 380/2022.</a>
+    </p>
+
+    <p style="text-align: justify; font-family: 'Inter', Arial, sans-serif;">
+        Ao final desta página, há uma tabela na qual é possível consultar as diárias e os adiantamentos concedidos.<br>
+        <a href="#consulta-tabela" style="color: #003b75; font-weight: bold;">Clique aqui para acessar a tabela.</a>
+    </p>
+
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;" />
+
+    <h3>💰 Como Funcionam os Pagamentos?</h3>
+
+    <p style="text-align: justify; font-family: 'Inter', Arial, sans-serif;">
+        O documento divide as despesas de viagem em duas categorias principais:
+    </p>
+
+    <!-- list-style-type: none remove as bolinhas de marcador (padrão visual da seção) -->
+    <ul style="padding-left: 40px; list-style-type: none; margin-bottom: 20px;">
+        <li style="text-align: justify; margin-bottom: 15px;">
+            <strong>Diárias:</strong> São valores fixos destinados a cobrir gastos básicos no destino, como alimentação, hospedagem e transporte urbano (táxi, ônibus, metrô). Por terem caráter indenizatório, não é necessário apresentar notas fiscais desses gastos específicos.
+        </li>
+        <li style="text-align: justify; margin-bottom: 15px;">
+            <strong>Adiantamentos:</strong> São valores liberados especificamente para cobrir despesas de trajeto, como passagens, combustível e pedágios. Diferente das diárias, os adiantamentos exigem prestação de contas rigorosa. O vereador ou servidor tem até 5 dias úteis após o retorno para apresentar todos os comprovantes (cupons, notas fiscais) e deve devolver aos cofres públicos qualquer valor que não tenha sido utilizado.
+        </li>
+    </ul>
+
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;" />
+
+    <h3>🛡️ Transparência e Controle</h3>
+
+    <p style="text-align: justify; font-family: 'Inter', Arial, sans-serif;">
+        Para garantir o bom uso do dinheiro público, a resolução estabelece regras rígidas:
+    </p>
+
+    <ul style="padding-left: 40px; list-style-type: none; margin-bottom: 20px;">
+        <li style="text-align: justify; margin-bottom: 15px;">
+            <strong>Autorização Prévia:</strong> Nenhuma viagem pode ser feita sem solicitação e autorização pelo plenário.
+        </li>
+        <li style="text-align: justify; margin-bottom: 15px;">
+            <strong>Relatório de Viagem:</strong> Ao retornar, é obrigatório apresentar um relatório detalhado das atividades realizadas, acompanhado de documentos (certificados, fotos, protocolos) que comprovem a presença da pessoa no local e no evento.
+        </li>
+        <li style="text-align: justify; margin-bottom: 15px;">
+            <strong>Limites de Gastos:</strong> Existe um teto máximo de diárias que um servidor pode receber por mês, que varia entre 50% e 100% do seu salário bruto, dependendo do seu regime previdenciário, evitando assim o uso excessivo desse recurso.
+        </li>
+    </ul>
+
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;" />
+
+    <!-- ====================================================================
+         Tabela de valores das diárias
+         🔴 Se os valores mudarem (nova resolução), atualize as células abaixo
+         ==================================================================== -->
+    <h3>📋 Planilha de Valores das Diárias</h3>
+
+    <p style="text-align: justify; font-family: 'Inter', Arial, sans-serif;">
+        Os valores das diárias variam de acordo com a distância e a importância do destino. Além disso, o valor pago é proporcional ao tempo que a viagem durar.
+    </p>
+
+    <div style="text-align: center; margin: 30px 0;">
+        <div style="display: inline-block; width: 100%; max-width: 650px; border: 1px solid #ccc; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); background: #ffffff; font-family: 'Inter', Arial, sans-serif; text-align: left;">
+            <div style="background-color: #003b75; color: #ffffff; padding: 16px; text-align: center; font-weight: 700; text-transform: uppercase; font-size: 14px; letter-spacing: 1px;">
+                Tabela de Valores de Diárias
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th scope="col" style="background-color: #f4f6f9; color: #003b75; font-size: 13px; font-weight: 600; padding: 14px 16px; text-align: left; border-bottom: 2px solid #003b75;">Destino da Viagem</th>
+                        <th scope="col" style="background-color: #f4f6f9; color: #003b75; font-size: 13px; font-weight: 600; padding: 14px 16px; text-align: right; border-bottom: 2px solid #003b75;">Valor Integral</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding: 14px 16px; border-bottom: 1px solid #eeeeee; color: #444; font-size: 14px;">Cidades até 200 km de distância</td>
+                        <td style="padding: 14px 16px; border-bottom: 1px solid #eeeeee; color: #003b75; font-weight: 700; text-align: right; font-size: 14px;">R$ 300,00</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 14px 16px; border-bottom: 1px solid #eeeeee; color: #444; font-size: 14px;">Cidades a mais de 200 km de distância</td>
+                        <td style="padding: 14px 16px; border-bottom: 1px solid #eeeeee; color: #003b75; font-weight: 700; text-align: right; font-size: 14px;">R$ 450,00</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 14px 16px; border-bottom: 1px solid #eeeeee; color: #444; font-size: 14px;">Capital do Estado (São Paulo)</td>
+                        <td style="padding: 14px 16px; border-bottom: 1px solid #eeeeee; color: #003b75; font-weight: 700; text-align: right; font-size: 14px;">R$ 680,00</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 14px 16px; color: #444; font-size: 14px;">Capital do País e capitais de outros Estados</td>
+                        <td style="padding: 14px 16px; color: #003b75; font-weight: 700; text-align: right; font-size: 14px;">R$ 850,00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <br />
+
+    <p style="text-align: justify; font-family: 'Inter', Arial, sans-serif;">
+        A Câmara não paga o valor integral se a viagem for curta. Nestes casos, o cálculo funciona da seguinte forma:
+    </p>
+    <div style="text-align: center; margin: 30px 0;">
+        <div style="display: inline-block; width: 100%; max-width: 650px; border: 1px solid #ccc; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); background: #ffffff; font-family: 'Inter', Arial, sans-serif; text-align: left;">
+            <div style="background-color: #003b75; color: #ffffff; padding: 16px; text-align: center; font-weight: 700; text-transform: uppercase; font-size: 14px; letter-spacing: 1px;">
+                Critérios para Pagamento de Diárias
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tbody>
+                    <tr>
+                        <td style="padding: 14px 16px; border-bottom: 1px solid #eeeeee; color: #444; font-size: 14px; width: 45%;">Viagens de até 8 horas</td>
+                        <td style="padding: 14px 16px; border-bottom: 1px solid #eeeeee; color: #003b75; font-size: 14px; font-weight: 600;">Recebe apenas 1/3 do valor da tabela</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 14px 16px; border-bottom: 1px solid #eeeeee; color: #444; font-size: 14px; width: 45%;">Viagens entre 8 e 16 horas</td>
+                        <td style="padding: 14px 16px; border-bottom: 1px solid #eeeeee; color: #003b75; font-size: 14px; font-weight: 600;">Recebe 2/3 do valor da tabela</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 14px 16px; color: #444; font-size: 14px; width: 45%;">Viagens entre 16 e 24 horas</td>
+                        <td style="padding: 14px 16px; color: #003b75; font-size: 14px; font-weight: 600;">Recebe o valor integral (1 diária)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <p style="font-family: 'Inter', Arial, sans-serif;">
+        <strong>Observações:</strong> A Câmara Municipal de Marília não possui previsão de pagamento de diárias para viagens ao exterior. Além disso, caso a viagem não origine nenhuma das despesas previstas, o vereador ou servidor não tem direito a receber a diária ou o adiantamento.
+    </p>
+
+    <!-- Divisor maior (40px): separa a parte explicativa da consulta -->
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;" />
+
+    <!-- O link-âncora "acessar a tabela" aponta para este título -->
+    <h3 id="consulta-tabela">📊 Consulta de Diárias e Adiantamentos</h3>
+
+    <p style="text-align: justify; font-family: 'Inter', Arial, sans-serif;">
+        O relatório de diárias e adiantamentos é uma ferramenta de transparência pública que detalha as despesas com viagens e deslocamentos da Câmara Municipal de Marília. O painel permite pesquisar por nome e aplicar filtros combinados por legislatura, gabinete, servidor, ano e mês, exibindo o total de registros encontrados. O sistema também oferece recursos para imprimir os resultados de forma otimizada ou exportar os dados filtrados em formatos estruturados, como CSV, Excel, JSON e XML, facilitando a auditoria e o controle externo.
+    </p>
+
+    <p style="text-align: justify; font-family: 'Inter', Arial, sans-serif;">
+        Embora o relatório possua tecnologia responsiva para adequação a dispositivos móveis, recomendamos o uso em tela cheia no computador para uma melhor experiência de leitura dos dados e navegação. Para utilizar o painel com todas as suas ferramentas de forma ampliada, <strong><a href="https://cm-marilia.github.io/website/site/diarias.html" target="_blank" rel="noopener noreferrer" style="color: #003b75;">clique aqui para acessar o relatório em tela cheia</a></strong>.
+    </p>
+
+</section>
+
+<!-- ========================================================================
+     IFRAME — painel de consulta hospedado no GitHub Pages
+     A altura inicial (800px) vale só até a primeira mensagem do painel;
+     depois disso o script abaixo ajusta a altura automaticamente.
+     SEM scrolling="no": se a mensagem de altura falhar, o iframe rola em
+     vez de cortar o conteúdo.
+     ======================================================================== -->
+<iframe
+    id="iframe-diarias"
+    src="https://cm-marilia.github.io/website/site/diarias.html"
+    loading="lazy"
+    style="border: none; width: 1px; min-width: 100%; height: 800px; transition: height 0.3s ease-in-out;"
+    title="Consulta de Diárias e Adiantamentos">
+</iframe>
+
+<!-- ========================================================================
+     SCRIPT — ajuste automático de altura do iframe
+     Proteções: só aceita mensagens do GitHub Pages oficial (event.origin),
+     vindas DESTE iframe (event.source), com altura numérica válida.
+     ======================================================================== -->
+<script>
+    window.addEventListener('message', function(event) {
+        if (event.origin !== "https://cm-marilia.github.io") return;
+        var iframe = document.getElementById('iframe-diarias');
+        if (!iframe || event.source !== iframe.contentWindow) return;
+        if (event.data && event.data.tipo === 'ajustarAltura') {
+            var altura = parseInt(event.data.valor, 10);
+            if (!isNaN(altura) && altura > 200) {
+                iframe.style.height = altura + 'px';
+            }
+        }
+    }, false);
+</script>

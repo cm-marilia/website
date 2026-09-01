@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<!-- ===========================================================================
+     JULGAMENTO DAS CONTAS ANUAIS
+     Câmara Municipal de Marília
+     ===========================================================================
+
+     O QUE É ESTA PÁGINA
+     Portal de transparência que exibe o resultado do julgamento das contas
+     anuais da Câmara pelo Tribunal de Contas do Estado de São Paulo, em
+     formato de cards, com exportação em CSV, Excel, JSON e XML e impressão
+     formatada.
+
+     COMO FUNCIONA
+     1. Os dados são lidos de uma planilha do Google Sheets publicada como
+        CSV (variável CSV_URL, na seção CONFIGURAÇÃO do script). Para incluir
+        um exercício, basta acrescentar uma linha na planilha.
+     2. A página é hospedada no GitHub Pages e exibida dentro de um <iframe>
+        no site oficial: https://www.marilia.sp.leg.br/
+     3. A altura do iframe é ajustada automaticamente via postMessage.
+
+     FORMATO ESPERADO DA PLANILHA
+     - A primeira aba do arquivo é a publicada pelo Google; mantenha nela
+       apenas a tabela (as instruções ficam numa segunda aba).
+     - Cabeçalhos esperados (viram as chaves dos objetos):
+       exercicio | processo | julgamento | transito_julgado | itens_irregulares
+         exercicio ........... ano das contas julgadas (ex: 2024)
+         processo ............ número do processo no TCE (ex: TC-005147.989.24)
+         julgamento .......... resultado (ex: Regulares com recomendações)
+         transito_julgado .... data do trânsito em julgado (dd/mm/aaaa);
+                               aceita também aaaa-mm-dd e dd-mm-aaaa
+         itens_irregulares ... principais itens que ensejaram o julgamento
+                               irregular; vazio ou "-" quando não houver
+     - A linha de cabeçalho é localizada pela palavra "exercicio", então uma
+       eventual linha de metadados acima dela não atrapalha a leitura.
+
+     REGRAS AUTOMÁTICAS
+     - Quando "itens_irregulares" está vazio ou é "-", o card mostra
+       "Nenhum item registrado" em cinza, em vez de um traço solto.
+     - Os cards são exibidos do exercício mais recente para o mais antigo,
+       independentemente da ordem das linhas na planilha.
+
+     MANUTENÇÃO RÁPIDA (o que você normalmente precisa alterar)
+     - Incluir um exercício ...... acrescentar linha na planilha
+     - Trocar a planilha ......... variável CSV_URL     (seção CONFIGURAÇÃO)
+     - Trocar o site que embute .. ORIGEM_PAI           (seção CONFIGURAÇÃO)
+     - Trocar o brasão ........... arquivo brasao_marilia.png no repositório
+
+     DEPENDÊNCIAS (carregadas via CDN)
+     jQuery 3.7.1 | DataTables 1.13.6 | SheetJS 0.18.5 | PapaParse 5.4.1
+     =========================================================================== -->
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Julgamento das Contas Anuais da Câmara Municipal de Marília</title>
+
+    <!-- Estilos do DataTables (tabela com paginação) -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+
+    <!-- Fonte Inter (Google Fonts) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* ====================================================================
+           ÍNDICE DOS ESTILOS
+           1. Base e layout geral
+           2. Cabeçalho (topo azul e brasão)
+           3. Painéis (exportação e visualização)
+           4. Barra de exportação
+           5. Cards de julgamento
+           7. Tabela e paginação (DataTables)
+           8. Loader (carregamento)
+           9. Responsividade para celular
+           10. Impressão
+           ==================================================================== */
+
+        /* --------------------------------------------------------------------
+           1. BASE E LAYOUT GERAL
+           -------------------------------------------------------------------- */
+        body { font-family: 'Inter', Arial, sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; overflow-x: hidden; }
+
+        /* Padding inferior maior (40px) dá respiro ao conteúdo dentro do iframe */
+        #wrapper { padding: 15px 15px 40px; }
+
+        /* --------------------------------------------------------------------
+           2. CABEÇALHO (topo azul e brasão)
+           -------------------------------------------------------------------- */
+        .topo { background: #003b75; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .topo h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
+        .logo-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .texto-camara { font-size: 9px; color: #cbd5e1; letter-spacing: 2px; font-weight: 500; text-transform: uppercase; white-space: nowrap; margin-top: 2px; }
+        .brasao { max-width: 100%; height: auto; object-fit: contain; }
+
+        /* Cabeçalho exclusivo da versão impressa (oculto na tela; ver seção 10) */
+        #cabecalho-impressao { display: none; }
+
+        /* --------------------------------------------------------------------
+           3. PAINÉIS (caixas brancas de exportação e visualização)
+           -------------------------------------------------------------------- */
+        .painel-grupo { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .titulo-painel { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0 10px; }
+
+        /* Campo select usado pelo menu "Exibir X resultados" do DataTables */
+        select { height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box; background: white; }
+
+        /* --------------------------------------------------------------------
+           4. BARRA DE EXPORTAÇÃO
+           Em telas estreitas os botões deslizam horizontalmente (scroll suave)
+           -------------------------------------------------------------------- */
+        .painel-exportacao { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
+        .painel-exportacao button { flex: 1; min-width: 100px; height: 38px; border-radius: 6px; font-size: 12px; padding: 0 15px; background: #003b75; color: white; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .painel-exportacao button:hover { background: #00274d; }
+        .painel-exportacao .btn-acao { background: #0284c7; } /* botão Imprimir (azul claro) */
+        .painel-exportacao::-webkit-scrollbar { height: 6px; }
+        .painel-exportacao::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        /* Cabeçalho da área de visualização: menu "Exibir X" + contador */
+        .dt-custom-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 5px 0; }
+        .badge-contagem { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid #bae6fd; }
+
+        /* Ajuste visual do menu "Exibir X resultados" do DataTables */
+        .dataTables_length label { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; margin: 0; white-space: nowrap; }
+        .dataTables_length select { width: auto !important; height: auto !important; padding: 4px 10px !important; display: inline-block; }
+
+        /* --------------------------------------------------------------------
+           5. CARDS DE JULGAMENTO
+           Cada exercício vira um card com grade de 3 colunas
+           -------------------------------------------------------------------- */
+
+        /* O <thead> fica oculto: a tabela existe só para o DataTables paginar os cards */
+        #tabela thead { display: none !important; }
+        table.dataTable { border: none !important; margin-top: 5px !important; width: 100% !important; }
+
+        .card-info { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .card-header { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: #fff; display: flex; align-items: center; gap: 10px; }
+        .card-header-texto { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+        .nome-principal { font-size: 15px; font-weight: 800; color: #003b75; text-transform: uppercase; word-break: break-word; }
+        .subtitulo-card { font-size: 12px; color: #64748b; font-weight: 500; text-transform: uppercase; }
+
+        /* Grade de 3 colunas; span-2/span-3 fazem campos ocuparem mais espaço */
+        .card-body { display: grid; grid-template-columns: repeat(3, 1fr); padding: 12px 15px; gap: 12px; }
+        .span-2 { grid-column: span 2; }
+        .span-3 { grid-column: span 3; }
+
+        .info-col { display: flex; flex-direction: column; }
+        .info-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
+        .info-valor { font-size: 13px; font-weight: 700; color: #1e293b; text-align: justify; }
+        .info-vazio { font-size: 13px; font-weight: 700; color: #94a3b8; font-style: italic; }
+
+        /* Caixa de destaque usada quando há itens que ensejaram irregularidade */
+        .bloco-itens { margin-top: 4px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #003b75; border-radius: 6px; font-size: 13.5px; font-weight: 500; color: #475569; line-height: 1.7; text-align: justify; white-space: pre-wrap; hyphens: auto; -webkit-hyphens: auto; }
+
+        /* --------------------------------------------------------------------
+           6. TABELA E PAGINAÇÃO (DataTables)
+           -------------------------------------------------------------------- */
+        .dt-bottom-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 20px; }
+        .dataTables_wrapper .dataTables_info { padding-top: 0 !important; color: #475569; font-size: 13px; font-weight: 500; margin-bottom: 0 !important; }
+        .dataTables_wrapper .dataTables_paginate { display: flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 0 !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 6px 12px !important; border-radius: 6px !important; margin: 0 !important; border: 1px solid transparent !important; color: #475569 !important; font-weight: 600; font-size: 13px; background: transparent !important; cursor: pointer; transition: 0.2s; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #003b75 !important; color: white !important; border-color: #003b75 !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #003b75 !important; }
+
+        /* Mensagem exibida quando não há registros cadastrados */
+        .dataTables_empty { padding: 25px !important; color: #64748b !important; font-weight: 600; background: white; border-radius: 10px; }
+
+        /* --------------------------------------------------------------------
+           7. LOADER (indicador de carregamento inicial)
+           -------------------------------------------------------------------- */
+        #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #003b75; font-weight: bold; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003b75; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --------------------------------------------------------------------
+           8. RESPONSIVIDADE PARA CELULAR
+           -------------------------------------------------------------------- */
+        @media (max-width: 850px) {
+            .card-body { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 600px) {
+            .topo { flex-direction: column; gap: 10px; text-align: center; }
+            .card-header { flex-direction: column; text-align: center; gap: 10px; }
+            .card-header-texto { width: 100%; }
+            .dt-custom-header, .dt-bottom-controls { flex-direction: column; text-align: center; }
+            .dataTables_wrapper .dataTables_paginate { flex-wrap: wrap; justify-content: center; margin-top: 10px !important; }
+            .card-body { grid-template-columns: 1fr; }
+            .span-2, .span-3 { grid-column: span 1; }
+        }
+
+        /* --------------------------------------------------------------------
+           9. IMPRESSÃO
+           Esconde os painéis e botões e mostra o cabeçalho com brasão
+           -------------------------------------------------------------------- */
+        @media print {
+            .topo, fieldset, .dt-bottom-controls { display: none !important; }
+            #cabecalho-impressao { display: flex !important; align-items: center; gap: 20px; border-bottom: 2px solid #003b75; padding-bottom: 10px; margin-bottom: 20px; }
+            .card-info { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 15px; }
+            #main-container { display: block !important; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="wrapper">
+
+    <!-- ================================================================
+         CABEÇALHO DA PÁGINA (visível na tela)
+         ================================================================ -->
+    <header class="topo">
+        <h1>Julgamento das Contas Anuais</h1>
+        <div class="logo-container">
+            <img src="brasao_marilia.png" alt="Brasão de Marília" width="50" height="50" class="brasao">
+            <span class="texto-camara">Câmara Municipal de Marília</span>
+        </div>
+    </header>
+
+    <!-- ================================================================
+         CABEÇALHO DE IMPRESSÃO (visível apenas ao imprimir)
+         ================================================================ -->
+    <div id="cabecalho-impressao">
+        <img src="brasao_marilia.png" width="63" height="70" alt="Brasão de Marília">
+        <div>
+            <h1 style="margin:0; color:#003b75;">Julgamento das Contas Anuais</h1>
+            <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
+        </div>
+    </div>
+
+    <!-- Loader exibido durante a carga inicial -->
+    <div id="loader">
+        <div class="spinner"></div>
+        <span>Carregando base de dados...</span>
+    </div>
+
+    <!-- ================================================================
+         CONTEÚDO PRINCIPAL (exibido após o carregamento dos dados)
+         ================================================================ -->
+    <main id="main-container" style="display:none;">
+
+        <!-- Painel: botões de exportação e impressão -->
+        <fieldset class="painel-grupo">
+            <legend class="titulo-painel">Exportação e Impressão</legend>
+            <div class="painel-exportacao">
+                <button onclick="exportarCSV()">⬇️ CSV</button>
+                <button onclick="exportarXLSX()">⬇️ Excel</button>
+                <button onclick="exportarJSON()">⬇️ JSON</button>
+                <button onclick="exportarXML()">⬇️ XML</button>
+                <button class="btn-acao" onclick="imprimirSeguro()">🖨️ Imprimir</button>
+            </div>
+        </fieldset>
+
+        <!-- Painel: menu "Exibir X resultados" + contador de registros -->
+        <fieldset class="painel-grupo" id="painel-visualizacao" style="padding: 10px 15px;">
+            <legend class="titulo-painel">Visualização</legend>
+            <div class="dt-custom-header">
+                <div id="comprimento-tabela"></div>
+                <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
+            </div>
+        </fieldset>
+
+        <!-- Tabela-base do DataTables: cada linha renderiza um card completo.
+             O cabeçalho fica oculto via CSS (seção 6) -->
+        <table id="tabela" style="width:100%" role="presentation">
+            <thead><tr><th>Dados</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </main>
+</div>
+
+<!-- ====================================================================
+     BIBLIOTECAS EXTERNAS (CDN)
+     jQuery ......... base para o DataTables e manipulação do DOM
+     DataTables ..... paginação e controle de exibição dos cards
+     SheetJS (xlsx) . geração do arquivo Excel
+     PapaParse ...... leitura e geração de CSV com escape correto
+     ==================================================================== -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<script>
+    /* =======================================================================
+       ÍNDICE DO SCRIPT
+       1. Configuração (o que você normalmente altera está aqui)
+       2. Estado global
+       3. Funções utilitárias
+       4. Comunicação com o iframe (altura automática)
+       5. Carregamento e processamento dos dados
+       6. Tabela de cards (DataTables)
+       7. Exportações (CSV, Excel, JSON, XML)
+       8. Impressão
+       9. Inicialização
+       ======================================================================= */
+
+    /* =======================================================================
+       1. CONFIGURAÇÃO
+       ======================================================================= */
+
+    // 🔴 LINK DO CSV: no Google Sheets, use Arquivo → Compartilhar → Publicar
+    // na web → selecione a aba "Julgamentos" → formato CSV, e cole o link
+    // gerado aqui. Cabeçalhos esperados na primeira linha da planilha:
+    // exercicio | processo | julgamento | transito_julgado | itens_irregulares
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRvxvNlJbj3Ewufg_Us6zbQT1tCEhACAaZloEZpnntJk6AgCe_CMtn0Dw5OI7TqUwNRD3acTno8V4IP/pub?output=csv";
+
+    // 🔴 SITE QUE HOSPEDA O IFRAME: a altura da página só será enviada para
+    // este domínio (segurança do postMessage). Se o site oficial mudar de
+    // endereço, atualize aqui. Use "*" apenas em testes locais.
+    const ORIGEM_PAI = "https://www.marilia.sp.leg.br";
+
+    /* =======================================================================
+       2. ESTADO GLOBAL
+       ======================================================================= */
+    let tabela;            // instância única do DataTables
+    let dadosGlobais = []; // todos os registros carregados
+
+    /* =======================================================================
+       3. FUNÇÕES UTILITÁRIAS
+       ======================================================================= */
+
+    /**
+     * SEGURANÇA: escapa caracteres HTML antes de inserir dados na página.
+     * Impede que um valor contendo tags ou scripts quebre o layout ou
+     * execute código (XSS).
+     */
+    function escapeHtml(valor) {
+        return String(valor ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    /** Escapa os caracteres reservados do XML (&, <, >) na exportação. */
+    function escapeXml(valor) {
+        return String(valor ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    /** Considera vazio o campo em branco, "-", "–" ou "—". */
+    function estaVazio(valor) {
+        const s = String(valor ?? "").trim();
+        return s === "" || s === "-" || s === "–" || s === "—";
+    }
+
+    /** Formata a data para dd/mm/aaaa. Aceita dd/mm/aaaa, aaaa-mm-dd e
+        dd-mm-aaaa. Retorna "" quando não há data. */
+    function formatarDataBR(dataStr) {
+        if (estaVazio(dataStr)) return "";
+        const s = String(dataStr).trim();
+        let dia, mes, ano;
+
+        if (s.includes('/')) {
+            const p = s.split('/');
+            dia = p[0]; mes = p[1]; ano = p[2];
+        } else if (s.includes('-')) {
+            const p = s.split('-');
+            if (p[0].length === 4) { ano = p[0]; mes = p[1]; dia = p[2]; } // aaaa-mm-dd
+            else { dia = p[0]; mes = p[1]; ano = p[2]; }                   // dd-mm-aaaa
+        } else {
+            return s;
+        }
+
+        if (!dia || !mes || !ano) return s;
+        return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+    }
+
+    /* =======================================================================
+       4. COMUNICAÇÃO COM O IFRAME (altura automática)
+       A página roda dentro de um <iframe> no site oficial. Sempre que o
+       conteúdo muda de tamanho, enviamos a nova altura ao site pai.
+       ======================================================================= */
+
+    /** Envia a altura atual do conteúdo para o site que hospeda o iframe. */
+    function enviarAlturaIframe() {
+        const wrapper = document.getElementById('wrapper');
+        if (wrapper) {
+            window.parent.postMessage({ tipo: 'ajustarAltura', valor: wrapper.offsetHeight + 40 }, ORIGEM_PAI);
+        }
+    }
+
+    // O ResizeObserver detecta qualquer mudança de altura do conteúdo
+    // (filtro, troca de página) e reenvia automaticamente.
+    if ('ResizeObserver' in window) {
+        new ResizeObserver(() => enviarAlturaIframe()).observe(document.getElementById('wrapper'));
+    }
+
+    /* =======================================================================
+       5. CARREGAMENTO E PROCESSAMENTO DOS DADOS
+       ======================================================================= */
+
+    /** Padroniza um registro, removendo espaços sobrando de cada campo. */
+    function prepararRegistro(d) {
+        return {
+            exercicio: String(d.exercicio ?? "").trim(),
+            processo: String(d.processo ?? "").trim(),
+            julgamento: String(d.julgamento ?? "").trim(),
+            transito_julgado: String(d.transito_julgado ?? "").trim(),
+            itens_irregulares: String(d.itens_irregulares ?? "").trim()
+        };
+    }
+
+    /** Ordena os registros do exercício mais recente para o mais antigo. */
+    function ordenarPorExercicio(lista) {
+        return lista.slice().sort((a, b) =>
+            String(b.exercicio).localeCompare(String(a.exercicio), 'pt-BR', { numeric: true })
+        );
+    }
+
+    /**
+     * Converte o CSV publicado da planilha em registros.
+     *
+     * A linha de cabeçalho é localizada pela palavra "exercicio", então uma
+     * eventual linha de metadados acima dela é simplesmente ignorada.
+     * Os nomes das colunas viram as chaves dos objetos (ex: "transito_julgado").
+     */
+    function processarCSV(csvText) {
+        // O PapaParse trata corretamente células com vírgulas e quebras de
+        // linha internas (comuns no campo "itens_irregulares")
+        const linhas = Papa.parse(csvText.trim()).data;
+        if (linhas.length === 0) return [];
+
+        // Procura a linha de cabeçalho nas primeiras linhas do arquivo
+        let linhaCabecalho = linhas.findIndex(l => l.join(",").toLowerCase().includes("exercicio"));
+        if (linhaCabecalho === -1) linhaCabecalho = 0;
+
+        // Remove caracteres invisíveis (BOM) que o Google às vezes inclui
+        const headers = linhas[linhaCabecalho].map(h => String(h).trim().toLowerCase().replace(/[\uFEFF\u200B]/g, ""));
+        const lista = [];
+
+        for (let i = linhaCabecalho + 1; i < linhas.length; i++) {
+            const colunas = linhas[i];
+            if (!colunas || colunas.every(c => String(c).trim() === "")) continue;
+
+            let bruto = {};
+            headers.forEach((h, idx) => { bruto[h] = colunas[idx] !== undefined ? String(colunas[idx]).trim() : ""; });
+            lista.push(prepararRegistro(bruto));
+        }
+        return lista;
+    }
+
+    /** Baixa o CSV publicado do Google Sheets e inicia o painel.
+        O parâmetro cache=timestamp evita cópia em cache do navegador. */
+    async function carregarDados() {
+        $('#loader').show();
+        $('#main-container').hide();
+        try {
+            const separador = CSV_URL.includes('?') ? '&' : '?';
+            const resposta = await fetch(`${CSV_URL}${separador}cache=${Date.now()}`);
+            const texto = await resposta.text();
+            dadosGlobais = processarCSV(texto);
+            renderizarTabela(ordenarPorExercicio(dadosGlobais));
+            $('#loader').hide();
+            $('#main-container').fadeIn(400, () => enviarAlturaIframe());
+        } catch (erro) {
+            console.error("Erro ao carregar os dados: ", erro);
+            $('#loader').html('<b style="color:red">Erro ao carregar dados. Verifique o compartilhamento da planilha.</b>');
+        }
+    }
+
+    /* =======================================================================
+       6. TABELA DE CARDS (DataTables)
+       A tabela é criada UMA única vez e cuida apenas da paginação e da
+       impressão; todos os registros ficam sempre visíveis.
+       ======================================================================= */
+
+    /** Cria a instância do DataTables e define como cada card é desenhado. */
+    function inicializarTabela() {
+        tabela = $('#tabela').DataTable({
+            data: [],
+            pageLength: 10,
+            ordering: false, // a ordenação é feita em ordenarPorExercicio()
+            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados", emptyTable: "Nenhum julgamento cadastrado." },
+            dom: 'lrt<"dt-bottom-controls"ip>', // l=menu exibir, r=processando, t=tabela, i=info, p=paginação
+            columns: [{
+                data: null,
+                render: function(d) {
+                    const transito = formatarDataBR(d.transito_julgado);
+
+                    // Quando não há itens, mostra texto cinza em vez de um traço
+                    const blocoItens = estaVazio(d.itens_irregulares)
+                        ? `<span class="info-vazio">Nenhum item registrado.</span>`
+                        : `<div class="bloco-itens">${escapeHtml(d.itens_irregulares)}</div>`;
+
+                    return `
+                        <div class="card-info">
+                            <div class="card-header">
+                                <div class="card-header-texto">
+                                    <span class="nome-principal">Exercício ${escapeHtml(d.exercicio || "—")}</span>
+                                    <span class="subtitulo-card">Contas anuais da Câmara Municipal</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="info-col"><span class="info-label">Processo</span><span class="info-valor">${escapeHtml(d.processo || "—")}</span></div>
+                                <div class="info-col"><span class="info-label">Julgamento</span><span class="info-valor">${escapeHtml(d.julgamento || "—")}</span></div>
+                                <div class="info-col"><span class="info-label">Trânsito em Julgado</span><span class="info-valor">${escapeHtml(transito || "—")}</span></div>
+
+                                <div class="info-col span-3">
+                                    <span class="info-label">Principais itens que ensejaram o julgamento irregular</span>
+                                    ${blocoItens}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }],
+            initComplete: function() {
+                // Move o menu "Exibir X resultados" para o painel Visualização
+                $('.dataTables_length').appendTo('#comprimento-tabela');
+            },
+            drawCallback: function() {
+                // Atualiza o contador e reenvia a altura ao site pai
+                const total = this.api().rows().count();
+                $('#contagem-registros').html(`<b>${total}</b> registros encontrados`);
+                enviarAlturaIframe();
+            }
+        });
+
+        // Ao trocar de página, rola suavemente de volta ao topo da lista
+        tabela.on('page.dt', function () {
+            setTimeout(function() {
+                document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        });
+    }
+
+    /** Envia os registros para a tabela (criando-a na primeira chamada). */
+    function renderizarTabela(dados) {
+        if (!tabela) inicializarTabela();
+        tabela.clear();
+        tabela.rows.add(dados);
+        tabela.draw();
+    }
+
+    /* =======================================================================
+       7. EXPORTAÇÕES (CSV, Excel, JSON, XML)
+       Todas exportam a lista completa de exercícios.
+       ======================================================================= */
+
+    /** Converte os registros exibidos para o formato de exportação. */
+    function dadosParaExportar() {
+        return tabela.rows().data().toArray().map(d => ({
+            "Exercicio": d.exercicio || '',
+            "Processo": d.processo || '',
+            "Julgamento": d.julgamento || '',
+            "Transito em Julgado": formatarDataBR(d.transito_julgado) || '',
+            "Principais Itens": estaVazio(d.itens_irregulares) ? '' : d.itens_irregulares
+        }));
+    }
+
+    /** Nome-base dos arquivos exportados (ex: julgamento_contas.csv). */
+    function gerarNomeArquivoBase() {
+        return "julgamento_contas";
+    }
+
+    /** Exporta CSV. O PapaParse cuida do escape de aspas, vírgulas e quebras
+        de linha; o prefixo \ufeff (BOM) garante acentos corretos no Excel. */
+    function exportarCSV() {
+        const csv = "\ufeff" + Papa.unparse(dadosParaExportar());
+        downloadFile(csv, gerarNomeArquivoBase() + ".csv", "text/csv;charset=utf-8");
+    }
+
+    /** Exporta Excel (.xlsx) via SheetJS. */
+    function exportarXLSX() {
+        const ws = XLSX.utils.json_to_sheet(dadosParaExportar());
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Julgamentos");
+        XLSX.writeFile(wb, gerarNomeArquivoBase() + ".xlsx");
+    }
+
+    /** Exporta JSON formatado (2 espaços de indentação). */
+    function exportarJSON() {
+        downloadFile(JSON.stringify(dadosParaExportar(), null, 2), gerarNomeArquivoBase() + ".json", "application/json");
+    }
+
+    /** Exporta XML com os campos em ordem fixa e valores escapados. */
+    function exportarXML() {
+        const campos = ["exercicio", "processo", "julgamento", "transito_julgado", "itens_irregulares"];
+        let xml = '<?xml version="1.0" encoding="UTF-8"?><dados>';
+        tabela.rows().data().each(d => {
+            xml += '<registro>';
+            campos.forEach(k => {
+                const valor = (k === 'transito_julgado') ? formatarDataBR(d[k]) : d[k];
+                xml += `<${k}>${escapeXml(valor)}</${k}>`;
+            });
+            xml += '</registro>';
+        });
+        xml += '</dados>';
+        downloadFile(xml, gerarNomeArquivoBase() + ".xml", "application/xml");
+    }
+
+    /** Dispara o download de um arquivo gerado em memória e libera o blob
+        em seguida para não acumular memória. */
+    function downloadFile(content, fileName, mime) {
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = fileName; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    /* =======================================================================
+       8. IMPRESSÃO
+       ======================================================================= */
+
+    /**
+     * Imprime TODOS os registros (não apenas a página atual):
+     *   1. Expande a paginação para exibir tudo (page.len(-1)).
+     *   2. Espera o evento draw.dt — sinal de que o DataTables terminou de
+     *      renderizar — em vez de um tempo fixo.
+     *   3. Abre a janela de impressão e restaura a paginação anterior.
+     */
+    function imprimirSeguro() {
+        if (!tabela) return;
+        const len = tabela.page.len(); // guarda a paginação atual
+        tabela.one('draw.dt', function() {
+            setTimeout(() => {
+                window.print();
+                tabela.page.len(len).draw('page'); // restaura após imprimir
+            }, 100);
+        });
+        tabela.page.len(-1).draw('page'); // -1 = mostrar todos
+    }
+
+    /* =======================================================================
+       9. INICIALIZAÇÃO
+       ======================================================================= */
+    $(document).ready(function() {
+        carregarDados();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+PROMPT — LANÇAR NOVOS PARECERES DE DIÁRIAS NA PLANILHA
+Portal de Transparência da Câmara Municipal de Marília
+
+Como usar: anexe os PDFs do mês ("PARECER SOBRE OS ADIANTAMENTOS E DIÁRIAS")
+e cole o texto abaixo.
+
+------------------------------------------------------------------------------
+
+Anexei N PDFs de "PARECER SOBRE OS ADIANTAMENTOS E DIÁRIAS" da Câmara de Marília.
+Extraia para linhas no formato de planilhas_normalizadas/diarias.xlsx, aba do ano
+correspondente. UMA linha por beneficiado da tabela DIÁRIAS de cada PDF.
+IMPORTANTE: não invente formatação nova — copie o padrão exato das colunas que
+já existem na planilha (principalmente o campo "cargo").
+
+Mapa das colunas:
+- nome_servidor      = "Beneficiado" da tabela DIÁRIAS
+- cargo              = seguir EXATAMENTE o padrão já usado na planilha:
+                       * Motorista  -> "MOTORISTA DA CÂMARA (Em viagem do Ver. <NOME>)"
+                                       ("da Ver." se a vereadora for mulher)
+                       * Chefe de gabinete -> "CHEFE DE GABINETE do Ver. <NOME>"
+                                       ("da Ver." p/ mulher; se o vereador for o
+                                       Presidente da Câmara: "CHEFE DE GABINETE
+                                       DA PRESIDÊNCIA <NOME>")
+                       * Assessor de gabinete -> "ASSESSOR DE GABINETE do Ver. <NOME>"
+                                       ("da Ver." p/ mulher)
+                       * Sem "Vereador Solicitante" (viagem só de servidores):
+                         usar o cargo puro do PDF (ex.: "ESCRITURÁRIO",
+                         "ANALISTA E PROGRAMADOR DE SISTEMA", "ASSESSOR DE IMPRENSA")
+                       <NOME> = nome PARLAMENTAR do vereador (o do gabinetes.xlsx),
+                       convertido a partir do nome civil do PDF. Ex.: "Guilherme
+                       Fernandes dos Reis" -> "Guilherme Burcão"; "João dos Santos
+                       Diniz Neto" -> "João do Bar"; "Silvia Daniela Domingos
+                       D'Avila Alves" -> "Prof.ª Daniela".
+- quantidade_diarias = coluna "Quantidade", texto literal (ex.: "4 DIÁRIAS E 1/3 DE DIÁRIA")
+- data_partida       = do parágrafo "A viagem realizou-se no dia ..." -> dd/mm/aaaa
+- data_retorno       = "... com retorno no dia ..." -> dd/mm/aaaa (sem ano no
+                       texto, usar o ano da partida)
+- valor_diarias      = "Valor pago" da linha, número sem R$ (2.550,00 -> 2550)
+- dotacao (contexto) = "Corpo Legislativo" = diária do próprio vereador (paga via
+                       um servidor recebedor); "Corpo Administrativo" = diária de
+                       quem de fato viajou. A linha do recebedor pode repetir o
+                       nome de alguém que viajou (ex.: chefe de gabinete que foi
+                       à viagem E recebeu a do vereador) — nesse caso ficam 2
+                       linhas do mesmo nome, uma por ficha. Manter as duas.
+- valor_adiantamento = "Valor Utilizado" do quadro ADIANTAMENTO DE NUMERÁRIO,
+                       SÓ na linha do "Beneficiado" citado nesse quadro; nas
+                       demais linhas do mesmo PDF, vazio. Se o beneficiado
+                       aparecer rateado em 2 linhas (uma Corpo Administrativo e
+                       outra Corpo Legislativo), põe o valor só na 1ª. Veículo
+                       PRÓPRIO/ÔNIBUS sem adiantamento -> vazio.
+- dotacao            = a "Ficha" sem o código: "010200 – CORPO ADMINISTRATIVO"
+                       -> "Corpo Administrativo"; "010100 ..." -> "Corpo Legislativo"
+- cidade_destino     = campo "Destino" (ex.: "BRASÍLIA/DF")
+- local_destino      = o(s) local(is) citado(s) no parágrafo (ex.: "Ministério da
+                       Saúde", "Assembleia Legislativa do Estado de São Paulo
+                       (ALESP)", "Congresso Nacional"); vários -> juntar com " / "
+- motivacao_viagem   = NÃO copiar o parágrafo "Trata-se da viagem..." do PDF ao
+                       pé da letra, mas PRESERVAR TODO o conteúdo informativo dele
+                       (é a divulgação pública do que o vereador fez). Reescrever
+                       na abertura padrão da planilha e manter todos os detalhes:
+                       órgãos visitados, deputados/autoridades, projetos, obras,
+                       valores de emenda, temas discutidos.
+                       Forma:
+                         "Viagem d{o/a} Vereador{a} <NOME CIVIL>, acompanhad{o/a}
+                          do Motorista <nome>, d{o/a} Chefe de Gabinete <nome> e
+                          d{o/a} Assessor{a} de Gabinete <nome>, {ao/à} <local(is)>,
+                          em <cidade/UF>, para <finalidade DETALHADA — tudo o que o
+                          PDF traz sobre o objetivo, projetos e demandas>."
+                       - Sem vereador solicitante: "Viagem dos Servidores <A> e <B>
+                         {ao/à} <local>, em <cidade/UF>, para participação no curso
+                         \"<nome do curso>\", que abordou <conteúdo do curso>."
+                       - Nomeie só quem REALMENTE VIAJOU (use o parágrafo
+                         "Trata-se da viagem..." do PDF como fonte de quem foi).
+                         A linha "Corpo Legislativo" costuma ser a diária do
+                         PRÓPRIO vereador, recebida por um servidor que NÃO viajou
+                         (a Câmara não paga direto ao vereador) — esse recebedor
+                         não entra na motivação, e o mecanismo não se explica no texto.
+                       - Só resuma/omita o "juridiquês" (prestação de contas,
+                         Resolução nº 380, numeração do processo, assinaturas).
+                       - Mesmo texto em todas as linhas da mesma viagem.
+
+Regras:
+- Não inclua número do adiantamento nem de empenho (não existem na planilha).
+- Valores em número com ponto decimal; datas dd/mm/aaaa.
+- Não invente: o que estiver ilegível/ambíguo, liste como pendência.
+- Entregue primeiro uma PRÉVIA em tabela para eu conferir; depois de aprovar,
+  gere um .xlsx SEPARADO só com as linhas novas (aba do ano), com a linha 1 de
+  carimbo provisório e a linha 2 de cabeçalhos.
+
+------------------------------------------------------------------------------
+
+Cabeçalhos (linha 2 do .xlsx), nesta ordem:
+nome_servidor | cargo | quantidade_diarias | data_partida | data_retorno |
+valor_diarias | valor_adiantamento | dotacao | local_destino | cidade_destino |
+motivacao_viagem

@@ -1,0 +1,84 @@
+<!-- ===========================================================================
+     SEÇÃO "RELATÓRIO DE CONTRATOS" — SITE OFICIAL
+     Câmara Municipal de Marília | https://www.marilia.sp.leg.br/
+
+     O QUE É ESTE CÓDIGO
+     Texto explicativo sobre a consulta de contratos + iframe que incorpora
+     o painel hospedado no GitHub Pages + script que ajusta a altura do
+     iframe automaticamente.
+
+     ⚠️ IMPORTANTE: todos os estilos são INLINE de propósito — o editor do
+     site remove blocos <style> ao salvar. Não converta para classes/<style>.
+
+     MANUTENÇÃO RÁPIDA
+     - Endereço do painel ........ src do iframe e link (se houver):
+       https://cm-marilia.github.io/website/site/contratos.html
+       (repo cm-marilia/website, pasta site/ — o GitHub Pages serve a raiz do repo)
+     =========================================================================== -->
+
+<div class="relatorio-contratos" style="margin-top: 20px;">
+    <p style="text-align: justify;">
+        A tabela de Relatório de Contratos da Câmara Municipal de Marília foi desenvolvida para permitir a consulta pública dos contratos celebrados pela instituição, promovendo maior transparência e facilidade de acesso às informações administrativas.
+    </p>
+    <p style="text-align: justify;">
+        Por meio dos filtros disponíveis, é possível pesquisar contratos por razão social, CNPJ/CPF, número do contrato, objeto, modalidade, ano, mês, situação e responsável fiscal.
+        Os resultados apresentam informações detalhadas, como número do contrato, modalidade da contratação, valor, vigência, fiscal responsável e objeto do contrato.
+    </p>
+    <p style="text-align: justify;">
+        Além da visualização online, o sistema também disponibiliza opções de exportação dos dados nos formatos CSV, Excel, JSON e XML, bem como impressão do relatório.
+    </p>
+    <p style="text-align: justify;">
+        Os botões localizados na parte inferior de cada contrato possuem funções específicas:
+    </p>
+    <ul style="padding-left: 40px; list-style-type: none; margin-bottom: 20px;">
+        <li style="text-align: justify; margin-bottom: 15px;">
+            <strong>Botão vermelho – “Ir para o contrato”:</strong>
+            abre o documento completo do contrato (inteiro teor), contendo todas as cláusulas, condições e informações formais do processo contratual.
+        </li>
+        <li style="text-align: justify; margin-bottom: 15px;">
+            <strong>Botão verde – “Ir para a pasta do contrato”:</strong>
+            direciona para a pasta do processo no SAPL, com os documentos complementares relacionados ao contrato, como aditivos, alterações, prorrogações, anexos e demais arquivos vinculados.
+        </li>
+    </ul>
+    <p style="text-align: justify;">
+        Dessa forma, o sistema facilita o acompanhamento e a fiscalização dos contratos públicos pela população e pelos órgãos de controle.
+    </p>
+</div>
+<hr>
+
+<!-- ========================================================================
+     IFRAME — painel de consulta hospedado no GitHub Pages
+     A altura inicial (800px) vale só até a primeira mensagem do painel;
+     depois disso o script abaixo ajusta a altura automaticamente ao conteúdo.
+     Sem "scrolling=no": se a mensagem de altura não chegar (erro de script
+     no painel, bloqueio de rede), o iframe rola internamente e nada é
+     cortado. Quando o ajuste funciona, a altura fica exata e não há rolagem.
+     ======================================================================== -->
+<iframe
+    id="iframe-contratos"
+    src="https://cm-marilia.github.io/website/site/contratos.html"
+    loading="lazy"
+    style="border: none; width: 1px; min-width: 100%; height: 800px; transition: height 0.3s ease-in-out;"
+    title="Consulta de Contratos - Câmara Municipal de Marília">
+</iframe>
+
+<!-- ========================================================================
+     SCRIPT — ajuste automático de altura do iframe
+     Proteções: só aceita mensagens do GitHub Pages oficial (event.origin),
+     vindas DESTE iframe (event.source), com altura numérica válida.
+     ======================================================================== -->
+<script>
+    window.addEventListener('message', function (event) {
+        if (event.origin !== 'https://cm-marilia.github.io') return;
+
+        var iframe = document.getElementById('iframe-contratos');
+        if (!iframe || event.source !== iframe.contentWindow) return;
+
+        if (event.data && event.data.tipo === 'ajustarAltura') {
+            var altura = parseInt(event.data.valor, 10);
+            if (!isNaN(altura) && altura > 200) {
+                iframe.style.height = altura + 'px';
+            }
+        }
+    }, false);
+</script>

@@ -1,0 +1,405 @@
+<title>Escopo — Portal de Transparência</title>
+<meta name="description" content="Decisões em aberto e melhorias propostas para as páginas de transparência da Câmara Municipal de Marília.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&family=Source+Serif+4:ital,opt@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --ground: #f6f7f9;
+    --surface: #ffffff;
+    --surface-sunken: #eef1f4;
+    --ink: #17212e;
+    --ink-soft: #4a5766;
+    --ink-faint: #7b8794;
+    --rule: #dde3e9;
+    --rule-strong: #c4cdd6;
+    --primary: #003b75;
+    --primary-soft: #e6eef6;
+    --do: #0f6b5f;
+    --do-soft: #dcefeb;
+    --decide: #9a5b00;
+    --decide-soft: #fbeecf;
+    --risk: #b3261e;
+    --risk-soft: #f9e2e0;
+    --shadow: 0 1px 2px rgba(23,33,46,.06), 0 6px 20px -12px rgba(23,33,46,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0e151d;
+      --surface: #16202b;
+      --surface-sunken: #1d2934;
+      --ink: #e6ebf0;
+      --ink-soft: #a9b6c2;
+      --ink-faint: #7c8b98;
+      --rule: #2a3742;
+      --rule-strong: #3a4855;
+      --primary: #6aa9dd;
+      --primary-soft: #1a2e3f;
+      --do: #5cc4b2;
+      --do-soft: #14312d;
+      --decide: #e0a94e;
+      --decide-soft: #35290f;
+      --risk: #e8837a;
+      --risk-soft: #3a1c1a;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0e151d;
+    --surface: #16202b;
+    --surface-sunken: #1d2934;
+    --ink: #e6ebf0;
+    --ink-soft: #a9b6c2;
+    --ink-faint: #7c8b98;
+    --rule: #2a3742;
+    --rule-strong: #3a4855;
+    --primary: #6aa9dd;
+    --primary-soft: #1a2e3f;
+    --do: #5cc4b2;
+    --do-soft: #14312d;
+    --decide: #e0a94e;
+    --decide-soft: #35290f;
+    --risk: #e8837a;
+    --risk-soft: #3a1c1a;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -14px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 812px; margin: 0 auto; padding: 0 22px 96px; }
+
+  /* ---- header ---- */
+  header.doc {
+    border-bottom: 2px solid var(--primary);
+    padding: 40px 0 22px;
+    margin-bottom: 12px;
+  }
+  .eyebrow {
+    font-family: "Libre Franklin", system-ui, sans-serif;
+    font-size: 12px; font-weight: 600; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--ink-faint);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: "Libre Franklin", system-ui, sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.9rem, 1.3rem + 2.6vw, 2.7rem);
+    line-height: 1.1; letter-spacing: -.015em;
+    text-wrap: balance;
+    margin: 0 0 14px;
+  }
+  .standfirst { font-size: 1.06rem; color: var(--ink-soft); margin: 0; max-width: 62ch; }
+  .meta {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px; color: var(--ink-faint);
+    margin-top: 18px; display: flex; flex-wrap: wrap; gap: 6px 20px;
+  }
+
+  /* ---- typography ---- */
+  h2 {
+    font-family: "Libre Franklin", system-ui, sans-serif;
+    font-weight: 700; font-size: 1.5rem; letter-spacing: -.01em;
+    text-wrap: balance;
+    margin: 56px 0 6px;
+    padding-top: 22px; border-top: 1px solid var(--rule);
+  }
+  h2:first-of-type { border-top: 0; padding-top: 0; }
+  h3 {
+    font-family: "Libre Franklin", system-ui, sans-serif;
+    font-weight: 600; font-size: 1.1rem;
+    margin: 32px 0 6px;
+  }
+  .section-kicker {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px; color: var(--primary); font-weight: 500;
+    letter-spacing: .04em; margin: 0 0 4px;
+  }
+  p { margin: 12px 0; }
+  a { color: var(--primary); text-underline-offset: 2px; }
+  strong { font-weight: 600; }
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .84em;
+    background: var(--surface-sunken);
+    padding: .12em .4em; border-radius: 4px;
+    border: 1px solid var(--rule);
+  }
+  ul, ol { margin: 12px 0; padding-left: 1.3em; }
+  li { margin: 6px 0; }
+  li::marker { color: var(--ink-faint); }
+
+  /* ---- decision block ---- */
+  .decision {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--decide);
+    border-radius: 8px;
+    padding: 22px 24px;
+    margin: 22px 0;
+    box-shadow: var(--shadow);
+  }
+  .decision > h3 { margin-top: 0; }
+  .tag {
+    display: inline-flex; align-items: center;
+    font-family: "Libre Franklin", system-ui, sans-serif;
+    font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 3px 9px; border-radius: 999px;
+    border: 1px solid transparent;
+  }
+  .tag--decide { background: var(--decide-soft); color: var(--decide); border-color: color-mix(in srgb, var(--decide) 30%, transparent); }
+  .tag--do     { background: var(--do-soft); color: var(--do); border-color: color-mix(in srgb, var(--do) 30%, transparent); }
+  .tag--risk   { background: var(--risk-soft); color: var(--risk); border-color: color-mix(in srgb, var(--risk) 30%, transparent); }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+
+  .rec {
+    margin-top: 16px; padding: 12px 16px;
+    background: var(--do-soft);
+    border: 1px solid color-mix(in srgb, var(--do) 26%, transparent);
+    border-radius: 6px;
+    font-size: .95rem;
+  }
+  .rec strong { color: var(--do); font-family: "Libre Franklin", system-ui, sans-serif; }
+
+  /* ---- tables ---- */
+  .table-scroll { overflow-x: auto; margin: 18px 0; border: 1px solid var(--rule); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; min-width: 520px; }
+  th, td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: "Libre Franklin", system-ui, sans-serif;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ink-soft);
+    background: var(--surface-sunken);
+    position: sticky; top: 0;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-sunken) 45%, transparent); }
+  .col-id { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .82rem; color: var(--primary); white-space: nowrap; }
+  .pill {
+    font-family: "Libre Franklin", system-ui, sans-serif;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+  }
+  .pill--low { background: var(--do-soft); color: var(--do); }
+  .pill--mid { background: var(--decide-soft); color: var(--decide); }
+
+  /* ---- callout ---- */
+  .note {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 20px 0;
+    font-size: .95rem;
+    color: var(--ink-soft);
+  }
+  .note .note-label {
+    font-family: "Libre Franklin", system-ui, sans-serif;
+    font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-faint); display: block; margin-bottom: 4px;
+  }
+
+  /* ---- steps ---- */
+  ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 18px 0; }
+  ol.steps > li {
+    counter-increment: s;
+    position: relative;
+    padding: 14px 0 14px 52px;
+    border-top: 1px solid var(--rule);
+  }
+  ol.steps > li:first-child { border-top: 0; }
+  ol.steps > li::before {
+    content: counter(s);
+    position: absolute; left: 0; top: 12px;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    font-family: "Libre Franklin", system-ui, sans-serif;
+    font-weight: 700; font-size: 15px;
+    color: var(--primary);
+    background: var(--primary-soft);
+    border-radius: 8px;
+  }
+  ol.steps b { font-family: "Libre Franklin", system-ui, sans-serif; }
+
+  footer.doc {
+    margin-top: 64px; padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-size: .85rem; color: var(--ink-faint);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 16px; }
+    .wrap { padding: 0 16px 72px; }
+    .decision { padding: 18px 16px; }
+  }
+  @media print {
+    body { background: #fff; color: #000; }
+    .decision, .note, .table-scroll { box-shadow: none; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="doc">
+    <p class="eyebrow">Câmara Municipal de Marília · Documento de trabalho</p>
+    <h1>Escopo de melhorias do Portal de Transparência</h1>
+    <p class="standfirst">Nove páginas HTML no GitHub Pages, embutidas em <code>marilia.sp.leg.br</code>, lendo planilhas do Google Sheets publicadas como CSV. Este documento reúne as decisões em aberto e as correções propostas, para revisão antes de qualquer implementação.</p>
+    <div class="meta">
+      <span>Revisão: 28/08/2026</span>
+      <span>Status: aguardando decisão</span>
+      <span>Nada implementado até aqui</span>
+    </div>
+  </header>
+
+  <h2>Como funciona hoje</h2>
+  <p>Cada página (<code>contratos.html</code>, <code>servidores.html</code>, <code>diarias.html</code>, <code>remuneracao_detalhada_servidores.html</code>, <code>estagiarios.html</code>, <code>empresas_sancionadas.html</code>, <code>painel_orcamentario.html</code>, <code>painel_manifestacoes.html</code>, <code>julgamentos_contas_camara.html</code>) baixa um CSV publicado do Google Sheets, monta cards/tabelas no navegador e envia a altura ao site pai via <code>postMessage</code>. O selo verde de "dados atualizados em…" vem de uma célula <code>MODIF_REAL: dd/mm/aaaa, hh:mm</code> na primeira linha da planilha.</p>
+  <p><strong>O portal funciona.</strong> As melhorias abaixo tratam de fragilidade, falha silenciosa e manutenção — não de defeito ativo.</p>
+
+  <h2>Decisões em aberto</h2>
+  <p>Três escolhas dependem de você. As demais melhorias (seção seguinte) não exigem decisão — só priorização.</p>
+
+  <div class="decision">
+    <div class="tag-row"><span class="tag tag--decide">Decisão 1</span></div>
+    <h3>Fonte dos dados: manter CSV publicado ou migrar?</h3>
+    <p>Hoje as páginas leem o link <code>/pub?output=csv</code> do Google Sheets. Isso exporta o <em>valor exibido</em> na planilha (data como <code>10/01/2023</code>, número como <code>2026</code>) — e é por isso que funciona, apesar de algumas células de identificador estarem armazenadas internamente como data.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Opção</th><th>Ganho</th><th>Custo</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Manter CSV publicado</strong></td><td>Zero mudança. Já em produção.</td><td>Atraso de propagação (~minutos). Depende da formatação de exibição da planilha. Expõe toda aba publicada.</td></tr>
+          <tr><td><strong>Web App (Apps Script) devolvendo JSON</strong></td><td>Data real de modificação do arquivo; formatação de datas/números controlada no servidor (resolve o problema dos IDs); sem atraso; controle de CORS.</td><td>Adaptar o carregamento das 9 páginas (CSV → JSON). Esforço médio.</td></tr>
+          <tr><td><strong>CSV versionado no repositório</strong> (ver Decisão 3)</td><td>Histórico dos dados; independência do Google em tempo real.</td><td>Requer automação. Ver Decisão 3.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="rec"><strong>Recomendação:</strong> manter o CSV publicado por ora, e aplicar a correção de origem A1 (formatar colunas de identificador como texto). Reavaliar o Web App JSON quando for mexer no parser de datas de qualquer forma — os dois trabalhos se sobrepõem.</div>
+  </div>
+
+  <div class="decision">
+    <div class="tag-row"><span class="tag tag--decide">Decisão 2</span></div>
+    <h3>Carimbo de "última atualização": como alimentar?</h3>
+    <p>Hoje alguém digita <code>MODIF_REAL: …</code> na célula A1. Alternativas:</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Opção</th><th>Comportamento</th><th>Observação</th></tr></thead>
+        <tbody>
+          <tr><td><strong>1. Apps Script preenche A1</strong> (gatilho <code>onChange</code>)</td><td>Grava o timestamp a cada edição da planilha. Nenhuma mudança nos HTML.</td><td>Qualquer edição atualiza o carimbo — inclusive correção de digitação.</td></tr>
+          <tr><td><strong>2. Web App expõe <code>getLastUpdated()</code></strong></td><td>Data real do arquivo no Drive, sem "linha mágica".</td><td>Só faz sentido junto da Decisão 1 (migração para JSON).</td></tr>
+          <tr><td><strong>3. Timestamp da automação</strong> (<code>meta.json</code>)</td><td>Hora da última sincronização registrada pelo processo.</td><td>Só faz sentido junto da Decisão 3.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <span class="note-label">Definir o significado</span>
+      "Planilha foi tocada em X" (opções 1 e 2) é diferente de "os dados estão corretos até X" (afirmação humana). Escolher a opção depende de qual dos dois o selo deve comunicar ao cidadão.
+    </div>
+    <div class="rec"><strong>Recomendação:</strong> Opção 1 agora — rápida, sem risco, sem tocar nos HTML. Migrar para a Opção 2 se a Decisão 1 for pela migração.</div>
+  </div>
+
+  <div class="decision">
+    <div class="tag-row"><span class="tag tag--decide">Decisão 3</span></div>
+    <h3>Automatizar a sincronização dos dados?</h3>
+    <p>Trazer os CSVs para o repositório (versionados) elimina o atraso do Google, cria histórico e reduz o acoplamento com a disponibilidade do Sheets em tempo real. Duas formas:</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Opção</th><th>Custo financeiro</th><th>Prós / contras</th></tr></thead>
+        <tbody>
+          <tr><td><strong>GitHub Actions</strong> (cron baixa e comita)</td><td><strong>Gratuito</strong> para repositório público (minutos ilimitados).</td><td>+ histórico, resiliência.<br>− cron impreciso (atraso 5–20 min); workflow agendado desativa após 60 dias sem atividade no repo; mais uma peça a manter.</td></tr>
+          <tr><td><strong>Apps Script <code>push</code></strong> (planilha escreve no repo via API do GitHub)</td><td>Gratuito.</td><td>+ event-driven (atualiza no instante da mudança); lógica concentrada na planilha; não desativa sozinho.<br>− exige token do GitHub guardado no Apps Script.</td></tr>
+          <tr><td><strong>Não automatizar</strong></td><td>—</td><td>Mantém a simplicidade atual. Convive com o atraso e a exposição da planilha.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="rec"><strong>Recomendação:</strong> não é prioridade. Se for fazer, o <strong>Apps Script push</strong> tende a ser mais simples para um portal mantido essencialmente por uma pessoa — sem cron, sem workflow, menos conceitos novos. Automação é "bom ter", não "crítico".</div>
+  </div>
+
+  <h2>Melhorias sem decisão — só priorizar</h2>
+
+  <p class="section-kicker">NA FONTE (planilhas Google Sheets)</p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>ID</th><th>Ação</th><th>Por quê</th><th>Esforço</th></tr></thead>
+      <tbody>
+        <tr><td class="col-id">A1</td><td>Formatar como <strong>Texto simples</strong> as colunas <code>n_contrato</code>, <code>numero_contrato</code>, <code>processo</code>, <code>exercicio</code>, <code>ano</code>, <code>mes</code></td><td>Hoje "1/2023" é armazenado como data; o site só funciona pela formatação de exibição. Uma mudança de formato quebra ordenação e filtros sem aviso.</td><td><span class="pill pill--low">Baixo</span></td></tr>
+        <tr><td class="col-id">A2</td><td>Padronizar a linha 1 de todas as planilhas (todas com <code>MODIF_REAL</code>, ou todas sem)</td><td>Hoje <code>julgamentos</code> e <code>painel_manifestacoes</code> não têm; as outras sete têm. Cada parser trata de um jeito.</td><td><span class="pill pill--low">Baixo</span></td></tr>
+        <tr><td class="col-id">A3</td><td>Padronizar nome da aba (<code>Página1</code>) e o padrão de cabeçalhos — <code>remuneracao_detalhada</code> usa aba <code>planilha</code> e cabeçalhos com maiúscula/acento</td><td>Fragilidade de manutenção; um "conserto" de formato quebra o parser.</td><td><span class="pill pill--low">Baixo</span></td></tr>
+        <tr><td class="col-id">A4</td><td>Revisar, em cada planilha publicada, se só a aba e as colunas públicas estão expostas</td><td>"Publicar na web" expõe tudo que estiver marcado — risco de vazar rascunho ou coluna interna.</td><td><span class="pill pill--low">Baixo</span></td></tr>
+        <tr><td class="col-id">A5</td><td>Usar um único formato de data (<code>dd/mm/aaaa</code>) em todas as planilhas</td><td>Elimina a necessidade de o parser adivinhar formato.</td><td><span class="pill pill--low">Baixo</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="section-kicker">NAS 9 PÁGINAS HTML (comum a todas)</p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>ID</th><th>Ação</th><th>Por quê</th></tr></thead>
+      <tbody>
+        <tr><td class="col-id">B1</td><td>Parser de data único e tolerante (<code>dd/mm/aaaa</code>, <code>aaaa-mm-dd</code>, <code>dd-mm-aaaa</code>, hora opcional) — levar o de <code>empresas_sancionadas</code> para <code>contratos.html</code> e <code>diarias.html</code></td><td>Essas duas só aceitam <code>dd/mm/aaaa</code>; outro formato → "Vigência Indeterminada" e ordenação zerada.</td></tr>
+        <tr><td class="col-id">B2</td><td>Guard pós-carregamento: 0 registros ou coluna esperada ausente → mensagem de erro clara</td><td>Hoje a página fica em branco ou em <em>spinner</em> eterno, sem indício do que houve.</td></tr>
+        <tr><td class="col-id">B3</td><td>Padronizar <code>try/catch</code> em todo <code>fetch</code> (hoje <code>painel_orcamentario</code>, <code>painel_manifestacoes</code> e <code>diarias</code> usam <code>.then()</code> cru)</td><td>Falha do Google = <em>spinner</em> infinito.</td></tr>
+        <tr><td class="col-id">B4</td><td>Confirmar que todas as páginas têm <code>escapeHtml()</code>, <code>urlValida()</code> e (onde há CPF) <code>mascararCPF()</code></td><td><code>contratos.html</code> tem; as outras oito precisam de verificação. Consistência de segurança (XSS, link <code>javascript:</code>, LGPD).</td></tr>
+        <tr><td class="col-id">B5</td><td>Adicionar <code>integrity=</code> (SRI) nas 4 libs de CDN, ou hospedá-las no repositório</td><td>CDN comprometido ou fora do ar derruba a página inteira.</td></tr>
+        <tr><td class="col-id">B6</td><td><code>fetch</code> com timeout (<code>AbortController</code>, ~15s) + mensagem de recarregar</td><td>Google lento trava a página indefinidamente.</td></tr>
+        <tr><td class="col-id">B7</td><td>Garantir botão de download dos dados brutos em todas as páginas</td><td>Dados abertos: o dado precisa ser baixável, não só visível.</td></tr>
+        <tr><td class="col-id">B8</td><td>Revisar acessibilidade (e-MAG): contraste, navegação por teclado, <code>aria-label</code>, foco visível</td><td>Portal público tem exigência legal de acessibilidade.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="section-kicker">POR PÁGINA</p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Página</th><th>Ação específica</th></tr></thead>
+      <tbody>
+        <tr><td class="col-id">contratos</td><td>B1; revisar cálculo "Vigente / Encerrado" que usa o fuso do visitante — fixar meia-noite local.</td></tr>
+        <tr><td class="col-id">diarias</td><td>B1, B3; tratar <code>data_partida</code> vazia.</td></tr>
+        <tr><td class="col-id">empresas_sancionadas</td><td>Cabeçalho tem 7 colunas (<code>…observacao</code>); confirmar que <code>observacao</code> (texto jurídico longo) aparece no card.</td></tr>
+        <tr><td class="col-id">julgamentos_contas_camara</td><td>Poucos registros (5); sem linha <code>MODIF_REAL</code> — confirmar que isso não desalinha o selo de atualização.</td></tr>
+        <tr><td class="col-id">painel_manifestacoes</td><td>B3; tratar <code>data_conclusao</code> vazia (manifestação em aberto).</td></tr>
+        <tr><td class="col-id">painel_orcamentario</td><td>B3; tratar valores que possam vir como <code>2026.0</code> se a fonte mudar.</td></tr>
+        <tr><td class="col-id">remuneracao_detalhada_servidores</td><td>A3 — depende da aba <code>planilha</code> e de cabeçalhos específicos; tornar o parser por palavra-chave mais robusto.</td></tr>
+        <tr><td class="col-id">servidores</td><td>Confirmar exibição de servidores com <code>data_demissao</code> preenchida (desligados) vs. ativos.</td></tr>
+        <tr><td class="col-id">estagiarios</td><td>OK; apenas B1 / B2.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Ordem sugerida de execução</h2>
+  <ol class="steps">
+    <li><b>A1</b> — formatar as colunas de identificador como texto. Cerca de 10 minutos; protege a versão atual de imediato.</li>
+    <li><b>B1 + B2 + B3</b> — parser de data tolerante, guard pós-carga e <code>try/catch</code>. Elimina as falhas silenciosas.</li>
+    <li><b>A2 + A4</b> — padronizar a linha 1 e revisar o que cada planilha publicada expõe.</li>
+    <li><b>B4 + B5</b> — auditoria de segurança das 9 páginas e SRI nas libs.</li>
+    <li><b>B8</b> — acessibilidade (e-MAG).</li>
+    <li><b>Decisão 3</b>, se aprovada — automação da sincronização. Maior ganho de longo prazo, menor urgência.</li>
+  </ol>
+
+  <h2>Riscos conhecidos (sem ação imediata)</h2>
+  <ul>
+    <li><strong>Dependência de uma pessoa.</strong> Documentar o processo de manutenção reduz o risco de "só uma pessoa sabe".</li>
+    <li><strong>Google Sheets "publicar na web"</strong> já foi descontinuado uma vez pelo Google no passado; a Decisão 3 mitiga.</li>
+    <li><strong>4 CDNs distintos</strong> (jQuery, DataTables, SheetJS, PapaParse) — cada um é um ponto único de falha até o item B5.</li>
+    <li><strong>LGPD:</strong> auditoria atual não encontrou CPF desprotegido. Manter a verificação a cada nova página ou coluna.</li>
+  </ul>
+
+  <footer class="doc">
+    Documento de trabalho — não publicado no portal. Atualizar conforme as decisões forem tomadas.
+  </footer>
+
+</div>

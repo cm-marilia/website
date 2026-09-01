@@ -1,0 +1,91 @@
+<!-- ===========================================================================
+     SEÇÃO "LICITANTES/CONTRATADOS APENADOS" — SITE OFICIAL
+     Câmara Municipal de Marília | https://www.marilia.sp.leg.br/
+
+     O QUE É ESTE CÓDIGO
+     Texto explicativo sobre licitantes/contratados apenados + iframe que
+     incorpora o painel hospedado no GitHub Pages + script que ajusta a
+     altura do iframe automaticamente.
+
+     ⚠️ IMPORTANTE: todos os estilos são INLINE de propósito — o editor do
+     site remove blocos <style> ao salvar. Não converta para classes/<style>.
+     Cole apenas este fragmento no editor (sem <!DOCTYPE>, <html>, <head>
+     ou <body> — o site já fornece essa estrutura).
+
+     MANUTENÇÃO RÁPIDA
+     - Endereço do painel ........ src do iframe:
+       https://cm-marilia.github.io/website/site/empresas_sancionadas.html
+       (repo cm-marilia/website, pasta site/ — o GitHub Pages serve a raiz do repo)
+     =========================================================================== -->
+
+<section class="manual-apenados" style="margin-top: 20px;">
+    <p style="text-align: justify;">
+        Licitantes/contratados apenados são empresas ou pessoas físicas que receberam
+        alguma penalidade administrativa relacionada a contratos públicos ou participação
+        em licitações.
+    </p>
+    <p style="text-align: justify;">
+        Na prática, isso significa que o órgão público concluiu que houve alguma irregularidade,
+        descumprimento contratual ou infração nas regras da licitação, e aplicou uma sanção.
+    </p>
+    <hr>
+    <h3>⚖️ Punições Mais Comuns</h3>
+    <p style="text-align: justify;">
+        As penalidades administrativas aplicáveis em licitações e contratos com a Administração Pública incluem advertência, multa, suspensão temporária de participação em licitações, impedimento de contratar com o poder público e declaração de inidoneidade, sendo todas previstas na legislação para coibir irregularidades e descumprimentos contratuais; essas sanções podem ser registradas em cadastros públicos oficiais, como o Cadastro Nacional de Empresas Inidôneas e Suspensas (CEIS), o Cadastro Nacional de Empresas Punidas (CNEP) e o Sistema de Cadastramento Unificado de Fornecedores (SICAF), além de portais de transparência, com o objetivo de garantir publicidade, controle e transparência nas contratações públicas, bem como permitir a verificação da regularidade de fornecedores e impedir contratações com empresas sancionadas quando houver restrição legal.
+    </p>
+    <hr>
+    <h3>📌 Exemplo Simples</h3>
+    <p style="text-align: justify;">
+        Uma empresa vence uma licitação para fornecer equipamentos, mas abandona o contrato
+        sem justificativa. Após processo administrativo, o órgão pode aplicar suspensão por
+        2 anos. Nesse período, ela passa a constar como “apenada”.
+    </p>
+    <hr>
+    <h3>🚫 Apenados pela Câmara de Marília</h3>
+
+    <p style="text-align: justify;">
+        O painel abaixo lista, por padrão, apenas as sanções <strong>vigentes</strong>
+        (a data de fim ainda não passou). Use o filtro de situação para ver também as
+        sanções já encerradas ou todas; nas encerradas, um selo indica a data em que
+        a penalidade deixou de valer. Os dados podem ser exportados em CSV, Excel,
+        JSON e XML e impressos.
+    </p>
+
+    <!-- ====================================================================
+         IFRAME — painel de consulta hospedado no GitHub Pages
+         A altura inicial (800px) vale só até a primeira mensagem do painel;
+         depois disso o script abaixo ajusta a altura automaticamente ao
+         conteúdo. Sem "scrolling=no": se a mensagem de altura não chegar
+         (erro de script no painel, bloqueio de rede), o iframe rola
+         internamente e nada é cortado. Quando o ajuste funciona, a altura
+         fica exata e não há rolagem.
+         ==================================================================== -->
+    <iframe
+        id="iframe-empresas_sancionadas"
+        src="https://cm-marilia.github.io/website/site/empresas_sancionadas.html"
+        loading="lazy"
+        style="border: none; width: 1px; min-width: 100%; height: 800px; transition: height 0.3s ease-in-out;"
+        title="Consulta de Licitantes Apenados - Câmara Municipal de Marília">
+    </iframe>
+
+    <!-- ====================================================================
+         SCRIPT — ajuste automático de altura do iframe
+         Proteções: só aceita mensagens do GitHub Pages oficial (event.origin),
+         vindas DESTE iframe (event.source), com altura numérica válida.
+         ==================================================================== -->
+    <script>
+        window.addEventListener('message', function (event) {
+            if (event.origin !== "https://cm-marilia.github.io") return;
+
+            var iframe = document.getElementById('iframe-empresas_sancionadas');
+            if (!iframe || event.source !== iframe.contentWindow) return;
+
+            if (event.data && event.data.tipo === 'ajustarAltura') {
+                var altura = parseInt(event.data.valor, 10);
+                if (!isNaN(altura) && altura > 200) {
+                    iframe.style.height = altura + 'px';
+                }
+            }
+        }, false);
+    </script>
+</section>

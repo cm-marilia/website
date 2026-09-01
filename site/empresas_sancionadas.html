@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<!-- ===========================================================================
+     RELATÓRIO DE LICITANTES APENADOS
+     Câmara Municipal de Marília
+     ===========================================================================
+
+     O QUE É ESTA PÁGINA
+     Portal de transparência que exibe as empresas e pessoas físicas
+     sancionadas pela Câmara (licitantes/contratados apenados), em cards,
+     com busca por razão social/CNPJ e por número de contrato, detalhes da
+     sanção em acordeão, exportação (CSV/Excel/JSON/XML) e impressão.
+
+     COMO FUNCIONA
+     1. Os dados são lidos de uma planilha do Google Sheets publicada como
+        CSV (variável CSV_URL, na seção CONFIGURAÇÃO). Aba única.
+     2. Hospedada no GitHub Pages, exibida via <iframe> em marilia.sp.leg.br.
+     3. A altura do iframe é ajustada por postMessage (comum.js).
+
+     CÓDIGO COMPARTILHADO
+     - Estilos comuns ..... comum.css   - Funções comuns ..... comum.js
+     Esta página só tem o que é específico de apenados: leitura da planilha,
+     regra de vigência da sanção, filtros e montagem dos cards.
+
+     FORMATO ESPERADO DA PLANILHA  (ver docs/padrao-planilhas.md no repositório)
+     - Linha 1: carimbo "DADOS_ATUALIZADOS_EM: dd/mm/aaaa hh:mm" (selo verde)
+     - Linha 2: cabeçalhos, localizados por NOME (não por posição):
+       cpf_ou_cnpj | razao_social | numero_contrato | objeto_contrato |
+       motivo_sancao | data_fim_sancao | observacao
+     - Linha 3 em diante: os registros
+     - data_fim_sancao em dd/mm/aaaa; vazio = sanção sem prazo (sempre exibida)
+
+     REGRA DE SITUAÇÃO (filtro "Situação")
+     A página compara data_fim_sancao com hoje. O filtro abre em "Sanções
+     vigentes" (quem está impedido HOJE); "Sanções encerradas" mostra só o
+     histórico; "Todas" mostra tudo. Nada é apagado — só filtrado.
+
+     REGRAS AUTOMÁTICAS
+     - Selo no card: âmbar "Sancionado até dd/mm/aaaa" (vigente com prazo),
+       cinza "Prazo indeterminado" (vigente sem prazo) ou verde "Sanção
+       encerrada em dd/mm/aaaa" (prazo já vencido).
+     - LGPD: 11 dígitos (CPF) são mascarados (***.123.456-**) na tela e nas
+       exportações; CNPJ (14 dígitos) aparece completo (dado público).
+     - Observações longas ficam recolhidas no botão "Detalhes da Sanção"
+       (na impressão aparecem expandidas).
+
+     MANUTENÇÃO RÁPIDA
+     - Trocar a planilha ......... variável CSV_URL (seção CONFIGURAÇÃO)
+     - Trocar o site que embute .. window.ORIGEM_PAI (antes de comum.js)
+
+     DEPENDÊNCIAS (CDN): jQuery 3.7.1 | DataTables 1.13.6 | SheetJS 0.18.5 | PapaParse 5.4.1
+     =========================================================================== -->
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Relatório de Licitantes Apenados</title>
+
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="comum.css" />
+
+    <style>
+        /* ESPECÍFICO DE APENADOS
+           O chrome (topo, painéis, loader, paginação, selo verde) vem de
+           comum.css. Aqui só o card com grade de 3 colunas + acordeão. */
+
+        /* filtros: busca (2fr) | nº contrato | situação | botão */
+        .painel-filtros { grid-template-columns: 2fr 1fr 1fr auto; }
+
+        .subtitulo-card { font-size: 12px; color: #64748b; font-weight: 500; text-transform: uppercase; }
+
+        /* selo com o prazo da sanção */
+        .status-sancao { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .status-indeterminado { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+        .status-encerrada { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+
+        /* corpo do card: grade de 3 colunas */
+        .card-body { display: grid; grid-template-columns: repeat(3, 1fr); padding: 12px 15px; gap: 12px; }
+        .card-body .span-2 { grid-column: span 2; }
+        .card-body .span-3 { grid-column: span 3; }
+        .card-body .info-valor { text-align: justify; }
+
+        /* acordeão de observações */
+        .btn-obs { background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: fit-content; gap: 8px; transition: 0.2s; text-transform: uppercase; }
+        .btn-obs:hover { background: #e2e8f0; color: #0f172a; }
+        .obs-content { display: none; margin-top: 8px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #003b75; border-radius: 6px; font-size: 13.5px; color: #475569; line-height: 1.7; text-align: justify; white-space: pre-wrap; hyphens: auto; -webkit-hyphens: auto; }
+        .obs-content.mostrar { display: block; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 850px) { .card-body { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) {
+            .painel-filtros { grid-template-columns: 1fr; }
+            .card-body { grid-template-columns: 1fr; }
+            .card-body .span-2, .card-body .span-3 { grid-column: span 1; }
+        }
+        @media print { .btn-obs { display: none !important; } .obs-content { display: block !important; border: 1px solid #ddd; } }
+    </style>
+</head>
+<body>
+
+<div id="wrapper">
+
+    <header class="topo">
+        <h1>Relatório de Licitantes Apenados</h1>
+        <div class="logo-container">
+            <img src="brasao_marilia.png" alt="Brasão de Marília" width="50" height="50" class="brasao">
+            <span class="texto-camara">Câmara Municipal de Marília</span>
+        </div>
+    </header>
+
+    <div id="cabecalho-impressao">
+        <img src="brasao_marilia.png" width="63" height="70" alt="Brasão de Marília">
+        <div>
+            <h1 style="margin:0; color:#003b75;">Relatório de Licitantes Apenados</h1>
+            <p style="margin:0; font-weight:bold;">Câmara Municipal de Marília</p>
+        </div>
+    </div>
+
+    <div id="loader" role="status" aria-live="polite">
+        <div class="spinner"></div>
+        <span>Carregando base de dados...</span>
+    </div>
+
+    <main id="main-container" style="display:none;">
+
+        <fieldset class="painel-grupo">
+            <legend class="titulo-painel titulo-painel--com-selo">
+                Filtros de Pesquisa
+                <span id="badge-atualizacao" class="badge-atualizacao">⏳ Sincronizando...</span>
+            </legend>
+            <div class="painel-filtros">
+                <input type="text" id="filtroTexto" placeholder="Pesquisar por razão social ou CNPJ/CPF..." autocomplete="off" aria-label="Pesquisar por razão social ou CNPJ/CPF">
+                <input type="text" id="filtroContrato" placeholder="Número do contrato..." autocomplete="off" aria-label="Pesquisar por número do contrato">
+                <select id="filtroSituacao" aria-label="Filtrar por situação da sanção">
+                    <option value="vigente">Sanções vigentes</option>
+                    <option value="encerrada">Sanções encerradas</option>
+                    <option value="">Todas</option>
+                </select>
+                <button class="btn-filtro" onclick="limparFiltros()">Limpar filtros</button>
+            </div>
+        </fieldset>
+
+        <fieldset class="painel-grupo">
+            <legend class="titulo-painel">Exportação e Impressão</legend>
+            <div class="painel-exportacao">
+                <button onclick="exportarCSV()">⬇️ CSV</button>
+                <button onclick="exportarXLSX()">⬇️ Excel</button>
+                <button onclick="exportarJSON()">⬇️ JSON</button>
+                <button onclick="exportarXML()">⬇️ XML</button>
+                <button class="btn-acao" onclick="imprimirSeguro()">🖨️ Imprimir</button>
+            </div>
+        </fieldset>
+
+        <fieldset class="painel-grupo" id="painel-visualizacao" style="padding: 10px 15px;">
+            <legend class="titulo-painel">Visualização</legend>
+            <div class="dt-custom-header">
+                <div id="comprimento-tabela"></div>
+                <div id="contagem-registros" class="badge-contagem">0 registros encontrados</div>
+            </div>
+        </fieldset>
+
+        <table id="tabela" style="width:100%" role="presentation">
+            <thead><tr><th>Dados</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </main>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<script>window.ORIGEM_PAI = "https://www.marilia.sp.leg.br";</script>
+<script src="comum.js"></script>
+
+<script>
+    /* =======================================================================
+       ESPECÍFICO DE APENADOS
+       Utilitários (removerAcentos, escapeHtml, escapeXml, mascararCPF,
+       parseDataBR, formatarDataBR, buscarCSV, indexarColunas,
+       enviarAlturaIframe, Exportar) vêm de comum.js.
+       ======================================================================= */
+
+    /* 1. CONFIGURAÇÃO ------------------------------------------------------- */
+
+    // 🔴 LINK DO CSV: Google Sheets → Arquivo → Compartilhar → Publicar na web
+    // → aba única → CSV. Cole aqui.
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQQdY8sGIoMWvySlbvbgAAHmkSRdU9qm7xJy2THNLZNqwFte1Ue5wPWvjkMwfsnH-rrLNFgTVSEG_Az/pub?gid=817339261&single=true&output=csv";
+
+    // Campo interno → nome da coluna na planilha (linha 2). Localizada por
+    // NOME normalizado; nomes antigos aceitos durante a transição.
+    const COL = {
+        documento: ["cpf_ou_cnpj", "cnpj"],
+        razao:     ["razao_social"],
+        numero:    ["numero_contrato"],
+        objeto:    ["objeto_contrato"],
+        motivo:    ["motivo_sancao"],
+        fimSancao: ["data_fim_sancao", "fim_sancao"],
+        obs:       ["observacao"],
+    };
+
+    /* 2. ESTADO GLOBAL ---------------------------------------------------- */
+    let tabela;
+    let dadosGlobais = [];
+    let carimboAtualizacao = "";
+
+    /* 3. REGRA DE VIGÊNCIA DA SANÇÃO ------------------------------------- */
+
+    /**
+     * A sanção está ativa? (controla se o registro aparece)
+     * - sem data ("", "—", "-") → sem prazo → SEMPRE exibida
+     * - data ilegível → exibida (nunca esconder por erro de digitação)
+     * - senão: hoje <= último segundo do dia de data_fim_sancao
+     */
+    function sancaoAtiva(dataStr) {
+        const s = String(dataStr || "").trim();
+        if (!s || s === "—" || s === "-") return true;
+        const d = parseDataBR(s);
+        if (!d) return true;
+        d.setHours(23, 59, 59, 999);
+        return new Date() <= d;
+    }
+
+    /** Data para o selo do card: "" quando não há prazo. */
+    function dataSeloSancao(dataStr) {
+        const s = String(dataStr || "").trim();
+        if (!s || s === "—" || s === "-") return "";
+        return formatarDataBR(s);
+    }
+
+    /* 4. CARREGAMENTO --------------------------------------------------- */
+
+    /**
+     * CSV (texto) → { carimbo, registros }.
+     *   Linha 1: carimbo   Linha 2: cabeçalhos   Linha 3+: registros
+     */
+    function processarCSV(text) {
+        const linhas = Papa.parse(text).data;
+
+        let carimbo = "";
+        if (linhas.length > 0 && linhas[0][0]) {
+            const m = String(linhas[0][0]).match(/(\d{2}\/\d{2}\/\d{4})[,\s]*(\d{2}:\d{2})?/);
+            if (m) carimbo = `Dados atualizados em ${m[1]}${m[2] ? ' ' + m[2] : ''}`;
+        }
+
+        // linha de cabeçalho: procura "cnpj" ou "razao_social" nas 5 primeiras
+        let ic = 1;
+        for (let i = 0; i < Math.min(5, linhas.length); i++) {
+            const t = removerAcentos(linhas[i].join(" ").toLowerCase());
+            if (t.includes("cnpj") || t.includes("razao_social")) { ic = i; break; }
+        }
+
+        const idx = indexarColunas(linhas[ic]);
+        const posicao = {};
+        Object.keys(COL).forEach(campo => {
+            const nome = COL[campo].find(n => n in idx);
+            if (nome != null) posicao[campo] = idx[nome];
+        });
+
+        // GUARD (B2)
+        const faltando = ["documento", "razao"].filter(c => !(c in posicao));
+        if (faltando.length) {
+            throw new Error("A planilha não tem as colunas esperadas: "
+                + faltando.map(c => COL[c][0]).join(", ") + ".");
+        }
+
+        const pegar = (cols, campo) => {
+            const i = posicao[campo];
+            return (i != null && cols[i] != null) ? String(cols[i]).trim() : "";
+        };
+
+        const registros = linhas.slice(ic + 1).map(cols => {
+            const o = {
+                cnpj:            pegar(cols, "documento"),
+                razao_social:    pegar(cols, "razao"),
+                numero_contrato: pegar(cols, "numero"),
+                objeto_contrato: pegar(cols, "objeto"),
+                motivo_sancao:   pegar(cols, "motivo"),
+                fim_sancao:      pegar(cols, "fimSancao"),
+                observacao:      pegar(cols, "obs"),
+            };
+            // busca: razão sem acento + só os dígitos do documento
+            o.busca_nome = removerAcentos((o.razao_social || "").toLowerCase())
+                + " " + (o.cnpj || "").replace(/\D/g, "");
+            return o;
+        }).filter(d => d.cnpj || d.razao_social);
+
+        return { carimbo, registros };
+    }
+
+    async function carregarDados() {
+        $('#loader').show(); $('#main-container').hide();
+        try {
+            const { carimbo, registros } = processarCSV(await buscarCSV(CSV_URL));
+            dadosGlobais = registros;
+            carimboAtualizacao = carimbo || "Dados sincronizados";
+            aplicarFiltros();
+            $('#badge-atualizacao').text(`🟢 ${carimboAtualizacao}`);
+            $('#loader').hide();
+            $('#main-container').fadeIn(400, () => enviarAlturaIframe());
+        } catch (e) {
+            console.error("Erro ao carregar os dados: ", e);
+            $('#loader').html(`<b style="color:#b91c1c">Não foi possível carregar os dados.<br>${escapeHtml(e.message)}<br><br>Tente recarregar a página.</b>`);
+        }
+    }
+
+    /* 5. FILTROS ------------------------------------------------------- */
+
+    /**
+     * - Busca livre: razão social (sem acento) e documento (só dígitos) —
+     *   "12.345" e "12345" acham o mesmo registro
+     * - Nº do contrato: busca parcial
+     * - Situação: "vigente" (padrão) mostra só quem está impedido hoje;
+     *   "encerrada" mostra só o histórico; "" (Todas) mostra tudo.
+     */
+    function aplicarFiltros() {
+        const busca = removerAcentos($('#filtroTexto').val().toLowerCase());
+        const buscaDigitos = busca.replace(/\D/g, "");
+        const buscaContrato = removerAcentos($('#filtroContrato').val().toLowerCase());
+        const situacao = $('#filtroSituacao').val();
+
+        const filtrados = dadosGlobais.filter(d => {
+            const matchTexto = !busca
+                || d.busca_nome.includes(busca)
+                || (buscaDigitos && d.busca_nome.includes(buscaDigitos));
+            const matchContrato = !buscaContrato
+                || (d.numero_contrato && removerAcentos(d.numero_contrato.toLowerCase()).includes(buscaContrato));
+
+            const ativa = sancaoAtiva(d.fim_sancao);
+            const matchSituacao = !situacao
+                || (situacao === 'vigente' && ativa)
+                || (situacao === 'encerrada' && !ativa);
+
+            return matchTexto && matchContrato && matchSituacao;
+        });
+
+        renderizarTabela(filtrados);
+    }
+
+    function limparFiltros() {
+        $('#filtroTexto, #filtroContrato').val('');
+        $('#filtroSituacao').val('vigente');
+        aplicarFiltros();
+    }
+
+    /* 6. TABELA DE CARDS + ACORDEÃO ---------------------------------- */
+
+    /** Abre/fecha a observação de um card e reajusta a altura do iframe. */
+    window.toggleObservacao = function (id) {
+        const el = document.getElementById(id);
+        if (el) { el.classList.toggle('mostrar'); enviarAlturaIframe(); }
+    };
+
+    function inicializarTabela() {
+        tabela = $('#tabela').DataTable({
+            data: [],
+            pageLength: 10,
+            ordering: false,
+            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json', lengthMenu: "Exibir _MENU_ resultados" },
+            dom: 'lrt<"dt-bottom-controls"ip>',
+            columns: [{
+                data: null,
+                render: function (d) {
+                    const idObs = 'obs-' + Math.random().toString(36).slice(2, 11);
+                    const temObs = d.observacao && d.observacao.trim() !== "";
+
+                    const numLimpo = (d.cnpj || '').replace(/\D/g, '');
+                    const labelDoc = numLimpo.length === 11 ? "CPF" : "CNPJ";
+                    const docMascarado = mascararCPF(d.cnpj);
+
+                    const fim = dataSeloSancao(d.fim_sancao);
+                    const ativa = sancaoAtiva(d.fim_sancao);
+                    let badge;
+                    if (!ativa) {
+                        badge = `<span class="status-badge status-encerrada">Sanção encerrada${fim ? ' em ' + escapeHtml(fim) : ''}</span>`;
+                    } else if (fim) {
+                        badge = `<span class="status-badge status-sancao">⏳ Sancionado até ${escapeHtml(fim)}</span>`;
+                    } else {
+                        badge = `<span class="status-badge status-indeterminado">Prazo indeterminado</span>`;
+                    }
+
+                    return `
+                        <div class="card-info">
+                            <div class="card-header">
+                                <div class="card-header-texto">
+                                    <span class="nome-principal">${escapeHtml(d.razao_social || "Razão social não informada")}</span>
+                                    <span class="subtitulo-card">${labelDoc}: ${escapeHtml(docMascarado || "—")}</span>
+                                </div>
+                                ${badge}
+                            </div>
+                            <div class="card-body">
+                                <div class="info-col"><span class="info-label">Contrato</span><span class="info-valor">${escapeHtml(d.numero_contrato || "—")}</span></div>
+                                <div class="info-col span-2"><span class="info-label">Motivo da Sanção</span><span class="info-valor">${escapeHtml(d.motivo_sancao || "—")}</span></div>
+                                <div class="info-col span-3"><span class="info-label">Objeto do Contrato</span><span class="info-valor">${escapeHtml(d.objeto_contrato || "—")}</span></div>
+                                ${temObs ? `
+                                    <div class="info-col span-3">
+                                        <button class="btn-obs" onclick="window.toggleObservacao('${idObs}')">📋 Detalhes da Sanção <span>▼</span></button>
+                                        <div id="${idObs}" class="obs-content">${escapeHtml(d.observacao)}</div>
+                                    </div>
+                                ` : `
+                                    <div class="info-col span-3">
+                                        <span class="info-label">Observação</span>
+                                        <span class="info-valor" style="color:#94a3b8; font-style:italic;">Nenhuma observação registrada.</span>
+                                    </div>
+                                `}
+                            </div>
+                        </div>`;
+                }
+            }],
+            initComplete: function () { $('.dataTables_length').appendTo('#comprimento-tabela'); },
+            drawCallback: function () {
+                $('#contagem-registros').html(`<b>${this.api().rows().count()}</b> registros encontrados`);
+                enviarAlturaIframe();
+            }
+        });
+
+        tabela.on('page.dt', function () {
+            setTimeout(() => document.getElementById('painel-visualizacao').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+        });
+    }
+
+    function renderizarTabela(dados) {
+        if (!tabela) inicializarTabela();
+        tabela.clear();
+        tabela.rows.add(dados);
+        tabela.draw();
+    }
+
+    /* 7. EXPORTAÇÕES -------------------------------------------------- */
+
+    /** Registros filtrados (só sanções vigentes), CPF mascarado. */
+    function dadosParaExportar() {
+        return tabela.rows().data().toArray().map(d => ({
+            "CNPJ/CPF": mascararCPF(d.cnpj || ''),
+            "Razão Social": d.razao_social || '',
+            "Número do Contrato": d.numero_contrato || '',
+            "Objeto do Contrato": d.objeto_contrato || '',
+            "Motivo da Sanção": d.motivo_sancao || '',
+            "Fim da Sanção": d.fim_sancao || '',
+            "Situação": sancaoAtiva(d.fim_sancao) ? 'Vigente' : 'Encerrada',
+            "Observação": d.observacao || ''
+        }));
+    }
+
+    function gerarNomeArquivoBase() {
+        let partes = ["licitantes_apenados"];
+        const texto = $('#filtroTexto').val().trim();
+        if (texto) partes.push(texto.replace(/\s+/g, '_'));
+        const contrato = $('#filtroContrato').val().trim();
+        if (contrato) partes.push("contrato_" + contrato.replace(/[^a-zA-Z0-9]/g, ''));
+        return removerAcentos(partes.join('_')).replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+    }
+
+    function exportarCSV()  { Exportar.csv(dadosParaExportar(), gerarNomeArquivoBase()); }
+    function exportarXLSX() { Exportar.xlsx(dadosParaExportar(), gerarNomeArquivoBase(), "Apenados"); }
+    function exportarJSON() { Exportar.json(dadosParaExportar(), gerarNomeArquivoBase()); }
+    function exportarXML()  { Exportar.xml(dadosParaExportar(), gerarNomeArquivoBase(), { raiz: "apenados", item: "registro" }); }
+
+    /* 8. IMPRESSÃO -------------------------------------------------- */
+
+    function imprimirSeguro() {
+        if (!tabela) return;
+        const len = tabela.page.len();
+        tabela.one('draw.dt', function () {
+            setTimeout(() => { window.print(); tabela.page.len(len).draw('page'); }, 100);
+        });
+        tabela.page.len(-1).draw('page');
+    }
+
+    /* 9. INICIALIZAÇÃO -------------------------------------------- */
+    $(document).ready(function () {
+        let debounce;
+        $('#filtroTexto, #filtroContrato').on('input', function () {
+            clearTimeout(debounce);
+            debounce = setTimeout(aplicarFiltros, 250);
+        });
+        $('#filtroSituacao').on('change', aplicarFiltros);
+        carregarDados();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<!-- ===========================================================================
+     DASHBOARD DE MANIFESTAÇÕES E OUVIDORIA
+     Câmara Municipal de Marília
+     ===========================================================================
+
+     O QUE É ESTA PÁGINA
+     Dashboard de transparência da Ouvidoria: cards de indicadores (total
+     de demandas, tempo médio de resposta e demandas respondidas), gráficos
+     de pizza por tipo e por canal de entrada, gráfico de barras com todos
+     os assuntos recorrentes (com rolagem lateral) e exportação dos dados
+     em CSV, Excel, JSON e XML.
+
+     COMO FUNCIONA
+     1. Os dados são lidos de uma planilha do Google Sheets publicada como
+        CSV (variável CSV_URL, na seção CONFIGURAÇÃO do script).
+     2. A página é hospedada no GitHub Pages e exibida dentro de um <iframe>
+        no site oficial: https://www.marilia.sp.leg.br/
+     3. A altura do iframe é ajustada automaticamente via postMessage.
+
+     FORMATO ESPERADO DA PLANILHA
+     - Linha 1: cabeçalhos (com ou sem acentos/maiúsculas):
+       tipo | canal_entrada | assuntos | data_abertura | data_conclusao
+     - Linha 2 em diante: uma manifestação por linha
+     - Datas nos formatos dd/mm/aaaa, aaaa-mm-dd ou dd-mm-aaaa (a hora,
+       se houver, é ignorada)
+
+     REGRAS AUTOMÁTICAS
+     - Registros sem data de abertura válida são descartados
+     - Respondida = tem data de conclusão preenchida
+     - Tempo de resposta (SLA) = dias entre abertura e conclusão; a média
+       considera apenas as demandas respondidas
+     - Campos vazios de tipo/canal/assunto viram "Não Informado"
+     - As exportações baixam o período filtrado (ano/mês de abertura)
+
+     MANUTENÇÃO RÁPIDA (o que você normalmente precisa alterar)
+     - Trocar a planilha ......... variável CSV_URL   (seção CONFIGURAÇÃO)
+     - Trocar o site que embute .. variável ORIGEM_PAI (seção CONFIGURAÇÃO)
+     - Cores dos gráficos ........ propriedade "color" de cada gráfico
+
+     DEPENDÊNCIAS (carregadas via CDN)
+     ECharts | PapaParse 5.4.1 | SheetJS 0.18.5
+     =========================================================================== -->
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Manifestações e Ouvidoria</title>
+
+    <!-- ECharts (gráficos), PapaParse (leitura do CSV) e SheetJS (Excel) -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        /* ====================================================================
+           ÍNDICE DOS ESTILOS
+           1. Base e layout geral
+           2. Barra de filtros (ano/mês de abertura)
+           3. Botões de exportação
+           4. Cards de indicadores (KPIs)
+           5. Gráficos
+           6. Responsividade (iframe e celular)
+           ==================================================================== */
+
+        /* --------------------------------------------------------------------
+           1. BASE E LAYOUT GERAL
+           -------------------------------------------------------------------- */
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; color: #1e293b; overflow-x: hidden; }
+
+        /* Mensagem exibida se o CSV não puder ser carregado */
+        #msg-erro { display: none; margin: 30px 15px; padding: 15px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; border-radius: 8px; text-align: center; font-weight: bold; }
+
+        /* --------------------------------------------------------------------
+           2. BARRA DE FILTROS (ano/mês de abertura)
+           -------------------------------------------------------------------- */
+        .painel-filtros {
+            background: #ffffff; padding: 15px 20px; display: flex; flex-wrap: wrap;
+            justify-content: center; align-items: center; gap: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border-bottom: 1px solid #e2e8f0;
+            width: 100%;
+        }
+
+        .filtro-grupo { display: flex; align-items: center; }
+        .filtro-grupo label { font-weight: bold; color: #475569; margin-right: 8px; font-size: 14px; }
+
+        .filtro-grupo select {
+            width: 180px; height: 40px; padding: 0 12px; border: 1px solid #cbd5e1;
+            border-radius: 6px; font-size: 14px; color: #1e293b; background-color: #fff;
+            cursor: pointer; outline: none; transition: border-color 0.2s;
+        }
+        .filtro-grupo select:focus { border-color: #3b82f6; }
+
+        /* --------------------------------------------------------------------
+           3. BOTÕES DE EXPORTAÇÃO
+           Alinhados à direita; exportam o período filtrado
+           -------------------------------------------------------------------- */
+        .painel-exportacao {
+            width: 100%; margin: 20px auto 0 auto; padding: 0 15px;
+            display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+        .painel-exportacao span { font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+
+        .btn-export {
+            background-color: #ffffff; border: 1px solid #cbd5e1; padding: 6px 0;
+            border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer;
+            width: 65px; /* mesmo tamanho exato para todos os botões */
+            text-align: center; transition: all 0.2s;
+        }
+        .btn-export:hover { background-color: #f8fafc; border-color: #94a3b8; }
+
+        /* --------------------------------------------------------------------
+           4. CARDS DE INDICADORES (KPIs)
+           A cor da borda esquerda identifica cada indicador:
+             total #3b82f6 (azul) | sla #8b5cf6 (roxo) | resolvido #10b981 (verde)
+           -------------------------------------------------------------------- */
+        .container-cards {
+            width: 100%; margin: 15px auto 10px auto; padding: 0 15px;
+            /* 3 colunas iguais, mantidas na mesma linha dentro do iframe */
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+        }
+
+        .card {
+            background: #ffffff; padding: 15px 10px; border-radius: 8px;
+            text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            border-left: 4px solid #94a3b8; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; height: 100%;
+        }
+
+        .card.total     { border-left-color: #3b82f6; }
+        .card.sla       { border-left-color: #8b5cf6; }
+        .card.resolvido { border-left-color: #10b981; }
+
+        .card-titulo { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: bold; margin-bottom: 5px; }
+        .card-valor { font-size: 18px; font-weight: bold; color: #0f172a; }
+        .card-perc { font-size: 10px; margin-top: 5px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+
+        .perc-blue { background-color: rgba(59, 130, 246, 0.1); color: #1d4ed8; }
+        .perc-purple { background-color: rgba(139, 92, 246, 0.1); color: #6d28d9; }
+        .perc-green { background-color: rgba(16, 185, 129, 0.1); color: #047857; }
+
+        /* --------------------------------------------------------------------
+           5. GRÁFICOS
+           Dois lado a lado (tipo e canal) + um de largura total (assuntos)
+           -------------------------------------------------------------------- */
+        .container-graficos {
+            width: 100%; margin: 10px auto 20px auto; padding: 0 15px;
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;
+        }
+
+        .grafico-wrapper {
+            background: #ffffff; border-radius: 8px; padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02); overflow: hidden;
+        }
+
+        .grafico-box { width: 100%; height: 350px; }
+        .grafico-full { grid-column: span 2; }
+
+        /* --------------------------------------------------------------------
+           6. RESPONSIVIDADE
+           -------------------------------------------------------------------- */
+
+        /* Largura do iframe no site (~850px): gráficos empilham, mas os
+           3 cards permanecem na mesma linha */
+        @media (max-width: 860px) {
+            .container-graficos { grid-template-columns: 1fr; }
+            .grafico-full { grid-column: span 1; }
+            .painel-exportacao { justify-content: center; }
+        }
+
+        /* Celular: tudo empilhado em coluna única */
+        @media (max-width: 480px) {
+            .painel-filtros { flex-direction: column; gap: 12px; }
+            .filtro-grupo select { width: 100%; max-width: 280px; }
+            .container-cards { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ================================================================
+         BARRA DE FILTROS (ano e mês de abertura da manifestação)
+         ================================================================ -->
+    <div class="painel-filtros">
+        <div class="filtro-grupo">
+            <label for="filtroAno">Ano de Abertura:</label>
+            <select id="filtroAno"><option value="Todos">Todos</option></select>
+        </div>
+        <div class="filtro-grupo">
+            <label for="filtroMes">Mês de Abertura:</label>
+            <select id="filtroMes"><option value="Todos">Todos</option></select>
+        </div>
+    </div>
+
+    <!-- Mensagem exibida somente se o CSV não puder ser carregado -->
+    <div id="msg-erro">Erro ao carregar os dados da Ouvidoria. Tente recarregar a página.</div>
+
+    <!-- ================================================================
+         BOTÕES DE EXPORTAÇÃO (baixam o período filtrado)
+         ================================================================ -->
+    <div class="painel-exportacao">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span>Exportar Período:</span>
+            <button class="btn-export" onclick="exportarCSV()">CSV</button>
+            <button class="btn-export" onclick="exportarXLSX()">XLSX</button>
+            <button class="btn-export" onclick="exportarJSON()">JSON</button>
+            <button class="btn-export" onclick="exportarXML()">XML</button>
+        </div>
+    </div>
+
+    <!-- ================================================================
+         CARDS DE INDICADORES (KPIs)
+         Recalculados a cada mudança nos filtros
+         ================================================================ -->
+    <div class="container-cards">
+        <div class="card total">
+            <div class="card-titulo">Total de Demandas</div>
+            <div class="card-valor" id="kpiTotal">0</div>
+            <span class="card-perc perc-blue">Volume Registrado</span>
+        </div>
+        <div class="card sla">
+            <div class="card-titulo">Tempo Médio de Resposta</div>
+            <div class="card-valor" id="kpiSLA">0,0 dias</div>
+            <span class="card-perc perc-purple" id="lblSlaSub">Média Global SLA</span>
+        </div>
+        <div class="card resolvido">
+            <div class="card-titulo">Demandas Respondidas</div>
+            <div class="card-valor" id="kpiRespondidas">0</div>
+            <span class="card-perc perc-green" id="percRespondidas">0% do total</span>
+        </div>
+    </div>
+
+    <!-- ================================================================
+         GRÁFICOS (ECharts)
+         Pizza por tipo | pizza por canal | barras com todos os assuntos
+         ================================================================ -->
+    <div class="container-graficos">
+        <div class="grafico-wrapper">
+            <div id="chartTipo" class="grafico-box"></div>
+        </div>
+
+        <div class="grafico-wrapper">
+            <div id="chartCanal" class="grafico-box"></div>
+        </div>
+
+        <div class="grafico-wrapper grafico-full">
+            <div id="chartAssunto" class="grafico-box"></div>
+        </div>
+    </div>
+
+    <script>
+        /* ===================================================================
+           ÍNDICE DO SCRIPT
+           1. Configuração (o que você normalmente altera está aqui)
+           2. Cache de elementos do DOM e estado global
+           3. Funções utilitárias
+           4. Comunicação com o iframe (altura automática)
+           5. Carregamento e processamento dos dados
+           6. Filtros e indicadores (KPIs)
+           7. Gráficos (ECharts)
+           8. Exportações (CSV, Excel, JSON, XML)
+           =================================================================== */
+
+        /* ===================================================================
+           1. CONFIGURAÇÃO
+           =================================================================== */
+
+        // 🔴 LINK DO CSV: no Google Sheets, use Arquivo → Compartilhar →
+        // Publicar na web → formato CSV, e cole o link gerado aqui.
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTTaV8Dk7ngYuTASW0Md9TrIa4W8_t5MczIFVdo1SnDSRdVd_0Wp7WDXUSbGR5PmM2_GL7xiitMbb4A/pub?output=csv';
+
+        // 🔴 SITE QUE HOSPEDA O IFRAME: a altura da página só será enviada
+        // para este domínio (segurança do postMessage). Se o site oficial
+        // mudar de endereço, atualize aqui. Use "*" apenas em testes locais.
+        const ORIGEM_PAI = "https://www.marilia.sp.leg.br";
+
+        /* ===================================================================
+           2. CACHE DE ELEMENTOS DO DOM E ESTADO GLOBAL
+           =================================================================== */
+        const domElements = {
+            filtroAno: document.getElementById('filtroAno'),
+            filtroMes: document.getElementById('filtroMes'),
+            kpiTotal: document.getElementById('kpiTotal'),
+            kpiSLA: document.getElementById('kpiSLA'),
+            kpiRespondidas: document.getElementById('kpiRespondidas'),
+            percRespondidas: document.getElementById('percRespondidas')
+        };
+
+        const charts = {
+            tipo: echarts.init(document.getElementById('chartTipo')),
+            canal: echarts.init(document.getElementById('chartCanal')),
+            assunto: echarts.init(document.getElementById('chartAssunto'))
+        };
+
+        let dadosOriginais = []; // todas as manifestações lidas da planilha
+        let dadosVisiveis = [];  // manifestações após aplicar os filtros
+
+        const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+        /* ===================================================================
+           3. FUNÇÕES UTILITÁRIAS
+           =================================================================== */
+
+        /**
+         * Converte um texto de data em objeto Date, aceitando os formatos
+         * dd/mm/aaaa, aaaa-mm-dd e dd-mm-aaaa. A parte de hora, se houver
+         * ("dd/mm/aaaa 14:30"), é ignorada. Retorna null se ilegível.
+         */
+        function limparEConverterData(str) {
+            if (!str) return null;
+            let strLimpa = String(str).trim();
+            if (strLimpa === "") return null;
+
+            let apenasData = strLimpa.split(' ')[0];
+
+            if (apenasData.includes('/')) {
+                let partes = apenasData.split('/');
+                if (partes.length === 3) {
+                    return new Date(parseInt(partes[2], 10), parseInt(partes[1], 10) - 1, parseInt(partes[0], 10));
+                }
+            } else if (apenasData.includes('-')) {
+                let partes = apenasData.split('-');
+                if (partes.length === 3) {
+                    if (partes[0].length === 4) { // aaaa-mm-dd
+                        return new Date(parseInt(partes[0], 10), parseInt(partes[1], 10) - 1, parseInt(partes[2], 10));
+                    } else {                       // dd-mm-aaaa
+                        return new Date(parseInt(partes[2], 10), parseInt(partes[1], 10) - 1, parseInt(partes[0], 10));
+                    }
+                }
+            }
+            return null;
+        }
+
+        /** SEGURANÇA: remove < e > dos textos da planilha antes de usá-los
+            nos gráficos. Os tooltips do ECharts renderizam HTML, então um
+            texto malicioso numa célula poderia injetar código; a remoção
+            neutraliza sem distorcer os rótulos visíveis. */
+        function limparTexto(v) {
+            return String(v ?? "").replace(/[<>]/g, "").trim();
+        }
+
+        /** Escapa os caracteres reservados do XML (&, <, >) na exportação. */
+        function escapeXml(v) {
+            return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        /* ===================================================================
+           4. COMUNICAÇÃO COM O IFRAME (altura automática)
+           NOVO NESTA VERSÃO: o painel não enviava a altura ao site, e o
+           iframe ficava travado no tamanho inicial — com os gráficos
+           empilhados no celular, o final da página era cortado. Agora,
+           sempre que o conteúdo muda de tamanho, a nova altura é enviada
+           via postMessage e o site redimensiona o iframe.
+           =================================================================== */
+
+        /** Envia a altura atual do conteúdo para o site que hospeda o iframe. */
+        function enviarAlturaIframe() {
+            const h = document.body.scrollHeight + 30; // folga para sombras
+            window.parent.postMessage({ tipo: 'ajustarAltura', valor: h }, ORIGEM_PAI);
+        }
+
+        // O ResizeObserver detecta qualquer mudança de altura do conteúdo
+        // (filtros, responsividade, carregamento) e reenvia automaticamente.
+        if ('ResizeObserver' in window) {
+            new ResizeObserver(() => enviarAlturaIframe()).observe(document.body);
+        }
+
+        /* ===================================================================
+           5. CARREGAMENTO E PROCESSAMENTO DOS DADOS
+           - O PapaParse lê o CSV com cabeçalho e as chaves são normalizadas
+             ("Canal_Entrada" → "canalentrada"), então a planilha pode ter
+             acentos e maiúsculas nos cabeçalhos sem quebrar o painel
+           - Para cada manifestação são calculados: ano/mês de abertura,
+             se foi respondida e o tempo de resposta em dias (SLA)
+           - Registros sem data de abertura válida são descartados
+           =================================================================== */
+        fetch(`${CSV_URL}&t=${Date.now()}`) // cache-buster: dados sempre atuais
+            .then(res => res.text())
+            .then(textoBruto => {
+                Papa.parse(textoBruto, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        dadosOriginais = results.data.map(linha => {
+                            // Normaliza as chaves: sem acentos, minúsculas e
+                            // só letras/números ("Data_Abertura" → "dataabertura")
+                            let clean = {};
+                            for (let key in linha) {
+                                if (!key) continue;
+                                let cleanKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+                                clean[cleanKey] = linha[key];
+                            }
+
+                            const dataAbertura = clean.dataabertura || null;
+                            const dataResp = clean.dataconclusao || null;
+
+                            const objAbertura = limparEConverterData(dataAbertura);
+                            const objResposta = limparEConverterData(dataResp);
+
+                            // Ano e mês de abertura (para os filtros)
+                            if (objAbertura) {
+                                clean._anoAbertura = objAbertura.getFullYear().toString();
+                                clean._mesAberturaNome = nomesMeses[objAbertura.getMonth()];
+                            } else {
+                                clean._anoAbertura = "Indefinido";
+                                clean._mesAberturaNome = "Indefinido";
+                            }
+
+                            // Respondida = tem data de conclusão preenchida
+                            const estaRespondido = dataResp && String(dataResp).trim() !== "";
+                            clean._respondido = estaRespondido;
+
+                            // SLA = dias entre abertura e conclusão
+                            if (objAbertura && objResposta) {
+                                let diferencaTempo = objResposta.getTime() - objAbertura.getTime();
+                                clean._slaDias = Math.max(0, Math.floor(diferencaTempo / (1000 * 60 * 60 * 24)));
+                            } else {
+                                clean._slaDias = null;
+                            }
+
+                            // Campos exibidos nos gráficos (usam as chaves
+                            // normalizadas — cabeçalhos com maiúsculas ou
+                            // acentos na planilha não quebram mais o painel)
+                            clean.tipo_exibicao = limparTexto(clean.tipo || linha["tipo"]) || "Não Informado";
+                            clean.canal_exibicao = limparTexto(clean.canalentrada || linha["canal_entrada"]) || "Não Informado";
+                            clean.assunto_exibicao = limparTexto(clean.assuntos || linha["assuntos"]) || "Não Informado";
+
+                            return clean;
+                        }).filter(l => l._anoAbertura !== "Indefinido"); // descarta sem data válida
+
+                        popularFiltrosDinamicos(dadosOriginais);
+                        aplicarFiltrosEAtualizar();
+                    }
+                });
+            })
+            .catch(err => {
+                console.error("Erro no carregamento:", err);
+                document.getElementById('msg-erro').style.display = 'block';
+            });
+
+        /* ===================================================================
+           6. FILTROS E INDICADORES (KPIs)
+           =================================================================== */
+
+        /**
+         * Preenche o filtro de Ano com os anos existentes na planilha
+         * (mais recente primeiro) e o de Mês com os 12 meses fixos.
+         */
+        function popularFiltrosDinamicos(d) {
+            const sAno = domElements.filtroAno, sMes = domElements.filtroMes;
+
+            const anos = [...new Set(d.map(i => i._anoAbertura))].sort((a, b) => b - a);
+            anos.forEach(a => {
+                let o = document.createElement('option'); o.value = a; o.textContent = a; sAno.appendChild(o);
+            });
+
+            nomesMeses.forEach(m => {
+                let o = document.createElement('option'); o.value = m; o.textContent = m; sMes.appendChild(o);
+            });
+
+            sAno.addEventListener('change', aplicarFiltrosEAtualizar);
+            sMes.addEventListener('change', aplicarFiltrosEAtualizar);
+        }
+
+        /** Aplica os filtros de ano/mês e atualiza cards e gráficos. */
+        function aplicarFiltrosEAtualizar() {
+            const anoSel = domElements.filtroAno.value;
+            const mesSel = domElements.filtroMes.value;
+
+            dadosVisiveis = dadosOriginais.filter(l => {
+                return (anoSel === 'Todos' || l._anoAbertura === anoSel) &&
+                       (mesSel === 'Todos' || l._mesAberturaNome === mesSel);
+            });
+
+            recalcularKPIs(dadosVisiveis);
+            renderizarGraficosOuvidoria(dadosVisiveis);
+        }
+
+        /**
+         * Recalcula os três cards:
+         * - Total de demandas do período
+         * - Tempo médio de resposta (só entre as respondidas com SLA válido)
+         * - Respondidas e % sobre o total
+         */
+        function recalcularKPIs(d) {
+            let total = d.length;
+            let respondidas = 0;
+            let somatorioSLA = 0;
+            let respondidasComSLA = 0;
+
+            d.forEach(l => {
+                if (l._respondido) {
+                    respondidas++;
+                    if (l._slaDias !== null) {
+                        somatorioSLA += l._slaDias;
+                        respondidasComSLA++;
+                    }
+                }
+            });
+
+            let mediaSLA = respondidasComSLA > 0 ? (somatorioSLA / respondidasComSLA) : 0;
+            let percResp = total > 0 ? ((respondidas / total) * 100).toFixed(1) : "0.0";
+
+            domElements.kpiTotal.textContent = total.toLocaleString('pt-BR');
+            domElements.kpiSLA.textContent = mediaSLA.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + " dias";
+            domElements.kpiRespondidas.textContent = respondidas.toLocaleString('pt-BR');
+            domElements.percRespondidas.textContent = `${percResp}% resolvido`;
+        }
+
+        /* ===================================================================
+           7. GRÁFICOS (ECharts)
+           - Pizza "Distribuição por Tipo" e "Canais de Entrada"
+           - Barras "Todos os Assuntos Recorrentes": mostra 8 por vez, com
+             rolagem lateral travada (arrastar/roda do mouse move a janela,
+             mas não muda a quantidade exibida)
+           =================================================================== */
+        function renderizarGraficosOuvidoria(d) {
+            // Conta as ocorrências de cada tipo, canal e assunto
+            let mapaTipo = {};
+            let mapaCanal = {};
+            let mapaAssunto = {};
+
+            d.forEach(l => {
+                mapaTipo[l.tipo_exibicao] = (mapaTipo[l.tipo_exibicao] || 0) + 1;
+                mapaCanal[l.canal_exibicao] = (mapaCanal[l.canal_exibicao] || 0) + 1;
+                mapaAssunto[l.assunto_exibicao] = (mapaAssunto[l.assunto_exibicao] || 0) + 1;
+            });
+
+            // ---- Pizza: distribuição por tipo ----
+            let dataTipo = Object.keys(mapaTipo).map(k => ({ name: k, value: mapaTipo[k] }));
+            charts.tipo.setOption({
+                title: { text: 'Distribuição por Tipo', left: 'center', textStyle: { fontSize: 14, color: '#334155' } },
+                tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                legend: { bottom: '0', left: 'center', type: 'scroll' },
+                series: [{
+                    type: 'pie', radius: ['40%', '70%'], avoidLabelOverlap: false,
+                    itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+                    label: { show: false }, data: dataTipo
+                }]
+            }, true);
+
+            // ---- Pizza: canais de entrada ----
+            let dataCanal = Object.keys(mapaCanal).map(k => ({ name: k, value: mapaCanal[k] }));
+            charts.canal.setOption({
+                title: { text: 'Canais de Entrada', left: 'center', textStyle: { fontSize: 14, color: '#334155' } },
+                tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                legend: { bottom: '0', left: 'center', type: 'scroll' },
+                color: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'],
+                series: [{
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    center: ['50%', '50%'],
+                    data: dataCanal,
+                    itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
+                    label: { show: false }
+                }]
+            }, true);
+
+            // ---- Barras: todos os assuntos, do mais recorrente ao menos ----
+            let dadosAssuntosOrdenados = Object.keys(mapaAssunto)
+                .map(k => ({ assunto: k, total: mapaAssunto[k] }))
+                .sort((a, b) => b.total - a.total);
+
+            const chartAssuntoDOM = document.getElementById('chartAssunto');
+            chartAssuntoDOM.style.height = '450px';
+            charts.assunto.resize();
+
+            // Janela de 8 assuntos por vez; com mais de 8, aparece a barra
+            // de rolagem lateral (com a quantidade exibida travada)
+            const itensNaTela = Math.min(dadosAssuntosOrdenados.length, 8);
+            const zoomEnd = dadosAssuntosOrdenados.length > 8 ?
+                (itensNaTela / dadosAssuntosOrdenados.length) * 100 : 100;
+
+            charts.assunto.setOption({
+                title: { text: 'Todos os Assuntos Recorrentes', left: 'center', textStyle: { fontSize: 14, color: '#334155' } },
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                grid: { left: '3%', right: '3%', bottom: '35%', top: '50px', containLabel: true },
+
+                xAxis: {
+                    type: 'category',
+                    data: dadosAssuntosOrdenados.map(i => i.assunto),
+                    axisLabel: {
+                        width: 150,
+                        overflow: 'truncate',
+                        interval: 0,
+                        rotate: 45
+                    }
+                },
+                yAxis: { type: 'value' },
+
+                dataZoom: [
+                    {
+                        type: 'slider',
+                        show: dadosAssuntosOrdenados.length > 8,
+                        xAxisIndex: [0],
+                        bottom: 10,
+                        start: 0,
+                        end: zoomEnd,
+                        height: 15,
+                        zoomLock: true,
+                        brushSelect: false,
+                        minValueSpan: itensNaTela - 1,
+                        maxValueSpan: itensNaTela - 1,
+                        handleSize: 0,
+                        showDetail: false
+                    },
+                    {
+                        type: 'inside',
+                        xAxisIndex: [0],
+                        start: 0,
+                        end: zoomEnd,
+                        zoomOnMouseWheel: false,
+                        moveOnMouseWheel: true,
+                        minValueSpan: itensNaTela - 1,
+                        maxValueSpan: itensNaTela - 1
+                    }
+                ],
+                color: [
+                    '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+                    '#06b6d4', '#f97316', '#14b8a6', '#6366f1', '#ec4899',
+                    '#84cc16', '#eab308', '#d946ef', '#0ea5e9', '#f43f5e'
+                ],
+                series: [{
+                    name: 'Demandas',
+                    type: 'bar',
+                    colorBy: 'data',
+                    data: dadosAssuntosOrdenados.map(i => i.total),
+                    itemStyle: {
+                        borderRadius: [4, 4, 0, 0]
+                    },
+                    label: { show: true, position: 'top', fontSize: 10 }
+                }]
+            }, true);
+        }
+
+        // Redesenha os gráficos quando a janela muda de tamanho
+        window.addEventListener('resize', () => {
+            charts.tipo.resize();
+            charts.canal.resize();
+            charts.assunto.resize();
+        });
+
+        /* ===================================================================
+           8. EXPORTAÇÕES (CSV, Excel, JSON, XML)
+           Baixam as manifestações do período filtrado, com o status e o
+           tempo de resposta calculados.
+           =================================================================== */
+
+        /** Converte as manifestações filtradas para o formato de exportação. */
+        function prepararMatrizExportacao() {
+            return dadosVisiveis.map(l => ({
+                "Tipo": l.tipo_exibicao,
+                "Assunto": l.assunto_exibicao,
+                "Canal de Entrada": l.canal_exibicao,
+                "Ano Abertura": l._anoAbertura,
+                "Mês Abertura": l._mesAberturaNome,
+                "Tempo Resposta (Dias)": l._respondido ? (l._slaDias !== null ? l._slaDias : 0) : "Pendente",
+                "Status": l._respondido ? "Respondido" : "Em Aberto"
+            }));
+        }
+
+        /** Monta o nome do arquivo a partir dos filtros ativos
+            (ex: relatorio_ouvidoria_2026_maio.csv). */
+        function gerarNomeArquivo() {
+            const a = domElements.filtroAno.value;
+            const m = domElements.filtroMes.value;
+            return `relatorio_ouvidoria_${a !== 'Todos' ? a : 'global'}_${m !== 'Todos' ? m.toLowerCase() : 'ano_completo'}`;
+        }
+
+        /** Exporta CSV (separado por ";", padrão do Excel brasileiro).
+            O prefixo \ufeff (BOM) garante acentos corretos no Excel. */
+        function exportarCSV() {
+            const csv = Papa.unparse(prepararMatrizExportacao(), { delimiter: ";" });
+            descarregarArquivo("\uFEFF" + csv, `${gerarNomeArquivo()}.csv`, "text/csv;charset=utf-8;");
+        }
+
+        /** Exporta Excel (.xlsx) via SheetJS. */
+        function exportarXLSX() {
+            const ws = XLSX.utils.json_to_sheet(prepararMatrizExportacao());
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Manifestações");
+            XLSX.writeFile(wb, `${gerarNomeArquivo()}.xlsx`);
+        }
+
+        /** Exporta JSON formatado (2 espaços de indentação). */
+        function exportarJSON() {
+            descarregarArquivo(JSON.stringify(prepararMatrizExportacao(), null, 2), `${gerarNomeArquivo()}.json`, "application/json");
+        }
+
+        /** Exporta XML com tags normalizadas e valores escapados
+            (ver escapeXml). */
+        function exportarXML() {
+            let xml = '<?xml version="1.0" encoding="UTF-8"?><ouvidoria>';
+            prepararMatrizExportacao().forEach(l => {
+                xml += '<registro>';
+                for (let k in l) {
+                    let tag = k.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w]/g, '');
+                    xml += `<${tag}>${escapeXml(l[k])}</${tag}>`;
+                }
+                xml += '</registro>';
+            });
+            xml += '</ouvidoria>';
+            descarregarArquivo(xml, `${gerarNomeArquivo()}.xml`, "application/xml");
+        }
+
+        /** Dispara o download de um arquivo gerado em memória e libera o
+            blob em seguida para não acumular memória. */
+        function descarregarArquivo(conteudo, nome, tipo) {
+            const b = new Blob([conteudo], { type: tipo });
+            const u = URL.createObjectURL(b);
+            const a = document.createElement('a');
+            a.href = u; a.download = nome; a.click();
+            URL.revokeObjectURL(u);
+        }
+    </script>
+</body>
+</html>
