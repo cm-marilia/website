@@ -15,7 +15,10 @@
  *       carimba a A1 de TODAS elas, com o mesmo valor.
  *     - Se não tem (planilha de aba única), carimba a A1 da aba "Página1".
  *     Dispara em toda edição manual, importação, inserção de aba e um reforço
- *     semanal (terça, 11h-12h — ver GATILHO_DIA / GATILHO_HORA).
+ *     agendado (ver GATILHO_FREQUENCIA / GATILHO_DIA / GATILHO_HORA):
+ *       - a maioria das planilhas: semanal (terça, 11h-12h);
+ *       - julgamentos_contas_camara: mensal, na 1ª segunda-feira do mês
+ *         (os dados mudam ~1x/ano — não precisa de reforço semanal).
  *
  *  2. Máscara de CPF (LGPD) — em toda edição manual, um valor de 11 dígitos
  *     numa coluna de CPF (COLUNAS_CPF) é gravado JÁ MASCARADO
@@ -45,12 +48,20 @@ const LINHA_CABECALHO = 2;        // 1 = carimbo, 2 = cabeçalhos, 3+ = dados
 const ABA_ANO = /^\d{4}$/;
 const ABA_UNICA = 'Página1';      // usada quando a planilha não é dividida por ano
 
-// Reforço semanal do carimbo (gatilho de tempo criado por criarGatilhos).
+// Reforço agendado do carimbo (gatilho de tempo criado por criarGatilhos).
+// GATILHO_FREQUENCIA:
+//   'SEMANAL'                  → toda semana no GATILHO_DIA (padrão).
+//   'MENSAL_PRIMEIRA_SEGUNDA'  → só na 1ª segunda-feira do mês. Use nas
+//                                planilhas que mudam raramente (ex.:
+//                                julgamentos_contas_camara). Nesse modo,
+//                                deixe GATILHO_DIA = 'MONDAY'.
 // GATILHO_DIA: 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY'
 // GATILHO_HORA: 0–23. atHour(11) = a janela "11h às 12h" no editor de gatilhos.
-// Escalonar por planilha: use um dia/hora diferente em cada uma antes de rodar criarGatilhos.
-const GATILHO_DIA  = 'TUESDAY';
-const GATILHO_HORA = 11;
+// Escalonar por planilha: use um dia/hora (ou a frequência) diferente em cada
+// uma antes de rodar criarGatilhos.
+const GATILHO_FREQUENCIA = 'SEMANAL';
+const GATILHO_DIA        = 'TUESDAY';
+const GATILHO_HORA       = 11;
 
 // Colunas cujo valor deve ser gravado JÁ MASCARADO quando for CPF (11 dígitos).
 // CNPJ (14 dígitos) e qualquer outro valor passam sem alteração.
@@ -72,6 +83,19 @@ function carimbar() {
     const a1 = sh.getRange('A1');
     if (a1.getValue() !== texto) a1.setValue(texto);
   });
+}
+
+/** Alvo do gatilho de tempo. No modo 'MENSAL_PRIMEIRA_SEGUNDA' só carimba
+    quando a data do dia é 1–7 (ou seja, a 1ª segunda-feira do mês); nos
+    demais dias/semanas o gatilho dispara e não faz nada. As edições manuais,
+    importações e o menu "Carimbar agora" chamam carimbar() direto e não
+    passam por aqui. */
+function reforcoAgendado() {
+  if (GATILHO_FREQUENCIA === 'MENSAL_PRIMEIRA_SEGUNDA') {
+    var dia = Number(Utilities.formatDate(new Date(), TZ, 'd'));
+    if (dia > 7) return;
+  }
+  carimbar();
 }
 
 /** Edições manuais (gatilho simples). */
@@ -231,9 +255,10 @@ function criarGatilhos() {
   ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
 
   ScriptApp.newTrigger('onChange').forSpreadsheet(ss).onChange().create();
-  // Reforço semanal — dia e hora definidos em GATILHO_DIA / GATILHO_HORA no topo.
-  // Atual: terça-feira, entre 11h e 12h (fuso do script).
-  ScriptApp.newTrigger('carimbar')
+  // Reforço agendado — frequência/dia/hora em GATILHO_FREQUENCIA / GATILHO_DIA
+  // / GATILHO_HORA no topo. O gatilho é sempre semanal; no modo
+  // 'MENSAL_PRIMEIRA_SEGUNDA' a função reforcoAgendado ignora as semanas 2–5.
+  ScriptApp.newTrigger('reforcoAgendado')
     .timeBased().everyWeeks(1)
     .onWeekDay(ScriptApp.WeekDay[GATILHO_DIA]).atHour(GATILHO_HORA)
     .create();

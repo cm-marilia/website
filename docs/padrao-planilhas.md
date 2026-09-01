@@ -215,7 +215,7 @@ Fuso `America/Sao_Paulo`. Nunca digitar esse valor à mão.
 |---|---|---|
 | Edição manual de qualquer célula (fora da linha 1) | `onEdit` (simples) | não conta edição na própria linha do carimbo |
 | Importação, colagem grande, inserção de aba, edição via API/script | `onChange` (instalável) | criado por `criarGatilhos` |
-| Reforço periódico | gatilho de tempo | **toda terça-feira, 11h–12h** (constantes `GATILHO_DIA` / `GATILHO_HORA` no topo do `carimbo.gs`; escalone por planilha) |
+| Reforço periódico | gatilho de tempo (`reforcoAgendado`) | padrão **toda terça-feira, 11h–12h**; `julgamentos_contas_camara` = **1ª segunda-feira do mês** (dados mudam ~1x/ano). Constantes `GATILHO_FREQUENCIA` (`SEMANAL` \| `MENSAL_PRIMEIRA_SEGUNDA`) / `GATILHO_DIA` / `GATILHO_HORA` no topo do `carimbo.gs`; escalone por planilha |
 
 Trava de 25 s no `CacheService` evita laço (o `onChange` re-disparando por
 causa da própria escrita do carimbo). Se A1 já tem o valor calculado, não
