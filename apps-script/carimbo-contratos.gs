@@ -1,76 +1,57 @@
 /**
  * Portal de Transparência — Câmara Municipal de Marília
- * Carimbo de atualização + criação de aba de ano
- * Planilha: contratos
+ * Carimbo de atualização automático — planilha: contratos
  *
- * Cole este conteúdo no Apps Script (Extensões → Apps Script) DESTA
- * planilha. Cada planilha do portal tem sua própria cópia deste arquivo,
- * ajustada apenas no bloco GATILHO_* abaixo (frequência de reforço do
- * carimbo) — o resto do código é igual em todas.
+ * O QUE ESTE SCRIPT FAZ
+ * ----------------------
+ * 1. Carimbo — grava em A1 o texto "DADOS_ATUALIZADOS_EM: dd/mm/aaaa hh:mm"
+ *    (fuso America/Sao_Paulo). Se a planilha é dividida por abas de ano
+ *    (nomes de 4 dígitos: 2023, 2024, ...), carimba a A1 de TODAS elas com
+ *    o mesmo valor; se é aba única, carimba a A1 da aba "Página1". Dispara
+ *    a cada edição manual (onEdit), a cada importação/colagem grande/
+ *    inserção de aba (onChange) e num reforço agendado — nesta planilha,
+ *    toda SEGUNDA-FEIRA, 10h-11h. Uma trava de 25s evita loop entre o
+ *    carimbo e o próprio onChange.
  *
- * O que faz:
+ * 2. Máscara de CPF (LGPD) — todo valor de 11 dígitos digitado numa coluna
+ *    listada em COLUNAS_CPF é gravado JÁ MASCARADO ("***.456.789-**");
+ *    CNPJ (14 dígitos) passa intacto. Assim o CSV publicado nunca expõe
+ *    CPF completo. "Mascarar CPFs agora" faz o mesmo em lote, para quando
+ *    os dados chegam por importação (que não passa pelo onEdit).
  *
- *  1. Carimbo — grava, na célula A1, o texto:
+ * 3. Menu "Transparência" (aparece ao abrir a planilha):
+ *    - Criar aba do próximo ano — só aparece se já existir aba de ano;
+ *      clona a estrutura da mais recente, limpa os dados, carimba e move
+ *      a aba nova para a primeira posição.
+ *    - Carimbar agora — força o carimbo manualmente.
+ *    - Mascarar CPFs agora — varre todas as abas e mascara CPFs crus.
  *
- *         DADOS_ATUALIZADOS_EM: 31/08/2026 14:20
+ * INSTALAÇÃO (uma vez, nesta planilha)
+ * -------------------------------------
+ * 1. Extensões → Apps Script, colar este arquivo inteiro, salvar.
+ * 2. Selecionar a função "criarGatilhos", executar, autorizar o acesso.
+ * 3. Recarregar a planilha — o menu "Transparência" aparece.
  *
- *     - Se a planilha tem abas de ano (nome com 4 dígitos: 2023, 2024, ...),
- *       carimba a A1 de TODAS elas, com o mesmo valor.
- *     - Se não tem (planilha de aba única), carimba a A1 da aba "Página1".
- *     Dispara em toda edição manual, importação, inserção de aba e um reforço
- *     agendado (ver GATILHO_FREQUENCIA / GATILHO_DIA / GATILHO_HORA):
- *       - reforço agendado: toda SEGUNDA-FEIRA, 10h-11h.
- *
- *  2. Máscara de CPF (LGPD) — em toda edição manual, um valor de 11 dígitos
- *     numa coluna de CPF (COLUNAS_CPF) é gravado JÁ MASCARADO
- *     ("***.456.789-**"). CNPJ (14 díg.) passa intacto. Assim o CSV publicado
- *     nunca expõe CPF inteiro — a máscara não depende do site.
- *
- *  3. Menu "Transparência":
- *     - "Criar aba do próximo ano" (só aparece se já houver aba de ano):
- *       clona a estrutura da aba mais recente, zera os dados, põe a nova aba
- *       na frente e carimba.
- *     - "Carimbar agora": força o carimbo.
- *     - "Mascarar CPFs agora": varre todas as abas e mascara CPFs crus
- *       (use depois de importar dados em massa — o onEdit não cobre importação).
- *
- * Instalação (uma vez, nesta planilha):
- *   1. Extensões → Apps Script, cole este arquivo, salve.
- *   2. Rode a função "criarGatilhos", autorize.
- *   3. Recarregue a planilha (menu "Transparência" aparece).
- *
- * Passos de publicação de aba nova: ver docs/padrao-planilhas.md no repositório.
+ * Passo a passo completo e agenda de todas as planilhas: ver
+ * apps-script/agenda-atualizacoes.md no repositório.
  */
 
 const ROTULO = 'DADOS_ATUALIZADOS_EM';
 const TZ = 'America/Sao_Paulo';
 const FORMATO = 'dd/MM/yyyy HH:mm';
-const LINHA_CABECALHO = 2;        // 1 = carimbo, 2 = cabeçalhos, 3+ = dados
+const LINHA_CABECALHO = 2;
 const ABA_ANO = /^\d{4}$/;
-const ABA_UNICA = 'Página1';      // usada quando a planilha não é dividida por ano
+const ABA_UNICA = 'Página1';
 
-// Reforço agendado do carimbo (gatilho de tempo criado por criarGatilhos).
-// GATILHO_FREQUENCIA:
-//   'SEMANAL'                  → toda semana no GATILHO_DIA.
-//   'MENSAL_PRIMEIRA_SEGUNDA'  → só na 1ª segunda-feira do mês.
-// GATILHO_DIA: 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY'
-// GATILHO_HORA: 0–23. atHour(N) = a janela "Nh às N+1h" no editor de gatilhos.
 const GATILHO_FREQUENCIA = 'SEMANAL';
 const GATILHO_DIA        = 'MONDAY';
 const GATILHO_HORA       = 10;
 
-// Colunas cujo valor deve ser gravado JÁ MASCARADO quando for CPF (11 dígitos).
-// CNPJ (14 dígitos) e qualquer outro valor passam sem alteração.
-// Ajuste os nomes conforme a planilha (ex.: "cpf", "cpf_ou_cnpj").
 const COLUNAS_CPF = ['cpf_ou_cnpj', 'cpf', 'cpf_cnpj'];
-
-/* ------------------------------------------------------------------ */
-/* 1. CARIMBO                                                          */
-/* ------------------------------------------------------------------ */
 
 function carimbar() {
   const cache = CacheService.getScriptCache();
-  if (cache.get('carimbando')) return;          // evita laço com o próprio onChange
+  if (cache.get('carimbando')) return;
   cache.put('carimbando', '1', 25);
 
   const texto = ROTULO + ': ' + Utilities.formatDate(new Date(), TZ, FORMATO);
@@ -81,11 +62,6 @@ function carimbar() {
   });
 }
 
-/** Alvo do gatilho de tempo. No modo 'MENSAL_PRIMEIRA_SEGUNDA' só carimba
-    quando a data do dia é 1–7 (ou seja, a 1ª segunda-feira do mês); nos
-    demais dias/semanas o gatilho dispara e não faz nada. As edições manuais,
-    importações e o menu "Carimbar agora" chamam carimbar() direto e não
-    passam por aqui. */
 function reforcoAgendado() {
   if (GATILHO_FREQUENCIA === 'MENSAL_PRIMEIRA_SEGUNDA') {
     var dia = Number(Utilities.formatDate(new Date(), TZ, 'd'));
@@ -94,26 +70,16 @@ function reforcoAgendado() {
   carimbar();
 }
 
-/** Edições manuais (gatilho simples). */
 function onEdit(e) {
-  if (e && e.range && e.range.getRow() === 1) return;   // ignora a própria linha do carimbo
+  if (e && e.range && e.range.getRow() === 1) return;
   mascararCpfNaEdicao(e);
   carimbar();
 }
 
-/** Importações, colagens grandes, inserção de aba, edições via API (gatilho instalável). */
 function onChange(e) {
   carimbar();
-  // onChange não informa a célula editada; para importações em massa,
-  // rode "Transparência → Mascarar CPFs agora".
 }
 
-/* ------------------------------------------------------------------ */
-/* 1b. MÁSCARA DE CPF (LGPD)                                           */
-/*     O valor é gravado mascarado NA PLANILHA — não depende do site.  */
-/* ------------------------------------------------------------------ */
-
-/** "12345678901" (11 díg.) → "***.456.789-**". Outros tamanhos: retorna null. */
 function mascararCpfValor(v) {
   var d = String(v == null ? '' : v).replace(/\D/g, '');
   if (d.length !== 11) return null;
@@ -125,12 +91,11 @@ function chaveColuna(h) {
     .trim().toLowerCase().replace(/\s+/g, '_');
 }
 
-/** Mascara CPFs na faixa recém-editada (gatilho onEdit). */
 function mascararCpfNaEdicao(e) {
   if (!e || !e.range) return;
   var sh = e.range.getSheet();
   var linIni = e.range.getRow();
-  if (linIni < LINHA_CABECALHO + 1) return;             // não mexe em cabeçalho/carimbo
+  if (linIni < LINHA_CABECALHO + 1) return;
   if (sh.getLastColumn() < 1) return;
 
   var cabecalhos = sh.getRange(LINHA_CABECALHO, 1, 1, sh.getLastColumn())
@@ -150,8 +115,6 @@ function mascararCpfNaEdicao(e) {
   if (mudou) e.range.setValues(vals);
 }
 
-/** Varre TODAS as abas e mascara qualquer CPF cru nas colunas de CPF.
-    Use após importar dados em massa. */
 function mascararCpfsTudo() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var total = 0;
@@ -179,10 +142,6 @@ function mascararCpfsTudo() {
   });
   SpreadsheetApp.getUi().alert(total + ' CPF(s) mascarado(s).');
 }
-
-/* ------------------------------------------------------------------ */
-/* 2. MENU / NOVO ANO                                                  */
-/* ------------------------------------------------------------------ */
 
 function onOpen() {
   const menu = SpreadsheetApp.getUi().createMenu('Transparência');
@@ -225,12 +184,8 @@ function criarAbaProximoAno() {
 
   ui.alert('Aba ' + novo + ' criada.\n\nAgora: Arquivo → Compartilhar → Publicar na web, ' +
            'selecione a aba ' + novo + ', copie a URL (contém &gid=) e envie para atualizar o HTML. ' +
-           'Passos completos em padrao-planilhas.md.');
+           'Passos completos em docs/padrao-planilhas.md.');
 }
-
-/* ------------------------------------------------------------------ */
-/* AUXILIARES                                                          */
-/* ------------------------------------------------------------------ */
 
 function abasDeAno() {
   return SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(function (sh) {
@@ -245,15 +200,11 @@ function abasParaCarimbar() {
   return unica ? [unica] : [];
 }
 
-/** Rode UMA vez, na mão, para instalar os gatilhos. */
 function criarGatilhos() {
   const ss = SpreadsheetApp.getActive();
   ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
 
   ScriptApp.newTrigger('onChange').forSpreadsheet(ss).onChange().create();
-  // Reforço agendado — frequência/dia/hora em GATILHO_FREQUENCIA / GATILHO_DIA
-  // / GATILHO_HORA no topo. O gatilho é sempre semanal; no modo
-  // 'MENSAL_PRIMEIRA_SEGUNDA' a função reforcoAgendado ignora as semanas 2–5.
   ScriptApp.newTrigger('reforcoAgendado')
     .timeBased().everyWeeks(1)
     .onWeekDay(ScriptApp.WeekDay[GATILHO_DIA]).atHour(GATILHO_HORA)
