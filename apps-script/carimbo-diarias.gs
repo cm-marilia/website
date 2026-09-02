@@ -1,9 +1,12 @@
 /**
  * Portal de Transparência — Câmara Municipal de Marília
  * Carimbo de atualização + criação de aba de ano
+ * Planilha: diárias
  *
- * ARQUIVO ÚNICO — cole o mesmo conteúdo no Apps Script das 9 planilhas.
- * Não precisa de ajuste por planilha.
+ * Cole este conteúdo no Apps Script (Extensões → Apps Script) DESTA
+ * planilha. Cada planilha do portal tem sua própria cópia deste arquivo,
+ * ajustada apenas no bloco GATILHO_* abaixo (frequência de reforço do
+ * carimbo) — o resto do código é igual em todas.
  *
  * O que faz:
  *
@@ -16,9 +19,7 @@
  *     - Se não tem (planilha de aba única), carimba a A1 da aba "Página1".
  *     Dispara em toda edição manual, importação, inserção de aba e um reforço
  *     agendado (ver GATILHO_FREQUENCIA / GATILHO_DIA / GATILHO_HORA):
- *       - a maioria das planilhas: semanal (terça, 11h-12h);
- *       - julgamentos_contas_camara: mensal, na 1ª segunda-feira do mês
- *         (os dados mudam ~1x/ano — não precisa de reforço semanal).
+ *       - reforço agendado: toda SEGUNDA-FEIRA, 14h-15h.
  *
  *  2. Máscara de CPF (LGPD) — em toda edição manual, um valor de 11 dígitos
  *     numa coluna de CPF (COLUNAS_CPF) é gravado JÁ MASCARADO
@@ -33,12 +34,12 @@
  *     - "Mascarar CPFs agora": varre todas as abas e mascara CPFs crus
  *       (use depois de importar dados em massa — o onEdit não cobre importação).
  *
- * Instalação (uma vez, por planilha):
+ * Instalação (uma vez, nesta planilha):
  *   1. Extensões → Apps Script, cole este arquivo, salve.
  *   2. Rode a função "criarGatilhos", autorize.
  *   3. Recarregue a planilha (menu "Transparência" aparece).
  *
- * Passos de publicação de aba nova: ver padrao-planilhas.md no repositório.
+ * Passos de publicação de aba nova: ver docs/padrao-planilhas.md no repositório.
  */
 
 const ROTULO = 'DADOS_ATUALIZADOS_EM';
@@ -50,18 +51,13 @@ const ABA_UNICA = 'Página1';      // usada quando a planilha não é dividida p
 
 // Reforço agendado do carimbo (gatilho de tempo criado por criarGatilhos).
 // GATILHO_FREQUENCIA:
-//   'SEMANAL'                  → toda semana no GATILHO_DIA (padrão).
-//   'MENSAL_PRIMEIRA_SEGUNDA'  → só na 1ª segunda-feira do mês. Use nas
-//                                planilhas que mudam raramente (ex.:
-//                                julgamentos_contas_camara). Nesse modo,
-//                                deixe GATILHO_DIA = 'MONDAY'.
+//   'SEMANAL'                  → toda semana no GATILHO_DIA.
+//   'MENSAL_PRIMEIRA_SEGUNDA'  → só na 1ª segunda-feira do mês.
 // GATILHO_DIA: 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY'
-// GATILHO_HORA: 0–23. atHour(11) = a janela "11h às 12h" no editor de gatilhos.
-// Escalonar por planilha: use um dia/hora (ou a frequência) diferente em cada
-// uma antes de rodar criarGatilhos.
+// GATILHO_HORA: 0–23. atHour(N) = a janela "Nh às N+1h" no editor de gatilhos.
 const GATILHO_FREQUENCIA = 'SEMANAL';
-const GATILHO_DIA        = 'TUESDAY';
-const GATILHO_HORA       = 11;
+const GATILHO_DIA        = 'MONDAY';
+const GATILHO_HORA       = 14;
 
 // Colunas cujo valor deve ser gravado JÁ MASCARADO quando for CPF (11 dígitos).
 // CNPJ (14 dígitos) e qualquer outro valor passam sem alteração.
